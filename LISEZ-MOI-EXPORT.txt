@@ -1,0 +1,15 @@
+MIKADO DEVIS — CODE SOURCE COMPLET
+
+Date de récupération : 2026-11-24T12:04:41+01:00
+Projet source : /Users/cyrildaoust/Developer/mikado-devis
+Contenu : 95 fichiers originaux, dont 92 fichiers texte et 3 ressources binaires.
+
+Cet export reprend les fichiers actuels du projet, y compris les modifications locales et les fichiers non encore enregistrés dans Git. Le code original est conservé sans modification.
+
+Inclus : interface React/TypeScript, serveur, routes, calcul des devis, PDF, intégration Shopify, facturation, connecteur Odoo, schéma et migrations Prisma, scripts, tests, ressources, documentation et configuration de construction.
+
+Les fichiers .env réels, données SQLite, sessions, journaux, sauvegardes, dépendances node_modules et fichiers générés ne font pas partie du code source exporté. Les modèles .env.example et .env.production.example sont inclus. Les dépendances sont décrites dans package.json et package-lock.json.
+
+Consulter README.md et docs/ pour les instructions de lancement et de configuration.
+MANIFESTE-SHA256.txt répertorie chaque fichier original et son empreinte SHA-256.
+Vérification de cet export : intégrité ZIP et égalité du contenu de chaque fichier avec le projet source. Les tests et la compilation de l’application n’ont pas été relancés pour cette copie.

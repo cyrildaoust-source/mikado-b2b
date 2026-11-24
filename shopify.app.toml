@@ -1,0 +1,24 @@
+client_id = "e6b465322485bff1f48e5d06656d49a6"
+name = "Mikado Devis"
+application_url = "https://determining-guarantees-alignment-maximum.trycloudflare.com"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+
+[access_scopes]
+scopes = "read_products,read_customers,write_draft_orders,read_orders"
+
+[webhooks]
+api_version = "2026-07"
+
+[[webhooks.subscriptions]]
+topics = ["app/uninstalled"]
+uri = "/webhooks/app/uninstalled"
+
+[[webhooks.subscriptions]]
+topics = ["app/scopes_update"]
+uri = "/webhooks/app/scopes_update"
+
+[auth]
+redirect_urls = ["https://determining-guarantees-alignment-maximum.trycloudflare.com/auth/callback"]

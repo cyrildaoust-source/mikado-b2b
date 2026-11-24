@@ -1,0 +1,9 @@
+node_modules
+build
+.git
+.shopify
+.env
+.env.*
+prisma/*.sqlite*
+.react-router
+work

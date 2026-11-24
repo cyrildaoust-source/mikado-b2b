@@ -1,0 +1,6 @@
+name = "Mikado Devis"
+roles = ["frontend", "backend"]
+webhooks_path = "/webhooks/app/uninstalled"
+[commands]
+predev = "npm exec prisma generate"
+dev = "npm run setup && npm exec react-router dev"

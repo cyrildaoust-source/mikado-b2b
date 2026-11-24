@@ -1,0 +1,30 @@
+services:
+  app:
+    build: .
+    env_file: .env.production
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: file:/data/mikado.sqlite
+      PORT: 3000
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - mikado-data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+    restart: unless-stopped
+  billing-worker:
+    build: .
+    command: ["node", "scripts/billing-worker.mjs"]
+    environment:
+      BILLING_APP_URL: http://app:3000
+      BILLING_WORKER_TOKEN: ${BILLING_WORKER_TOKEN:?Définir le secret du worker}
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  mikado-data:
