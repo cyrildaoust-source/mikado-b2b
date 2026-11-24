@@ -22,7 +22,8 @@
     "test:integration": "node scripts/test-integration.mjs",
     "odoo:check": "node scripts/check-odoo-connection.mjs",
     "format": "prettier --write app tests scripts",
-    "predev:local": "npm run setup"
+    "predev:local": "npm run setup",
+    "user:invite": "tsx scripts/invite-user.ts"
   },
   "type": "module",
   "engines": {

@@ -7,7 +7,7 @@ import {
   type LoaderFunctionArgs,
   type ActionFunctionArgs,
 } from "react-router";
-import { context } from "../services/context.server";
+import { context, ownerScope } from "../services/context.server";
 import { listQuotes, createQuote } from "../services/quotes.server";
 import {
   emptyQuote,
@@ -23,7 +23,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     search = (u.searchParams.get("q") || "").slice(0, 150),
     filter = u.searchParams.get("status") || "all",
     page = Math.max(1, parseInt(u.searchParams.get("page") || "1") || 1);
-  const result = await listQuotes(c.shop, search, filter, page);
+  const result = await listQuotes(c.shop, search, filter, page, ownerScope(c));
   return {
     ...result,
     quotes: result.quotes.map((q) => ({
@@ -42,7 +42,11 @@ export async function action({ request }: ActionFunctionArgs) {
     const shop = await shopInfo(c.admin);
     if (shop.currencyCode !== "EUR")
       return { error: "Cette version prend en charge les boutiques en EUR." };
-    const q = await createQuote(c.shop, emptyQuote(shop.taxesIncluded));
+    const q = await createQuote(
+      c.shop,
+      emptyQuote(shop.taxesIncluded),
+      c.user?.id || null,
+    );
     return redirect(`/app/quotes/${q.id}`);
   } catch {
     return {

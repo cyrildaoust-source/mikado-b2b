@@ -1,5 +1,6 @@
 import type { ActionFunctionArgs } from "react-router";
-import { context } from "../services/context.server";
+import { context, ownerScope } from "../services/context.server";
+import { assertQuoteAccess } from "../services/quotes.server";
 import { quotePdf } from "../services/pdf.server";
 export async function action({ request, params }: ActionFunctionArgs) {
   const c = await context(request);
@@ -12,6 +13,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     version < 1
   )
     throw new Response("Version invalide", { status: 400 });
+  await assertQuoteAccess(c.shop, id, ownerScope(c));
   const pdf = await quotePdf(c.shop, id, version);
   return new Response(new Uint8Array(pdf.bytes), {
     headers: {

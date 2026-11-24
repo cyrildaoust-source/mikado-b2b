@@ -6,6 +6,7 @@ export async function listQuotes(
   search = "",
   filter = "all",
   page = 1,
+  owner: number | null = null,
 ) {
   const term = `%${search.replace(/[\\%_]/g, "\\$&")}%`;
   const states: Record<string, Prisma.Sql> = {
@@ -16,7 +17,9 @@ export async function listQuotes(
     ready: Prisma.sql`q.status = 'draft' AND EXISTS(SELECT 1 FROM Revision r WHERE r.quoteId=q.id AND r.version=q.version AND r.pdfGeneratedAt IS NOT NULL AND r.sentAt IS NULL)`,
     sent: Prisma.sql`q.status = 'draft' AND EXISTS(SELECT 1 FROM Revision r WHERE r.quoteId=q.id AND r.version=q.version AND r.pdfGeneratedAt IS NOT NULL AND r.sentAt IS NOT NULL)`,
   };
-  const where = Prisma.sql`q.shop=${shop} AND (q.title LIKE ${term} ESCAPE '\\' OR q.customer LIKE ${term} ESCAPE '\\' OR q.number LIKE ${term} ESCAPE '\\') AND ${states[filter] || Prisma.sql`q.status NOT IN ('archived', 'deleted')`}`;
+  const ownerSql =
+    owner === null ? Prisma.sql`1=1` : Prisma.sql`q.ownerId=${owner}`;
+  const where = Prisma.sql`q.shop=${shop} AND ${ownerSql} AND (q.title LIKE ${term} ESCAPE '\\' OR q.customer LIKE ${term} ESCAPE '\\' OR q.number LIKE ${term} ESCAPE '\\') AND ${states[filter] || Prisma.sql`q.status NOT IN ('archived', 'deleted')`}`;
   const count = await db.$queryRaw<{ n: bigint }[]>(
     Prisma.sql`SELECT COUNT(*) as n FROM Quote q WHERE ${where}`,
   );
@@ -28,6 +31,7 @@ export async function listQuotes(
   );
   const quotes = await db.quote.findMany({
     where: { shop, id: { in: ids.map((q) => q.id) } },
+    // ownerId déjà filtré par la requête ci-dessus.
     orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
     include: {
       conversion: { select: { status: true } },
@@ -71,9 +75,26 @@ export async function getQuote(shop: string, id: number) {
   if (!q) throw new Response("Devis introuvable", { status: 404 });
   return q;
 }
+/** Refuse l'accès à un devis d'une autre architecte (404, sans le révéler). */
+export async function assertQuoteAccess(
+  shop: string,
+  id: number,
+  owner: number | null,
+) {
+  if (owner === null) return;
+  if (!Number.isSafeInteger(id) || id < 1)
+    throw new Response("Devis introuvable", { status: 404 });
+  const q = await db.quote.findFirst({
+    where: { id, shop, ownerId: owner },
+    select: { id: true },
+  });
+  if (!q) throw new Response("Devis introuvable", { status: 404 });
+}
+
 export async function createQuote(
   shop: string,
   state: QuoteState = emptyQuote(),
+  ownerId: number | null = null,
 ) {
   const s = quoteSchema.parse(state);
   return db.$transaction(async (tx) => {
@@ -94,6 +115,7 @@ export async function createQuote(
         title: s.project,
         customer: s.client,
         state: JSON.stringify(s),
+        ownerId: ownerId || null,
         revisions: { create: { version: 1, state: JSON.stringify(s) } },
       },
     });

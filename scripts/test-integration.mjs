@@ -9,7 +9,7 @@ const env = { ...process.env, DATABASE_URL: `file:${db}` };
 try {
   for (const args of [
     ["node_modules/prisma/build/index.js", "migrate", "deploy"],
-    ["--import", "tsx", "--test", "tests/integration/persistence.test.ts"],
+    ["--import", "tsx", "--test", "tests/integration/persistence.test.ts", "tests/integration/pro-access.test.ts"],
   ]) {
     const r = spawnSync(process.execPath, args, { env, stdio: "inherit" });
     if (r.status !== 0) {

@@ -36,3 +36,7 @@ pnpm-lock.yaml
 !.env.example
 
 !.env.production.example
+
+# Bases locales
+*.sqlite
+*.sqlite-journal

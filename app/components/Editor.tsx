@@ -50,6 +50,7 @@ type Target = {
 export default function Editor({
   q,
   demo,
+  embedded = !demo,
   shop,
   actor,
   result,
@@ -60,6 +61,7 @@ export default function Editor({
   billingMode: "disabled" | "simulation" | "live";
   odooUrl: string | null;
   demo: boolean;
+  embedded?: boolean;
   shop: string;
   actor: string | null;
   result?: { ok?: string; error?: string };
@@ -246,7 +248,7 @@ export default function Editor({
     setPicker(null);
   }
   async function pick(target: Target) {
-    if (demo || target.kind === "customers") {
+    if (!embedded || target.kind === "customers") {
       setPicker(target);
       return;
     }
@@ -469,7 +471,7 @@ export default function Editor({
           </button>
         </div>
       )}
-      {!demo && !locked && (
+      {embedded && !locked && (
         <SaveBar open={dirty}>
           <button
             variant="primary"
@@ -479,7 +481,7 @@ export default function Editor({
           <button disabled={busy} onClick={draft.discard}></button>
         </SaveBar>
       )}
-      {demo && dirty && !locked && (
+      {!embedded && dirty && !locked && (
         <div className="save-strip">
           <span>Modifications non enregistrées</span>
           <div>

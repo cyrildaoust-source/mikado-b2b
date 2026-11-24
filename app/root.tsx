@@ -2,10 +2,12 @@ import { useEffect } from "react";
 import appCss from "./styles/app.css?url";
 import documentCss from "./styles/document.css?url";
 import refonteCss from "./styles/refonte.css?url";
+import proCss from "./styles/pro.css?url";
 export const links = () => [
   { rel: "stylesheet", href: appCss },
   { rel: "stylesheet", href: documentCss },
   { rel: "stylesheet", href: refonteCss },
+  { rel: "stylesheet", href: proCss },
 ];
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
 

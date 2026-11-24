@@ -5,9 +5,10 @@ import {
   type LoaderFunctionArgs,
   type ActionFunctionArgs,
 } from "react-router";
-import { context } from "../services/context.server";
+import { context, ownerScope } from "../services/context.server";
 import {
   getQuote,
+  assertQuoteAccess,
   saveQuote,
   createQuote,
   archiveQuote,
@@ -41,10 +42,12 @@ import { fiscalTotals } from "../domain/quote";
 import Editor from "../components/Editor";
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const c = await context(request);
+  await assertQuoteAccess(c.shop, Number(params.id), ownerScope(c));
   const q = await getQuote(c.shop, Number(params.id));
   return {
     q,
     demo: c.demo,
+    embedded: c.embedded,
     shop: c.shop,
     actor: c.actor,
     billingMode: billingMode(c.shop),
@@ -54,6 +57,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 export async function action({ request, params }: ActionFunctionArgs) {
   const c = await context(request),
     id = Number(params.id);
+  await assertQuoteAccess(c.shop, id, ownerScope(c));
   if (Number(request.headers.get("content-length")) > 1000000)
     return { error: "Devis trop volumineux." };
   const form = await readForm(request),
@@ -150,6 +154,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       const q2 = await createQuote(
         c.shop,
         state.schemaVersion === 1 ? upgradeQuote(state) : state,
+        c.user?.id || null,
       );
       return redirect(`/app/quotes/${q2.id}`);
     }
