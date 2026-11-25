@@ -463,3 +463,14 @@ label.inline {
   color: #444;
   margin: -4px 0 8px;
 }
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+.check-row input {
+  width: auto;
+  margin: 0;
+}

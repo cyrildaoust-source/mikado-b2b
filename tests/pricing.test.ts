@@ -5,6 +5,7 @@ import {
   setDeliveryFee,
   clientNames,
   withClientNames,
+  clientView,
   newQuote,
   costBreakdown,
   paymentSchedule,
@@ -785,4 +786,18 @@ test("fiche client : prénom, nom, société facultative", () => {
     lastName: "Dupont",
     company: "Studio A",
   });
+});
+
+test("version client : sans les remises de l'architecte, au choix", () => {
+  let s = repriceExtras({ ...newQuote(), groups: fixture().groups });
+  s.groups[0].items = s.groups[0].items.map((i) => ({ ...i, discount: 20 }));
+  s = repriceExtras(s);
+  assert.equal(clientView(s), s);
+  const shown = clientView({ ...s, hideDiscounts: true });
+  assert.ok(shown.groups.every((g) => g.items.every((i) => i.discount === 0)));
+  assert.ok(costBreakdown(shown).products > costBreakdown(s).products);
+  const fee = (x: typeof s) => x.extras.find((e) => e.deliveryFee)!.price;
+  assert.equal(fee(shown), Math.round(costBreakdown(shown).products * 0.04));
+  // Le devis lui-même garde les remises.
+  assert.equal(s.groups[0].items[0].discount, 20);
 });

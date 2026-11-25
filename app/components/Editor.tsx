@@ -1399,6 +1399,21 @@ export default function Editor({
             Vérifiez le client, les produits retenus et les conditions. Une
             nouvelle version sera conservée après validation des montants.
           </p>
+          <label className="check-row">
+            <input
+              type="checkbox"
+              disabled={locked}
+              checked={!s.hideDiscounts}
+              onChange={(e) => field("hideDiscounts", !e.target.checked)}
+            />
+            Montrer les remises au client
+          </label>
+          {s.hideDiscounts && (
+            <p className="muted">
+              Version client : prix publics sans remise, totaux recalculés. Le
+              devis garde vos remises pour la commande.
+            </p>
+          )}
           {(error || result?.error) && (
             <p role="alert" className="error">
               {error || result?.error}

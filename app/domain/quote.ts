@@ -69,6 +69,8 @@ export const quoteSchema = z
     shipping: addressSchema,
     billing: addressSchema,
     billingSame: z.boolean(),
+    // Version client : le PDF montre les prix publics, sans les remises de l'architecte.
+    hideDiscounts: z.boolean().default(false),
     validity: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     terms: text,
     depositPercent: z.number().min(0).max(100).nullable().default(null),
@@ -462,6 +464,17 @@ export function repriceExtras(s: QuoteState): QuoteState {
           },
     ),
   };
+}
+
+/** Ce que voit le client final : sans remises si l'architecte les masque. */
+export function clientView(s: QuoteState): QuoteState {
+  if (!s.hideDiscounts) return s;
+  const plain = <T extends { discount: number }>(l: T) => ({ ...l, discount: 0 });
+  return repriceExtras({
+    ...s,
+    groups: s.groups.map((g) => ({ ...g, items: g.items.map(plain) })),
+    extras: s.extras.map(plain),
+  });
 }
 
 export function paymentText(mode: string, percent: number | null, custom = "") {
