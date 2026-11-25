@@ -132,19 +132,17 @@ export function QuoteDocument({
       <div className="doc-addresses">
         <div>
           <h3>CLIENT</h3>
-          {s.client}
-          <br />
-          {s.contact}
-          <br />
-          {s.email}
-        </div>
-        <div>
-          <h3>LIVRAISON</h3>
-          <div className="preline">
-            {s.shipping.address1.trim()
-              ? addr(s.shipping)
-              : "Adresse à confirmer"}
-          </div>
+          {s.client || s.contact || s.email ? (
+            <>
+              {s.client}
+              <br />
+              {s.contact}
+              <br />
+              {s.email}
+            </>
+          ) : (
+            "À compléter"
+          )}
         </div>
         <div>
           <h3>FACTURATION</h3>
@@ -154,6 +152,14 @@ export function QuoteDocument({
               : "Adresse à confirmer"}
           </div>
           {s.customerVat && <p>N° TVA client : {s.customerVat}</p>}
+        </div>
+        <div>
+          <h3>LIVRAISON</h3>
+          <div className="preline">
+            {s.shipping.address1.trim()
+              ? addr(s.shipping)
+              : "Adresse à confirmer"}
+          </div>
         </div>
       </div>
       <div className="doc-project">
@@ -167,7 +173,7 @@ export function QuoteDocument({
         les échéances de paiement. Seuls les produits et options retenus entrent
         dans le total.
       </p>
-      {sections.length > 0 && (
+      {sections.length > 1 && (
         <nav className="doc-lot-summary" aria-label="Sommaire des pièces">
           <strong>Sommaire des pièces</strong>
           {sections.map((section, index) => (

@@ -1562,3 +1562,44 @@ body:has(.auth-page) {
 .auth-page .primary {
   min-height: 44px;
 }
+
+/* Fenêtres (PDF, client, archivage) et menu Autres actions */
+.pro-app dialog {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-float);
+  color: var(--ink);
+}
+.pro-app dialog::backdrop {
+  background: rgba(22, 24, 26, 0.35);
+}
+.pro-app .modal-head {
+  border-bottom: 1px solid var(--line);
+}
+.pro-app .modal-head h2 {
+  font-size: var(--t-section);
+  font-weight: 500;
+}
+.pro-app .modal-actions {
+  border-top: 1px solid var(--line);
+}
+.pro-app .preview-scroll {
+  background: var(--ground);
+  border: 0;
+  border-radius: var(--radius);
+}
+.pro-app .action-menu > div {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-float);
+  padding: 4px;
+}
+.pro-app .action-menu > div button {
+  min-height: var(--control);
+  font-weight: 400;
+  border-radius: 4px;
+  background: none;
+}
+.pro-app .action-menu > div button:hover:not(:disabled) {
+  background: var(--ground);
+}
