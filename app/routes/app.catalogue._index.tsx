@@ -461,7 +461,9 @@ function Picker({
   const f = find.trim().toLowerCase();
   return (
     <details className="brand-picker" ref={ref}>
-      <summary>{label}</summary>
+      <summary>
+        <span>{label}</span>
+      </summary>
       <div className="brand-picker-list">
         {options.length > 8 && (
           <input

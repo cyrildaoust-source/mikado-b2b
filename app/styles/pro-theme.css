@@ -1805,3 +1805,447 @@ body:has(.auth-page) {
     min-height: var(--touch);
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Stabilité : rien ne bouge à l'ouverture d'un menu ou d'un filtre     */
+/* ------------------------------------------------------------------ */
+html:has(.pro-app) {
+  scrollbar-gutter: stable;
+}
+/* refonte.css ajoute 10 px sous un summary ouvert : pas pour les menus. */
+.pro-app .brand-picker[open] > summary,
+.pro-app .action-menu[open] > summary {
+  margin-bottom: 0;
+}
+/* Largeur fixe : le libellé change (« 2 marques ») sans pousser ses voisins. */
+.pro-app .brand-picker summary {
+  width: 196px;
+  justify-content: space-between;
+}
+.pro-app .brand-picker summary > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 700px) {
+  .pro-app .brand-picker {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .pro-app .brand-picker summary {
+    width: 100%;
+  }
+}
+
+/* ================================================================== */
+/* Système de boutons et de champs (audit du 25/11)                     */
+/* Une hauteur (40 px, 44 px au toucher), un rayon (6 px), une graisse  */
+/* (500), trois variantes : principal, secondaire, discret.             */
+/* ================================================================== */
+.pro-app,
+.auth-page {
+  --line-strong: #d6d3cc;
+  --btn-shadow: 0 1px 2px rgba(22, 24, 26, 0.06);
+  --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--brass);
+}
+
+/* Secondaire (par défaut) */
+.pro-app button,
+.pro-app .action-menu > summary,
+.auth-page button {
+  min-height: var(--control);
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--btn-shadow);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition:
+    background-color 0.12s,
+    border-color 0.12s,
+    box-shadow 0.12s;
+}
+.pro-app button:hover:not(:disabled),
+.pro-app .action-menu > summary:hover,
+.auth-page button:hover:not(:disabled) {
+  background: var(--paper);
+  border-color: #c4c0b8;
+}
+.pro-app button:active:not(:disabled),
+.auth-page button:active:not(:disabled) {
+  background: var(--ground);
+  box-shadow: none;
+}
+.pro-app button:focus-visible,
+.pro-app summary:focus-visible,
+.pro-app a:focus-visible,
+.pro-app input:focus-visible,
+.pro-app select:focus-visible,
+.pro-app textarea:focus-visible,
+.auth-page button:focus-visible,
+.auth-page input:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+.pro-app button:disabled,
+.auth-page button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Principal : un seul par zone */
+.pro-app button.primary,
+.auth-page button.primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(22, 24, 26, 0.2);
+}
+.pro-app button.primary:hover:not(:disabled),
+.auth-page button.primary:hover:not(:disabled) {
+  background: #2b2e31;
+  border-color: #2b2e31;
+}
+.pro-app button.primary:active:not(:disabled) {
+  background: #000;
+}
+
+/* Discret : actions secondaires dans le contenu (pas de soulignement) */
+.pro-app button.text-button,
+.pro-app .quote-panel button.text-button,
+.pro-app .group-footer button.text-button,
+.pro-app .catalogue-toast button.text-button,
+.pro-app .status-line button.text-button,
+.pro-app .pro-nav form button.text-button {
+  min-height: 32px;
+  padding: 0 8px;
+  margin: 0 -8px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+}
+.pro-app button.text-button:hover:not(:disabled) {
+  background: var(--ground);
+  border: 0;
+}
+.pro-app .catalogue-toast button.text-button {
+  color: #fff;
+}
+.pro-app .catalogue-toast button.text-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+.pro-app .quote-panel li > button.text-button,
+.pro-app .lot-add {
+  margin: 0;
+  color: var(--brass);
+}
+.pro-app .lot-add {
+  margin: 8px 8px 12px;
+}
+
+/* Icônes (×, +) */
+.pro-app button.icon-button {
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink-3);
+  font-size: 18px;
+  font-weight: 400;
+}
+.pro-app button.icon-button:hover:not(:disabled) {
+  background: var(--ground);
+  color: var(--error);
+}
+.pro-app button.catalogue-add {
+  width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 20px;
+  font-weight: 400;
+  box-shadow: 0 1px 3px rgba(22, 24, 26, 0.12);
+}
+
+/* Barre : « Nouveau devis » secondaire, la page garde son bouton principal */
+.pro-app .pro-nav .pro-new-quote button.primary {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--line-strong);
+  box-shadow: var(--btn-shadow);
+}
+.pro-app .pro-nav .pro-new-quote button.primary:hover:not(:disabled) {
+  background: var(--paper);
+  border-color: #c4c0b8;
+}
+
+/* Menus Marques / Familles : même forme que les boutons */
+.pro-app .brand-picker summary {
+  border-radius: var(--radius);
+  border-color: var(--line-strong);
+  box-shadow: var(--btn-shadow);
+  font-size: 13px;
+  font-weight: 500;
+}
+.pro-app .brand-picker summary:hover {
+  background: var(--paper);
+  border-color: #c4c0b8;
+}
+.pro-app .brand-picker[open] summary,
+.pro-app .brand-picker:has(input:checked) summary {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.pro-app .brand-picker[open] summary::after {
+  transform: rotate(-135deg);
+  margin-top: 3px;
+}
+.pro-app .brand-picker-list {
+  border-color: var(--line-strong);
+  border-radius: var(--radius);
+  padding: 4px;
+}
+.pro-app .brand-picker-list label {
+  border-radius: 4px;
+  padding: 0 10px;
+  min-height: 36px;
+}
+.pro-app .picker-foot button.picker-done {
+  min-height: 32px;
+}
+
+/* Champs : une taille de texte (13 px), une hauteur */
+.pro-app input:not([type="checkbox"]):not([type="radio"]),
+.pro-app select,
+.pro-app textarea,
+.auth-page input:not([type="checkbox"]):not([type="radio"]) {
+  font-size: 13px;
+  border-color: var(--line-strong);
+  box-shadow: inset 0 1px 1px rgba(22, 24, 26, 0.03);
+}
+.pro-app input:not([type="checkbox"]):not([type="radio"]):hover,
+.pro-app select:hover,
+.pro-app textarea:hover {
+  border-color: #c4c0b8;
+}
+.pro-app input:not([type="checkbox"]):not([type="radio"]):focus,
+.pro-app select:focus,
+.pro-app textarea:focus {
+  border-color: var(--ink);
+}
+.pro-app .quote-title input:not([type="checkbox"]),
+.pro-app .lot-heading input:not([type="checkbox"]) {
+  box-shadow: none;
+  border-color: transparent;
+}
+.pro-app .quote-title input:not([type="checkbox"]) {
+  font-size: var(--t-title);
+}
+.pro-app .lot-heading input:not([type="checkbox"]) {
+  font-size: var(--t-section);
+}
+.pro-app .quote-title input:not([type="checkbox"]):hover,
+.pro-app .lot-heading input:not([type="checkbox"]):hover {
+  border-color: var(--line);
+}
+.pro-app .quote-title input:not([type="checkbox"]):focus,
+.pro-app .lot-heading input:not([type="checkbox"]):focus {
+  border-color: var(--ink);
+}
+
+/* Fiche produit : pas-à-pas et bouton principal à la même hauteur */
+.pro-app .product-add-row {
+  align-items: stretch;
+}
+.pro-app .stepper {
+  height: 44px;
+  border-color: var(--line-strong);
+  box-shadow: var(--btn-shadow);
+}
+.pro-app .stepper button {
+  width: 40px;
+  min-height: 0;
+  height: 42px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 16px;
+  color: var(--ink-2);
+}
+.pro-app .stepper input:not([type="checkbox"]) {
+  min-height: 0;
+  height: 42px;
+  width: 44px;
+  border: 0;
+  box-shadow: none;
+  font-size: 14px;
+}
+.pro-app .product-add-row button.primary {
+  min-height: 44px;
+  height: 44px;
+}
+.pro-app .product-values button {
+  font-weight: 400;
+  box-shadow: none;
+}
+.pro-app .product-values button[aria-pressed="true"] {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+.pro-app .product-thumbs button {
+  box-shadow: none;
+}
+
+/* Lignes du devis : champs alignés sur 36 px */
+.pro-app .product-row > label input:not([type="checkbox"]) {
+  font-size: 13px;
+}
+
+/* Disclosures (Détails, Organiser, Note) : chevron, pas de triangle système */
+.pro-app .product-details summary,
+.pro-app .group-footer > details > summary,
+.pro-app .notes-details > summary,
+.pro-app .optional-row details summary {
+  list-style: none;
+  gap: 6px;
+  padding: 0 8px;
+  margin: 0 -8px;
+  border-radius: var(--radius);
+  font-weight: 500;
+}
+.pro-app .product-details summary::-webkit-details-marker,
+.pro-app .group-footer > details > summary::-webkit-details-marker,
+.pro-app .notes-details > summary::-webkit-details-marker,
+.pro-app .optional-row details summary::-webkit-details-marker {
+  display: none;
+}
+.pro-app .product-details summary::before,
+.pro-app .group-footer > details > summary::before,
+.pro-app .notes-details > summary::before,
+.pro-app .optional-row details summary::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.12s;
+}
+.pro-app details[open] > summary::before {
+  transform: rotate(45deg);
+}
+.pro-app .product-details summary:hover,
+.pro-app .group-footer > details > summary:hover,
+.pro-app .notes-details > summary:hover,
+.pro-app .optional-row details summary:hover {
+  background: var(--ground);
+  color: var(--ink);
+}
+
+/* Menu Autres actions */
+.pro-app .action-menu > summary::after {
+  content: "";
+  width: 5px;
+  height: 5px;
+  margin: -3px 0 0 2px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+}
+.pro-app .action-menu[open] > div {
+  top: calc(100% + 4px);
+}
+.pro-app .action-menu > div button {
+  width: 100%;
+  justify-content: flex-start;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  font-weight: 400;
+}
+
+@media (pointer: coarse) {
+  .pro-app button,
+  .pro-app .action-menu > summary,
+  .pro-app .brand-picker summary {
+    min-height: var(--touch);
+  }
+  .pro-app button.text-button,
+  .pro-app .quote-panel button.text-button,
+  .pro-app .group-footer button.text-button,
+  .pro-app .status-line button.text-button {
+    min-height: var(--touch);
+  }
+  .pro-app button.catalogue-add {
+    width: 44px;
+    min-height: 44px;
+  }
+  .pro-app button.icon-button {
+    width: 44px;
+    min-height: 44px;
+  }
+}
+.pro-app .catalogue-item button.catalogue-add {
+  border-color: var(--line-strong);
+}
+.pro-app a.catalogue-open-quote {
+  border-color: var(--line-strong);
+  box-shadow: var(--btn-shadow);
+}
+.pro-app .product-details summary,
+.pro-app .group-footer > details > summary,
+.pro-app .notes-details > summary,
+.pro-app .optional-row details summary {
+  font-size: 13px;
+}
+@media (pointer: coarse) {
+  .pro-app .picker-foot button.picker-done {
+    min-height: var(--touch);
+  }
+  .pro-app .stepper {
+    height: 46px;
+  }
+  .pro-app .stepper button,
+  .pro-app .stepper input:not([type="checkbox"]) {
+    height: 44px;
+  }
+  .pro-app .stepper button {
+    width: 44px;
+  }
+  .pro-app .product-add-row button.primary {
+    min-height: 46px;
+    height: 46px;
+  }
+}
+html:has(.pro-app) {
+  background: #fafaf8;
+}
+.pro-app .stepper {
+  overflow: hidden;
+  align-items: center;
+}
+.pro-app .stepper input:not([type="checkbox"]) {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  align-self: center;
+}
