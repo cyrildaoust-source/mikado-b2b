@@ -77,8 +77,8 @@ La base est Postgres (Neon, ajouté depuis l'onglet « Storage » du projet Verc
 6. Premier accès, sans terminal : définir `BOOTSTRAP_ADMIN_EMAIL` (l'e-mail de Cyril) et
    `BOOTSTRAP_TOKEN` (32 caractères aléatoires ou plus), puis ouvrir
    `https://pro.mikadodeco.be/premier-acces?jeton=<BOOTSTRAP_TOKEN>`. La page mène au choix
-   du mot de passe. Elle ne fait plus rien dès qu'un accès existe ; on peut alors retirer
-   les deux variables.
+   du mot de passe. Mot de passe oublié : rouvrir la même adresse donne un nouveau lien
+   pour cet accès admin. Retirer `BOOTSTRAP_TOKEN` ferme la page.
 
 Le PDF utilise `@sparticuz/chromium` sur Vercel (fonction de 60 s et 2 Go) et le Chromium
 de Playwright ailleurs.
