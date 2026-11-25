@@ -52,6 +52,8 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     q,
     demo: c.demo,
     embedded: c.embedded,
+    // Commande Shopify : réservée à l'administration de Mikado.
+    admin: c.embedded || c.user?.role === "admin",
     shop: c.shop,
     actor: c.actor,
     billingMode: billingMode(c.shop),

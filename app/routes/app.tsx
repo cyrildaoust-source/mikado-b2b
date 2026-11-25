@@ -151,7 +151,9 @@ export function ErrorBoundary() {
       return boundary.error(error);
     return (
       <main className="workspace">
-        <h1>{error.status === 404 ? "Page introuvable" : "Accès impossible"}</h1>
+        <h1>
+          {error.status === 404 ? "Page introuvable" : "Accès impossible"}
+        </h1>
         <p>{typeof error.data === "string" ? error.data : error.statusText}</p>
         <p>
           <a href="/app/catalogue">Retour au catalogue</a>

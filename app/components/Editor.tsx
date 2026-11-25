@@ -29,7 +29,6 @@ import {
 import type { getQuote } from "../services/quotes.server";
 import { QuoteDocument } from "./QuoteDocument";
 import { dropOnQuote, type DragSource, type DropTarget } from "../domain/move";
-import { BillingPanel } from "./quote/BillingPanelV2";
 import { Modal } from "./quote/Modal";
 import { useDraft } from "./quote/useDraft";
 import { ProductRow } from "./quote/ProductRow";
@@ -80,6 +79,7 @@ export default function Editor({
   q,
   demo,
   embedded = !demo,
+  admin = true,
   shop,
   actor,
   result,
@@ -91,6 +91,7 @@ export default function Editor({
   odooUrl: string | null;
   demo: boolean;
   embedded?: boolean;
+  admin?: boolean;
   shop: string;
   actor: string | null;
   result?: { ok?: string; error?: string };
@@ -1178,58 +1179,55 @@ export default function Editor({
                 : "Vérifiez l’aperçu avant de créer la version à transmettre."}
             </p>
           </s-section>
-          <s-section heading="Shopify">
-            {q.conversion?.status === "uncertain" && (
-              <p role="alert" className="error">
-                {q.conversion.error ||
-                  "Vérification requise avant toute nouvelle action."}
-              </p>
-            )}
-            {q.conversion?.draftId ? (
-              <>
-                <p>Commande {q.conversion.draftName}</p>
-                <a
-                  href={`https://${shop}/admin/draft_orders/${q.conversion.draftId.split("/").at(-1)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Ouvrir dans Shopify
-                </a>
-              </>
-            ) : (
-              <p className="muted">
-                Quand votre client a choisi, créez la commande provisoire avec
-                les produits retenus.
-              </p>
-            )}
-            {["creating", "uncertain"].includes(q.conversion?.status || "") ? (
-              <button disabled={busy} onClick={() => send("reconcile")}>
-                Vérifier dans Shopify
-              </button>
-            ) : (
-              !q.conversion?.draftId && (
-                <button
-                  disabled={demo || busy || dirty || !ready || locked}
-                  onClick={() => setModal("convert")}
-                >
-                  Créer la commande provisoire
+          {admin && (
+            <s-section heading="Shopify">
+              {q.conversion?.status === "uncertain" && (
+                <p role="alert" className="error">
+                  {q.conversion.error ||
+                    "Vérification requise avant toute nouvelle action."}
+                </p>
+              )}
+              {q.conversion?.draftId ? (
+                <>
+                  <p>Commande {q.conversion.draftName}</p>
+                  <a
+                    href={`https://${shop}/admin/draft_orders/${q.conversion.draftId.split("/").at(-1)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Ouvrir dans Shopify
+                  </a>
+                </>
+              ) : (
+                <p className="muted">
+                  Quand votre client a choisi, créez la commande provisoire avec
+                  les produits retenus.
+                </p>
+              )}
+              {["creating", "uncertain"].includes(
+                q.conversion?.status || "",
+              ) ? (
+                <button disabled={busy} onClick={() => send("reconcile")}>
+                  Vérifier dans Shopify
                 </button>
-              )
-            )}
-            {demo && (
-              <small className="muted">
-                Disponible après connexion à la boutique.
-              </small>
-            )}
-          </s-section>
-          <BillingPanel
-            q={q}
-            mode={billingMode}
-            odooUrl={odooUrl}
-            busy={busy}
-            dirty={dirty}
-            onAction={(intent, extra) => send(intent, extra)}
-          />
+              ) : (
+                !q.conversion?.draftId && (
+                  <button
+                    disabled={demo || busy || dirty || !ready || locked}
+                    onClick={() => setModal("convert")}
+                  >
+                    Créer la commande provisoire
+                  </button>
+                )
+              )}
+              {demo && (
+                <small className="muted">
+                  Disponible après connexion à la boutique.
+                </small>
+              )}
+            </s-section>
+          )}
+          {/* Facturation Odoo : écartée de l'outil pour l'instant (Cyril). */}
         </aside>
       </div>
       {picker && (
