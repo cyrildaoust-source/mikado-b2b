@@ -64,10 +64,13 @@ La base est Postgres (Neon, ajouté depuis l'onglet « Storage » du projet Verc
 1. Importer le dépôt `mikado-b2b` dans l'équipe Vercel (offre Pro).
 2. Storage → créer une base Neon, région Francfort, reliée au projet. L'intégration fournit
    `DATABASE_URL` et `DATABASE_URL_UNPOOLED`, avec une branche de base par Preview.
+   Prisma Postgres (région Francfort) convient aussi : `scripts/vercel-build.sh` prend la
+   première connexion fournie (`DATABASE_URL_UNPOOLED`, `POSTGRES_URL_NON_POOLING`,
+   `POSTGRES_URL` ou `DATABASE_URL`).
 3. Variables d'environnement : `APP_MODE`, `SHOPIFY_SHOP`, `SHOPIFY_API_KEY`,
    `SHOPIFY_API_SECRET`, `SHOPIFY_APP_URL`, `SESSION_SECRET`, `SCOPES`, et les
    coordonnées vendeur (`SELLER_*`) pour le PDF.
-4. Le build (`npm run vercel-build`) applique les migrations puis construit l'app. Les
+4. Le build (`npm run vercel-build`, soit `scripts/vercel-build.sh`) applique les migrations puis construit l'app. Les
    fonctions tournent à Francfort (`vercel.json`).
 5. Domaine : `pro.mikadodeco.be`, avec un enregistrement CNAME chez GoDaddy vers
    l'adresse indiquée par Vercel.

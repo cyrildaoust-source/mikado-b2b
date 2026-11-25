@@ -24,7 +24,7 @@
     "format": "prettier --write app tests scripts",
     "predev:local": "npm run setup",
     "user:invite": "tsx scripts/invite-user.ts",
-    "vercel-build": "prisma generate && prisma migrate deploy && react-router build",
+    "vercel-build": "bash scripts/vercel-build.sh",
     "postinstall": "prisma generate"
   },
   "type": "module",
