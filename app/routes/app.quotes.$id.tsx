@@ -6,7 +6,7 @@ import {
   type LoaderFunctionArgs,
   type ActionFunctionArgs,
 } from "react-router";
-import { context, ownerScope } from "../services/context.server";
+import { context, ownerScope, requireAdmin } from "../services/context.server";
 import {
   getQuote,
   assertQuoteAccess,
@@ -69,6 +69,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const form = await readForm(request),
     intent = String(form.get("intent")),
     version = Number(form.get("version"));
+  // Commande Shopify et facturation : réservées à Mikado Deco, même par requête directe.
+  if (
+    ["accept-order", "billing-request", "billing-retry", "billing-simulate", "preview", "convert", "reconcile"].includes(intent)
+  )
+    requireAdmin(c);
   try {
     if (intent === "accept-order") {
       await preflightBilling(c.shop, id);
