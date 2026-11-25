@@ -164,12 +164,20 @@ export default function Product() {
             label: `Nouveau produit dans ${section.title}`,
             button: `Ajouter à ${section.title}`,
           },
-          ...section.groups.map((g) => ({
-            quote: String(panel.id),
-            placement: `alternative:${g.id}`,
-            label: `Alternative à ${g.name}`,
-            button: "Ajouter en alternative",
-          })),
+          ...section.groups.flatMap((g) => [
+            {
+              quote: String(panel.id),
+              placement: `alternative:${g.id}`,
+              label: `Alternative à ${g.name}`,
+              button: "Ajouter en alternative",
+            },
+            {
+              quote: String(panel.id),
+              placement: `option:${g.id}`,
+              label: `Option de ${g.name}, hors total`,
+              button: "Ajouter en option",
+            },
+          ]),
         ],
       });
     targets.push({
@@ -181,7 +189,6 @@ export default function Product() {
           label: panel.sections.length ? "À la suite du devis" : "Dans le devis",
           button: "Ajouter au devis",
         },
-        { quote: String(panel.id), placement: "option", label: "En option, hors total", button: "Ajouter en option" },
       ],
     });
   }
@@ -404,7 +411,9 @@ export default function Product() {
                     <li
                       key={g.id}
                       className={
-                        inPanel && placement === `alternative:${g.id}`
+                        inPanel &&
+                        (placement === `alternative:${g.id}` ||
+                          placement === `option:${g.id}`)
                           ? "active"
                           : ""
                       }
@@ -423,6 +432,12 @@ export default function Product() {
                             {g.alternatives > 1 ? "s" : ""}
                           </small>
                         )}
+                        {g.options > 0 && (
+                          <small>
+                            {" "}
+                            · {g.options} option{g.options > 1 ? "s" : ""}
+                          </small>
+                        )}
                       </span>
                       <button
                         type="button"
@@ -434,6 +449,16 @@ export default function Product() {
                       >
                         + alternative
                       </button>
+                      <button
+                        type="button"
+                        className="text-button"
+                        onClick={() => {
+                          setQuoteId(String(panel.id));
+                          setPlacement(`option:${g.id}`);
+                        }}
+                      >
+                        + option
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -441,7 +466,7 @@ export default function Product() {
             ))}
             {panel.options > 0 && (
               <p className="muted">
-                {panel.options} option{panel.options > 1 ? "s" : ""} hors total
+                {panel.options} prestation{panel.options > 1 ? "s" : ""}
               </p>
             )}
             <footer>

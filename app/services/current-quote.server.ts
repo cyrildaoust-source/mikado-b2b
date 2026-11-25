@@ -67,9 +67,13 @@ export async function quotePanel(
           name: chosen?.name || "Produit",
           image: chosen?.image || "",
           alternatives: g.items.length - 1,
+          options: s.extras.filter((e) => e.parent === g.id).length,
         };
       }),
     })),
-    options: s.extras.filter((e) => !e.deliveryFee).length,
+    // Prestations hors produits ; les options sont comptées sous leur produit.
+    options: s.extras.filter(
+      (e) => !e.deliveryFee && !s.groups.some((g) => g.id === e.parent),
+    ).length,
   };
 }

@@ -90,7 +90,17 @@ export const quoteSchema = z
         }),
       )
       .max(200),
-    extras: z.array(lineSchema.extend({ selected: z.boolean() })).max(100),
+    // Options et prestations. Une option rattachée (parent = groupe) se
+    // présente sous son produit, dans sa pièce ; sans parent, c'est une
+    // prestation (menuisier, carreleur, livraison…). Cochée, elle entre au total.
+    extras: z
+      .array(
+        lineSchema.extend({
+          selected: z.boolean(),
+          parent: z.string().max(100).optional(),
+        }),
+      )
+      .max(100),
   })
   .superRefine((s, ctx) => {
     if (
@@ -327,9 +337,24 @@ export function removeLine(s: QuoteState, id: string): QuoteState {
     groups: sectionOrder.flatMap((sectionId) =>
       groupsBySection.get(sectionId) || [],
     ),
-    extras: s.extras.filter((extra) => extra.id !== id),
+    // Les options d'un produit retiré partent avec lui.
+    extras: s.extras.filter(
+      (extra) =>
+        extra.id !== id &&
+        (!extra.parent ||
+          !s.groups.some((g) => g.id === extra.parent) ||
+          remainingGroups.some((g) => g.id === extra.parent)),
+    ),
   };
 }
+/** Options rattachées à un produit du devis. */
+export const optionsOf = (s: QuoteState, groupId: string) =>
+  s.extras.filter((e) => e.parent === groupId);
+/** Prestations : lignes hors produits, sans rattachement (ou orphelines). */
+export const services = (s: QuoteState) =>
+  s.extras.filter(
+    (e) => !e.deliveryFee && !s.groups.some((g) => g.id === e.parent),
+  );
 export function fromGross(l: Line, rate: number): Line {
   if (l.sourcePrice === null) throw Error("Prix source absent.");
   return {

@@ -8,7 +8,10 @@ export function ProductRow({
   onSelect,
   onChange,
   onRemove,
+  option,
 }: {
+  /** Option rattachée à un produit : case « inclure », hors total sinon. */
+  option?: { of: string; onToggle: (included: boolean) => void };
   line: Line;
   base?: Line;
   selected: boolean;
@@ -18,9 +21,23 @@ export function ProductRow({
 }) {
   return (
     <div
-      className={`product-row ${base ? "alternative-row" : ""} ${selected ? "selected-row" : ""}`}
+      className={`product-row ${base ? "alternative-row" : ""}${
+        option
+          ? ` option-row${selected ? "" : " not-included"}`
+          : selected
+            ? " selected-row"
+            : ""
+      }`}
     >
       <div className="product-heading">
+        {option && (
+          <input
+            type="checkbox"
+            aria-label={`Inclure l’option ${i.name} dans le total`}
+            checked={selected}
+            onChange={(e) => option.onToggle(e.target.checked)}
+          />
+        )}
         {onSelect && (
           <input
             type="radio"
@@ -47,6 +64,11 @@ export function ProductRow({
                 ? `${signedMoney(lineTotal(i) - lineTotal(base))} HTVA pour ${i.qty} unités`
                 : `${i.qty} unités · ${money(lineTotal(i))} HTVA`}
             </span>
+          )}
+          {option && (
+            <small className={selected ? "selection-label" : "muted"}>
+              {selected ? "Option incluse dans le total" : "Option, hors total"}
+            </small>
           )}
           {onSelect && (
             <small className={selected ? "selection-label" : "muted"}>

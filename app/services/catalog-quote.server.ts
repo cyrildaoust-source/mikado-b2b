@@ -20,7 +20,7 @@ export type Placement =
   | { kind: "section"; id: string }
   | { kind: "newSection"; title: string }
   | { kind: "alternative"; group: string }
-  | { kind: "option" };
+  | { kind: "option"; group?: string };
 
 export function parsePlacement(raw: string): Placement {
   const [kind, ...rest] = raw.split(":"),
@@ -28,7 +28,7 @@ export function parsePlacement(raw: string): Placement {
   if (kind === "section" && value) return { kind, id: value };
   if (kind === "newSection" && value.trim()) return { kind, title: value.trim() };
   if (kind === "alternative" && value) return { kind, group: value };
-  if (kind === "option") return { kind };
+  if (kind === "option") return value ? { kind, group: value } : { kind };
   return { kind: "end" };
 }
 
@@ -42,13 +42,24 @@ export function addLineToState(
 ) {
   const s = state.schemaVersion === 1 ? upgradeQuote(state) : state;
   const item = { ...line, id: itemId, qty };
-  if (placement.kind === "option")
+  if (placement.kind === "option") {
+    // Option d'un produit : sous ce produit, hors total tant qu'elle n'est pas cochée.
+    if (placement.group && !s.groups.some((g) => g.id === placement.group))
+      throw Error("Ce produit n'est plus dans le devis. Rechargez la page.");
     return repriceExtras(
       quoteSchema.parse({
         ...s,
-        extras: [...s.extras, { ...item, selected: false }],
+        extras: [
+          ...s.extras,
+          {
+            ...item,
+            selected: false,
+            ...(placement.group ? { parent: placement.group } : {}),
+          },
+        ],
       }),
     );
+  }
   if (placement.kind === "alternative") {
     const group = s.groups.find((g) => g.id === placement.group);
     if (!group) throw Error("Ce produit n'est plus dans le devis. Rechargez la page.");

@@ -59,6 +59,7 @@ export function dropOnQuote(
       groups: s.groups
         .filter((g) => g !== from)
         .map((g) => (g === to ? { ...g, items: [...g.items, ...items] } : g)),
+      extras: reparent(s, from.id, to.id),
     };
   }
 
@@ -89,6 +90,7 @@ export function dropOnQuote(
             ? [{ ...g, items: [...g.items, added] }]
             : [g],
       ),
+      extras: left ? s.extras : reparent(s, from.id, to.id),
     };
   }
 
@@ -105,7 +107,16 @@ export function dropOnQuote(
   const groups = s.groups.flatMap((g) =>
     g === from ? (left ? [left] : []) : [g],
   );
-  return { ...s, groups: insertInSection(groups, created) };
+  return {
+    ...s,
+    groups: insertInSection(groups, created),
+    extras: left ? s.extras : reparent(s, from.id, created.id),
+  };
+}
+
+/** Les options suivent leur produit quand son groupe disparaît. */
+function reparent(s: QuoteState, from: string, to: string) {
+  return s.extras.map((e) => (e.parent === from ? { ...e, parent: to } : e));
 }
 
 function insertInSection(groups: Group[], group: Group) {

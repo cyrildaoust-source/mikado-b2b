@@ -24,6 +24,8 @@ import {
   type QuoteState,
   clientNames,
   withClientNames,
+  optionsOf,
+  services,
   type Line,
 } from "../domain/quote";
 import type { getQuote } from "../services/quotes.server";
@@ -33,6 +35,7 @@ import {
   CATALOGUE_ADD,
   catalogueDrag,
   type CatalogueCard,
+  type CatalogueTarget,
 } from "./quote/CatalogueBrowser";
 import { Modal } from "./quote/Modal";
 import { useDraft } from "./quote/useDraft";
@@ -54,6 +57,8 @@ type Target = {
   section?: string;
   sectionTitle?: string;
   extra?: boolean;
+  /** Option rattachée à ce groupe (produit du devis). */
+  parent?: string;
 };
 /** Brouillon de la fiche client : noms retrouvés, facturation pré-remplie. */
 function draftFrom(s: QuoteState): QuoteState {
@@ -85,8 +90,8 @@ export default function Editor({
   demo,
   embedded = !demo,
   admin = true,
-  alternativeFor = null,
-  onAlternative,
+  catalogueTarget = null,
+  onCatalogueTarget,
   shop,
   actor,
   result,
@@ -100,8 +105,8 @@ export default function Editor({
   embedded?: boolean;
   admin?: boolean;
   /** Espace devis : produit dont on cherche une alternative dans le catalogue. */
-  alternativeFor?: string | null;
-  onAlternative?: (target: { group: string; name: string } | null) => void;
+  catalogueTarget?: CatalogueTarget | null;
+  onCatalogueTarget?: (target: CatalogueTarget | null) => void;
   shop: string;
   actor: string | null;
   result?: { ok?: string; error?: string };
@@ -231,7 +236,7 @@ export default function Editor({
     change({ ...s, [key]: value });
     setError("");
   }
-  function patch(id: string, value: Partial<Line>) {
+  function patch(id: string, value: Partial<Line> & { selected?: boolean }) {
     if (value.qty !== undefined) {
       change(setQuantity(s, id, value.qty));
       return;
@@ -302,7 +307,11 @@ export default function Editor({
           ...previous,
           extras: [
             ...previous.extras,
-            ...lines.map((i) => ({ ...i, selected: false })),
+            ...lines.map((i) => ({
+              ...i,
+              selected: false,
+              ...(target.parent ? { parent: target.parent } : {}),
+            })),
           ],
         };
       if (target.group)
@@ -377,9 +386,11 @@ export default function Editor({
       const card = (e as CustomEvent<CatalogueCard>).detail;
       addCardRef.current(
         card,
-        card.group
-          ? { kind: "products", group: card.group }
-          : { kind: "products" },
+        card.group && card.mode === "option"
+          ? { kind: "products", extra: true, parent: card.group }
+          : card.group
+            ? { kind: "products", group: card.group }
+            : { kind: "products" },
       );
     };
     window.addEventListener(CATALOGUE_ADD, onAdd);
@@ -453,7 +464,7 @@ export default function Editor({
           e.stopPropagation();
           catalogueDrag.current = null;
           setDropAt(null);
-          if (alternativeFor) onAlternative?.(null);
+          if (catalogueTarget) onCatalogueTarget?.(null);
           void addCard(
             card,
             target.kind === "group"
@@ -604,7 +615,7 @@ export default function Editor({
                   {section.groups.map((g) => (
                     <div
                       className={`alternative-group${dropAt === `g:${g.id}` ? " drop-over" : ""}${
-                        alternativeFor === g.id ? " is-target" : ""
+                        catalogueTarget?.group === g.id ? " is-target" : ""
                       }${
                         dragging?.kind === "group" && dragging.groupId === g.id
                           ? " is-dragging"
@@ -646,33 +657,87 @@ export default function Editor({
                           />
                         </div>
                       ))}
+                      {optionsOf(s, g.id).map((e) => (
+                        <div className="drag-row option-line" key={e.id}>
+                          <ProductRow
+                            line={e}
+                            selected={e.selected}
+                            option={{
+                              of: g.items[0].name,
+                              onToggle: (selected) => patch(e.id, { selected }),
+                            }}
+                            onChange={(p) => patch(e.id, p)}
+                            onRemove={() => remove(e.id)}
+                          />
+                        </div>
+                      ))}
                       <div className="group-footer">
-                        {alternativeFor === g.id ? (
+                        {catalogueTarget?.group === g.id ? (
                           <p className="alternative-hint" role="status">
-                            Choisissez l’alternative dans le catalogue
+                            {catalogueTarget.mode === "option"
+                              ? "Choisissez l’option dans le catalogue"
+                              : "Choisissez l’alternative dans le catalogue"}
+                            {catalogueTarget.mode === "option" && (
+                              <button
+                                type="button"
+                                className="text-button"
+                                onClick={() => {
+                                  onCatalogueTarget?.(null);
+                                  setCustom({
+                                    kind: "products",
+                                    extra: true,
+                                    parent: g.id,
+                                  });
+                                }}
+                              >
+                                Saisir une option libre
+                              </button>
+                            )}
                             <button
                               type="button"
                               className="text-button"
-                              onClick={() => onAlternative?.(null)}
+                              onClick={() => onCatalogueTarget?.(null)}
                             >
                               Annuler
                             </button>
                           </p>
                         ) : (
-                          <button
-                            type="button"
-                            className="add-action"
-                            onClick={() =>
-                              onAlternative
-                                ? onAlternative({
-                                    group: g.id,
-                                    name: g.items[0].name,
-                                  })
-                                : pick({ kind: "products", group: g.id })
-                            }
-                          >
-                            Proposer une alternative
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              className="add-action"
+                              onClick={() =>
+                                onCatalogueTarget
+                                  ? onCatalogueTarget({
+                                      group: g.id,
+                                      name: g.items[0].name,
+                                      mode: "alternative",
+                                    })
+                                  : pick({ kind: "products", group: g.id })
+                              }
+                            >
+                              Proposer une alternative
+                            </button>
+                            <button
+                              type="button"
+                              className="add-action"
+                              onClick={() =>
+                                onCatalogueTarget
+                                  ? onCatalogueTarget({
+                                      group: g.id,
+                                      name: g.items[0].name,
+                                      mode: "option",
+                                    })
+                                  : pick({
+                                      kind: "products",
+                                      extra: true,
+                                      parent: g.id,
+                                    })
+                              }
+                            >
+                              Ajouter une option
+                            </button>
+                          </>
                         )}
                         <details>
                           <summary>Organiser</summary>
@@ -774,32 +839,27 @@ export default function Editor({
             </s-section>
   );
   const optionsSection = (
-            <s-section heading="Options et prestations">
+            <s-section heading="Prestations">
               <div className="section-toolbar">
                 <p className="muted">
-                  Seules les options cochées sont comprises dans le total.
+                  Menuiserie, carrelage, peinture, installation… Seules les
+                  prestations cochées entrent dans le total.
                 </p>
                 <div>
                   <button
-                    onClick={() => pick({ kind: "products", extra: true })}
-                  >
-                    Option du catalogue
-                  </button>
-                  <button
                     onClick={() => setCustom({ kind: "products", extra: true })}
                   >
-                    Prestation libre
+                    Ajouter une prestation
+                  </button>
+                  <button
+                    className="text-button"
+                    onClick={() => pick({ kind: "products", extra: true })}
+                  >
+                    Depuis le catalogue
                   </button>
                 </div>
               </div>
-              {!s.extras.some((e) => !e.deliveryFee) && (
-                <p className="muted">
-                  Installation, livraison, mobilier supplémentaire…
-                </p>
-              )}
-              {s.extras
-                .filter((e) => !e.deliveryFee)
-                .map((e) => (
+              {services(s).map((e) => (
                   <div
                     className={`optional-row ${e.selected ? "" : "not-included"}`}
                     key={e.id}
@@ -1601,9 +1661,11 @@ export default function Editor({
       {custom && (
         <Modal
           title={
-            custom.extra
-              ? "Ajouter une prestation"
-              : "Ajouter une ligne personnalisée"
+            custom.parent
+              ? "Ajouter une option"
+              : custom.extra
+                ? "Ajouter une prestation"
+                : "Ajouter une ligne personnalisée"
           }
           onClose={() => setCustom(null)}
         >

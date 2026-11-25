@@ -9,8 +9,16 @@ export type CatalogueCard = {
   id: string; // variante (gid)
   numericId: string; // produit
   title: string;
-  /** Ajout en alternative de ce produit du devis. */
+  /** Ajout en alternative ou en option de ce produit du devis. */
   group?: string;
+  mode?: CatalogueTarget["mode"];
+};
+
+/** Produit du devis pour lequel on choisit une alternative ou une option. */
+export type CatalogueTarget = {
+  group: string;
+  name: string;
+  mode: "alternative" | "option";
 };
 
 /** Carte en cours de glisser : lue par les zones de dépôt de l'éditeur.
@@ -49,8 +57,8 @@ export function CatalogueBrowser({
 }: {
   open: boolean;
   onClose: () => void;
-  /** Produit du devis dont on choisit une alternative. */
-  alternative?: { group: string; name: string } | null;
+  /** Produit du devis dont on choisit une alternative ou une option. */
+  alternative?: CatalogueTarget | null;
   onCancelAlternative?: () => void;
 }) {
   const first = useFetcher<Page>();
@@ -135,8 +143,13 @@ export function CatalogueBrowser({
       {alternative && (
         <div className="alternative-banner" role="status">
           <p>
-            Alternative à <strong>{alternative.name}</strong>
-            <small>Choisissez un produit avec +, ou glissez-le sur la ligne.</small>
+            {alternative.mode === "option" ? "Option pour" : "Alternative à"}{" "}
+            <strong>{alternative.name}</strong>
+            <small>
+              {alternative.mode === "option"
+                ? "Choisissez un produit avec +. Il reste hors total tant qu’il n’est pas coché."
+                : "Choisissez un produit avec +, ou glissez-le sur la ligne."}
+            </small>
           </p>
           <button type="button" className="text-button" onClick={onCancelAlternative}>
             Annuler
@@ -222,11 +235,19 @@ export function CatalogueBrowser({
                   type="button"
                   className={`catalogue-add${alternative ? " as-alternative" : ""}`}
                   aria-label={
-                    alternative
-                      ? `Proposer ${p.title} en alternative à ${alternative.name}`
-                      : `Ajouter ${p.title} au devis`
+                    alternative?.mode === "option"
+                      ? `Ajouter ${p.title} en option de ${alternative.name}`
+                      : alternative
+                        ? `Proposer ${p.title} en alternative à ${alternative.name}`
+                        : `Ajouter ${p.title} au devis`
                   }
-                  title={alternative ? "Proposer en alternative" : "Ajouter à la dernière pièce"}
+                  title={
+                    alternative?.mode === "option"
+                      ? "Ajouter en option"
+                      : alternative
+                        ? "Proposer en alternative"
+                        : "Ajouter à la dernière pièce"
+                  }
                   onClick={() => {
                     window.dispatchEvent(
                       new CustomEvent<CatalogueCard>(CATALOGUE_ADD, {
@@ -235,6 +256,7 @@ export function CatalogueBrowser({
                           numericId: p.numericId,
                           title: p.title,
                           group: alternative?.group,
+                          mode: alternative?.mode,
                         },
                       }),
                     );
@@ -242,7 +264,11 @@ export function CatalogueBrowser({
                   }}
                 >
                   <span aria-hidden="true">+</span>
-                  {alternative && <span className="add-label">Alternative</span>}
+                  {alternative && (
+                    <span className="add-label">
+                      {alternative.mode === "option" ? "Option" : "Alternative"}
+                    </span>
+                  )}
                 </button>
                 <div className="catalogue-card">
                   <div className="catalogue-photo">
