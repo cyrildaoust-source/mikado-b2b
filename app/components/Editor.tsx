@@ -28,6 +28,7 @@ import {
 } from "../domain/quote";
 import type { getQuote } from "../services/quotes.server";
 import { QuoteDocument } from "./QuoteDocument";
+import { dropOnQuote, type DragSource, type DropTarget } from "../domain/move";
 import { BillingPanel } from "./quote/BillingPanelV2";
 import { Modal } from "./quote/Modal";
 import { useDraft } from "./quote/useDraft";
@@ -64,7 +65,8 @@ function fromCustomer(d: QuoteState, c: Customer): QuoteState {
   return {
     ...d,
     firstName: c.address.firstName || (rest.length ? first : ""),
-    lastName: c.address.lastName || (rest.length ? rest.join(" ") : first || ""),
+    lastName:
+      c.address.lastName || (rest.length ? rest.join(" ") : first || ""),
     company: c.address.company,
     email: c.email,
     customerId: c.id,
@@ -127,7 +129,10 @@ export default function Editor({
     [policy, setPolicy] = useState<QuoteState | null>(null),
     [newLot, setNewLot] = useState(false),
     [clientDraft, setClientDraft] = useState(s),
-    [showHistory, setShowHistory] = useState(false);
+    [showHistory, setShowHistory] = useState(false),
+    // Glisser-déposer : produit (avec ses alternatives) ou alternative seule.
+    [dragging, setDragging] = useState<DragSource | null>(null),
+    [dropAt, setDropAt] = useState<string | null>(null);
   const busy = navigation.state !== "idle" || working,
     legacy = s.schemaVersion === 1,
     locked =
@@ -354,6 +359,59 @@ export default function Editor({
     if (j < 0 || j >= groups.length) return;
     [groups[i], groups[j]] = [groups[j], groups[i]];
     change({ ...s, groups });
+  }
+  // Ref en plus de l'état : le navigateur peut envoyer dragover avant le rendu.
+  const dragRef = useRef<DragSource | null>(null);
+  function dropProps(key: string, target: DropTarget) {
+    if (locked) return {};
+    return {
+      onDragOver: (e: React.DragEvent) => {
+        if (!dragRef.current) return;
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = "move";
+        if (dropAt !== key) setDropAt(key);
+      },
+      onDragLeave: (e: React.DragEvent) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropAt(null);
+      },
+      onDrop: (e: React.DragEvent) => {
+        const source = dragRef.current;
+        if (!source) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const next = dropOnQuote(s, source, target);
+        if (next !== s)
+          change((current) => dropOnQuote(current, source, target), true);
+        dragRef.current = null;
+        setDragging(null);
+        setDropAt(null);
+      },
+    };
+  }
+  function dragHandle(source: DragSource, name: string) {
+    if (locked) return null;
+    return (
+      <span
+        className="drag-handle"
+        draggable
+        title={`Glisser ${name} vers une pièce ou sur un autre produit`}
+        aria-hidden="true"
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", name);
+          const row = e.currentTarget.parentElement;
+          if (row) e.dataTransfer.setDragImage(row, 24, 24);
+          dragRef.current = source;
+          setDragging(source);
+        }}
+        onDragEnd={() => {
+          dragRef.current = null;
+          setDragging(null);
+          setDropAt(null);
+        }}
+      />
+    );
   }
   function prepare() {
     const valid = quoteSchema.safeParse(s);
@@ -621,8 +679,8 @@ export default function Editor({
                   <span className="empty-symbol">◇</span>
                   <h3>Composez votre proposition</h3>
                   <p>
-                    Créez une pièce par espace du projet, ajoutez-y vos produits,
-                    puis proposez des alternatives si nécessaire.
+                    Créez une pièce par espace du projet, ajoutez-y vos
+                    produits, puis proposez des alternatives si nécessaire.
                   </p>
                   <button
                     className="primary"
@@ -634,9 +692,14 @@ export default function Editor({
               )}
               {sections.map((section) => (
                 <div
-                  className="quote-lot"
+                  className={`quote-lot${dropAt === `s:${section.id}` ? " drop-over" : ""}`}
                   id={`lot-${section.id}`}
                   key={section.id}
+                  {...dropProps(`s:${section.id}`, {
+                    kind: "section",
+                    sectionId: section.id,
+                    title: section.title,
+                  })}
                 >
                   <div className="lot-heading">
                     <input
@@ -673,29 +736,47 @@ export default function Editor({
                     </span>
                   </div>
                   {section.groups.map((g) => (
-                    <div className="alternative-group" key={g.id}>
+                    <div
+                      className={`alternative-group${dropAt === `g:${g.id}` ? " drop-over" : ""}${
+                        dragging?.kind === "group" && dragging.groupId === g.id
+                          ? " is-dragging"
+                          : ""
+                      }`}
+                      key={g.id}
+                      {...dropProps(`g:${g.id}`, {
+                        kind: "group",
+                        groupId: g.id,
+                      })}
+                    >
                       {g.items.map((i, n) => (
-                        <ProductRow
-                          key={i.id}
-                          line={i}
-                          base={n ? g.items[0] : undefined}
-                          selected={g.selected === i.id}
-                          onSelect={
-                            g.items.length > 1
-                              ? () =>
-                                  change({
-                                    ...s,
-                                    groups: s.groups.map((x) =>
-                                      x.id === g.id
-                                        ? { ...x, selected: i.id }
-                                        : x,
-                                    ),
-                                  })
-                              : undefined
-                          }
-                          onChange={(p) => patch(i.id, p)}
-                          onRemove={() => remove(i.id)}
-                        />
+                        <div className="drag-row" key={i.id}>
+                          {dragHandle(
+                            n
+                              ? { kind: "line", lineId: i.id }
+                              : { kind: "group", groupId: g.id },
+                            i.name,
+                          )}
+                          <ProductRow
+                            line={i}
+                            base={n ? g.items[0] : undefined}
+                            selected={g.selected === i.id}
+                            onSelect={
+                              g.items.length > 1
+                                ? () =>
+                                    change({
+                                      ...s,
+                                      groups: s.groups.map((x) =>
+                                        x.id === g.id
+                                          ? { ...x, selected: i.id }
+                                          : x,
+                                      ),
+                                    })
+                                : undefined
+                            }
+                            onChange={(p) => patch(i.id, p)}
+                            onRemove={() => remove(i.id)}
+                          />
+                        </div>
                       ))}
                       <div className="group-footer">
                         <button
@@ -1374,7 +1455,8 @@ export default function Editor({
             }}
           >
             <p className="muted">
-              Nommez la pièce (salon, cuisine, chambre…), puis choisissez ses produits.
+              Nommez la pièce (salon, cuisine, chambre…), puis choisissez ses
+              produits.
             </p>
             <label>
               Nom de la pièce

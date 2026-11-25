@@ -1647,3 +1647,47 @@ body:has(.auth-page) {
   justify-content: center;
   margin: 32px 0;
 }
+
+/* Glisser-déposer dans le devis */
+.pro-app .drag-row {
+  position: relative;
+}
+.pro-app .drag-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 14px;
+  cursor: grab;
+  z-index: 1;
+  background-image: radial-gradient(circle, var(--ink-3) 1.2px, transparent 1.4px);
+  background-size: 6px 6px;
+  background-position: 3px center;
+  background-repeat: repeat-y;
+  opacity: 0.35;
+  transition: opacity 0.15s;
+}
+.pro-app .drag-row:hover > .drag-handle,
+.pro-app .drag-handle:active {
+  opacity: 1;
+}
+.pro-app .drag-handle:active {
+  cursor: grabbing;
+}
+@media (pointer: coarse) {
+  .pro-app .drag-handle {
+    width: 20px;
+    opacity: 0.6;
+  }
+}
+.pro-app .quote-lot.drop-over {
+  outline: 2px dashed var(--brass);
+  outline-offset: 2px;
+}
+.pro-app .alternative-group.drop-over {
+  background: #f6f1e9;
+  box-shadow: inset 0 0 0 2px var(--brass);
+}
+.pro-app .alternative-group.is-dragging {
+  opacity: 0.45;
+}
