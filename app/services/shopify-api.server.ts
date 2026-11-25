@@ -156,6 +156,7 @@ export async function products(
   admin: Admin | null,
   search: string,
   after?: string,
+  scope?: string,
 ) {
   if (!admin)
     return {
@@ -184,7 +185,10 @@ export async function products(
       pageInfo: { hasNextPage: boolean; endCursor: string };
     };
   }>(admin, operations.products, {
-    query: search ? searchPrefix(search) : undefined,
+    // scope : limite de l'outil pro (fiches actives ou brouillons, marques visibles).
+    query:
+      [scope, search ? `(${searchPrefix(search)})` : ""].filter(Boolean).join(" AND ") ||
+      undefined,
     after,
   });
   return {

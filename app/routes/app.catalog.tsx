@@ -5,7 +5,11 @@ import {
   customers,
   productsByIds,
 } from "../services/shopify-api.server";
-import { getCatalogProduct } from "../services/catalog.server";
+import {
+  brandRules,
+  getCatalogProduct,
+  visibilityQuery,
+} from "../services/catalog.server";
 import { lineFor } from "../services/catalog-quote.server";
 export async function loader({ request }: LoaderFunctionArgs) {
   const c = await context(request),
@@ -49,7 +53,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
         ? productsByIds(c.admin, (u.searchParams.get("ids") || "").split(","))
         : u.searchParams.get("kind") === "customers"
           ? customers(c.admin, q, after)
-          : products(c.admin, q, after)),
+          : products(
+              c.admin,
+              q,
+              after,
+              // Hors admin Shopify : mêmes fiches que le catalogue pro.
+              c.embedded ? undefined : visibilityQuery(await brandRules(), "product_status"),
+            )),
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch {
