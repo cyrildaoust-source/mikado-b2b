@@ -416,8 +416,8 @@ export default function Catalogue() {
 }
 
 /** Menu déroulant à choix multiples, avec recherche au-delà de huit choix.
- * Chaque case s'applique tout de suite ; le menu se ferme au clic dehors,
- * avec Échap ou avec « Terminé ». */
+ * Chaque case s'applique tout de suite ; le menu se ferme au clic dehors
+ * ou avec Échap (voir useMenus dans app.tsx). */
 function Picker({
   name,
   all,
@@ -435,24 +435,6 @@ function Picker({
 }) {
   const ref = useRef<HTMLDetailsElement>(null);
   const [find, setFind] = useState("");
-  useEffect(() => {
-    const close = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node))
-        ref.current.open = false;
-    };
-    const esc = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && ref.current?.open) {
-        ref.current.open = false;
-        ref.current.querySelector("summary")?.focus();
-      }
-    };
-    document.addEventListener("mousedown", close);
-    document.addEventListener("keydown", esc);
-    return () => {
-      document.removeEventListener("mousedown", close);
-      document.removeEventListener("keydown", esc);
-    };
-  }, []);
   const label = selected.length
     ? selected.length === 1
       ? selected[0]
@@ -489,8 +471,8 @@ function Picker({
             {o.count > 0 && <small>{o.count}</small>}
           </label>
         ))}
-        <div className="picker-foot">
-          {selected.length > 0 && (
+        {selected.length > 0 && (
+          <div className="picker-foot">
             <button
               type="button"
               className="text-button"
@@ -504,15 +486,8 @@ function Picker({
             >
               Tout désélectionner
             </button>
-          )}
-          <button
-            type="button"
-            className="picker-done"
-            onClick={() => ref.current && (ref.current.open = false)}
-          >
-            Terminé
-          </button>
-        </div>
+          </div>
+        )}
       </div>
     </details>
   );

@@ -1031,3 +1031,4 @@ dialog .modal-actions {
   padding: 14px 0;
   z-index: 1;
 }
+.line-head { display: none; }

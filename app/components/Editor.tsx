@@ -663,7 +663,7 @@ export default function Editor({
       <div className="editor-grid">
         <div className="editor-main">
           <fieldset disabled={busy || locked} className="unframed">
-            <s-section heading="Produits">
+            <s-section>
               <div className="section-toolbar">
                 <span className="muted">Prix unitaires HTVA</span>
                 <div>
@@ -736,6 +736,15 @@ export default function Editor({
                       HTVA
                     </span>
                   </div>
+                  {section.groups.length > 0 && (
+                    <div className="line-head" aria-hidden="true">
+                      <span>Produit</span>
+                      <span>Qté</span>
+                      <span>Prix HTVA</span>
+                      <span>Remise %</span>
+                      <span>Total HTVA</span>
+                    </div>
+                  )}
                   {section.groups.map((g) => (
                     <div
                       className={`alternative-group${dropAt === `g:${g.id}` ? " drop-over" : ""}${
@@ -781,7 +790,7 @@ export default function Editor({
                       ))}
                       <div className="group-footer">
                         <button
-                          className="text-button"
+                          className="add-action"
                           onClick={() =>
                             pick({ kind: "products", group: g.id })
                           }
@@ -867,18 +876,20 @@ export default function Editor({
                       </div>
                     </div>
                   ))}
-                  <button
-                    className="text-button lot-add"
-                    onClick={() =>
-                      pick({ kind: "products", section: section.id })
-                    }
-                  >
-                    Ajouter un produit à cette pièce
-                  </button>
+                  <div className="lot-footer">
+                    <button
+                      className="add-action"
+                      onClick={() =>
+                        pick({ kind: "products", section: section.id })
+                      }
+                    >
+                      Ajouter un produit
+                    </button>
+                  </div>
                 </div>
               ))}
               <button
-                className="text-button"
+                className="add-action"
                 onClick={() => setCustom({ kind: "products" })}
               >
                 Ajouter une ligne personnalisée
@@ -1161,13 +1172,6 @@ export default function Editor({
           </s-section>
           <s-section heading="Récapitulatif">
             <QuoteSummary state={s} />
-            <button
-              className="primary full-button"
-              disabled={busy || (!ready && (locked || !fiscal.complete))}
-              onClick={ready && !dirty ? () => download(q.version) : prepare}
-            >
-              {ready && !dirty ? "Télécharger le PDF" : "Préparer le PDF"}
-            </button>
             <p className="muted summary-footnote">
               {ready && !dirty
                 ? "Version conservée dans l’historique."

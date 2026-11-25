@@ -4,9 +4,11 @@ import {
   NavLink,
   Outlet,
   isRouteErrorResponse,
+  useLocation,
   useLoaderData,
   useRouteError,
 } from "react-router";
+import { useEffect, useState } from "react";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { context } from "../services/context.server";
@@ -30,10 +32,33 @@ export default function App() {
     );
   return (
     <div className="pro-app">
-      <nav className="localbar pro-nav" aria-label="Navigation principale">
-        <NavLink to="/app/catalogue" className="pro-brand">
-          Mikado Deco · Pro
-        </NavLink>
+      <ProNav demo={demo} user={user} />
+      <Outlet />
+    </div>
+  );
+}
+
+/** Barre du haut. Sur téléphone, les liens passent dans un menu. */
+function ProNav({
+  demo,
+  user,
+}: {
+  demo: boolean;
+  user: { name: string; role: string } | null | undefined;
+}) {
+  const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
+  useEffect(() => setOpen(false), [pathname]);
+  useMenus();
+  return (
+    <nav
+      className={`pro-nav${open ? " menu-open" : ""}`}
+      aria-label="Navigation principale"
+    >
+      <NavLink to="/app/catalogue" className="pro-brand">
+        Mikado Deco · Pro
+      </NavLink>
+      <div className="pro-nav-links" id="pro-nav-links">
         <NavLink to="/app" end>
           {user?.role === "admin" ? "Devis" : "Mes devis"}
         </NavLink>
@@ -44,21 +69,79 @@ export default function App() {
             <NavLink to="/app/utilisateurs">Accès</NavLink>
           </>
         )}
+        {open && (
+          <div className="pro-nav-account">
+            <span className="muted">
+              {demo ? "Mode local · catalogue fictif" : user?.name}
+            </span>
+            {!demo && (
+              <Form method="post" action="/deconnexion">
+                <button className="text-button">Se déconnecter</button>
+              </Form>
+            )}
+          </div>
+        )}
+      </div>
+      <div className="pro-nav-end">
         <Form method="post" action="/app?index" className="pro-new-quote">
-          <button className="primary">Nouveau devis</button>
+          <button>Nouveau devis</button>
         </Form>
         <span className="pro-user">
           {demo ? "Mode local · catalogue fictif" : user?.name}
         </span>
         {!demo && (
-          <Form method="post" action="/deconnexion">
-            <button className="text-button">Se déconnecter</button>
+          <Form method="post" action="/deconnexion" className="pro-logout-form">
+            <button className="text-button pro-logout">Se déconnecter</button>
           </Form>
         )}
-      </nav>
-      <Outlet />
-    </div>
+        <button
+          type="button"
+          className="pro-nav-toggle"
+          aria-expanded={open}
+          aria-controls="pro-nav-links"
+          onClick={() => setOpen(!open)}
+        >
+          {open ? "Fermer" : "Menu"}
+        </button>
+      </div>
+    </nav>
   );
+}
+
+/** Menus déroulants (details) : un seul ouvert à la fois, fermés par Échap
+ * (le focus revient sur le menu) ou par un clic en dehors. */
+function useMenus() {
+  useEffect(() => {
+    const menus = () =>
+      document.querySelectorAll<HTMLDetailsElement>(
+        "details.action-menu[open], details.brand-picker[open]",
+      );
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      menus().forEach((d) => {
+        d.open = false;
+        d.querySelector("summary")?.focus();
+      });
+    };
+    const onDown = (e: PointerEvent) => {
+      menus().forEach((d) => {
+        if (!d.contains(e.target as Node)) d.open = false;
+      });
+    };
+    const onToggle = (e: Event) => {
+      const d = e.target as HTMLDetailsElement;
+      if (!d.open || !d.matches?.(".action-menu, .brand-picker")) return;
+      menus().forEach((m) => m !== d && (m.open = false));
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("toggle", onToggle, true);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("toggle", onToggle, true);
+    };
+  }, []);
 }
 export function ErrorBoundary() {
   const error = useRouteError();
