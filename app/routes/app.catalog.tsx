@@ -5,6 +5,8 @@ import {
   customers,
   productsByIds,
 } from "../services/shopify-api.server";
+import { getCatalogProduct } from "../services/catalog.server";
+import { lineFor } from "../services/catalog-quote.server";
 export async function loader({ request }: LoaderFunctionArgs) {
   const c = await context(request),
     u = new URL(request.url),
@@ -16,6 +18,31 @@ export async function loader({ request }: LoaderFunctionArgs) {
       { items: [], next: null, error: "Saisissez les coordonnées de votre client dans le devis." },
       { headers: { "Cache-Control": "no-store" } },
     );
+  if (u.searchParams.get("kind") === "line") {
+    // Une carte du catalogue glissée dans le devis : même ligne que l'ajout
+    // rapide, avec les mêmes règles de visibilité des marques.
+    try {
+      const product = await getCatalogProduct(
+        c.admin,
+        u.searchParams.get("produit") || "",
+      );
+      if (!product) throw Error("Ce produit n'est plus au catalogue.");
+      const line = await lineFor(
+        c.admin,
+        product,
+        u.searchParams.get("variante") || "",
+      );
+      return Response.json(
+        { items: [line], next: null },
+        { headers: { "Cache-Control": "no-store" } },
+      );
+    } catch (e) {
+      return Response.json(
+        { error: e instanceof Error ? e.message : "Produit indisponible." },
+        { status: 404 },
+      );
+    }
+  }
   try {
     return Response.json(
       await (u.searchParams.get("kind") === "variants"

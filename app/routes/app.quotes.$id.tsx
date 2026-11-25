@@ -41,6 +41,8 @@ import {
 import { billingKinds, type BillingKind } from "../domain/billing";
 import { fiscalTotals } from "../domain/quote";
 import Editor from "../components/Editor";
+import { CatalogueBrowser } from "../components/quote/CatalogueBrowser";
+import { useState } from "react";
 import { rememberQuote } from "../services/current-quote.server";
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const c = await context(request);
@@ -218,7 +220,31 @@ export async function action({ request, params }: ActionFunctionArgs) {
 export default function Quote() {
   const data = useLoaderData<typeof loader>();
   const result = useActionData<typeof action>();
-  return (
+  const [catalogue, setCatalogue] = useState(false);
+  const editor = (
     <Editor key={`${data.q.id}-${data.q.version}`} {...data} result={result} />
+  );
+  // Outil pro : le catalogue à gauche du devis, tant que le devis se modifie.
+  const editable =
+    data.q.status === "draft" &&
+    !["creating", "uncertain", "complete"].includes(
+      data.q.conversion?.status || "",
+    );
+  if (data.embedded || !editable) return editor;
+  return (
+    <div className={`quote-workspace${catalogue ? " catalogue-open" : ""}`}>
+      <CatalogueBrowser open={catalogue} onClose={() => setCatalogue(false)} />
+      <div className="quote-pane">
+        {editor}
+        <button
+          type="button"
+          className="catalogue-toggle"
+          aria-expanded={catalogue}
+          onClick={() => setCatalogue(!catalogue)}
+        >
+          {catalogue ? "Fermer le catalogue" : "Catalogue"}
+        </button>
+      </div>
+    </div>
   );
 }
