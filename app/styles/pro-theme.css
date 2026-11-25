@@ -18,7 +18,7 @@
   --field: #8c8981;
   --ink: #16181a;
   --ink-2: #5f5d58;
-  --ink-3: #8a877f;
+  --ink-3: #737069;
   --brass: #8a6a3d;
   --ok: #2f6b4a;
   --warn: #9a5d16;
@@ -644,4 +644,351 @@ body:has(.auth-page) {
     margin-left: 0;
     width: 100%;
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Fiche produit                                                       */
+/* ------------------------------------------------------------------ */
+.pro-app .breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 20px;
+  font-size: var(--t-small);
+  color: var(--ink-3);
+}
+.pro-app .breadcrumb a {
+  color: var(--ink-2);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+}
+.pro-app .breadcrumb a:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+.pro-app .product-layout {
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 1fr);
+  gap: 48px;
+}
+.pro-app .product-layout.with-quote {
+  grid-template-columns: minmax(0, 1.1fr) minmax(300px, 1fr) 300px;
+  gap: 32px;
+}
+.pro-app .product-photo {
+  aspect-ratio: 1 / 1;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0;
+}
+.pro-app .product-photo img {
+  mix-blend-mode: normal;
+  padding: 6%;
+  box-sizing: border-box;
+}
+.pro-app .product-photo .catalogue-nophoto {
+  width: 100%;
+  height: 100%;
+}
+.pro-app .product-thumbs {
+  gap: 8px;
+  margin-top: 12px;
+}
+.pro-app .product-thumbs button {
+  width: 64px;
+  height: 64px;
+  min-height: 0;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0;
+}
+.pro-app .product-thumbs button.active,
+.pro-app .product-thumbs button[aria-pressed="true"] {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+.pro-app .product-thumbs img {
+  mix-blend-mode: normal;
+}
+.pro-app .product-info {
+  display: grid;
+  gap: 24px;
+  align-content: start;
+}
+.pro-app .product-titles {
+  display: grid;
+  gap: 6px;
+}
+.pro-app .product-vendor {
+  font-size: var(--t-small);
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+}
+.pro-app .product-info h1 {
+  font-size: var(--t-title);
+  font-weight: 500;
+  line-height: 1.2;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.pro-app .product-price {
+  margin: 4px 0 0;
+  font-size: 20px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.pro-app .product-price small {
+  color: var(--ink-3);
+  font-size: var(--t-small);
+}
+.pro-app .product-option {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.pro-app .product-option legend {
+  padding: 0;
+  margin-bottom: 10px;
+  font-size: var(--t-body);
+  color: var(--ink-2);
+}
+.pro-app .product-option legend strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+.pro-app .product-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pro-app .product-values button {
+  min-height: var(--control);
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 400;
+}
+.pro-app .product-values button:hover {
+  border-color: var(--field);
+}
+.pro-app .product-values button[aria-pressed="true"] {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+.pro-app .product-values button.unavailable {
+  color: var(--ink-3);
+  border-style: dashed;
+}
+.pro-app .product-values button.more {
+  border-color: transparent;
+  background: var(--ground);
+  color: var(--ink-2);
+}
+.pro-app .product-add {
+  background: none;
+  border-radius: 0;
+  padding: 24px 0 0;
+  border-top: 1px solid var(--line);
+  gap: 14px;
+}
+.pro-app .product-add label {
+  display: grid;
+  gap: 6px;
+  font-size: var(--t-body);
+  color: var(--ink-2);
+}
+.pro-app .product-add-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+.pro-app .product-add-row .primary {
+  flex: 1;
+  min-height: var(--touch);
+}
+.pro-app .stepper {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--field);
+  border-radius: var(--radius);
+  background: var(--surface);
+  flex: none;
+}
+.pro-app .stepper button {
+  width: var(--touch);
+  min-height: var(--touch);
+  border: 0;
+  background: none;
+  font-size: 18px;
+  color: var(--ink-2);
+  padding: 0;
+}
+.pro-app .stepper input:not([type="checkbox"]) {
+  width: 48px;
+  min-height: var(--touch);
+  border: 0;
+  text-align: center;
+  padding: 0;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+}
+.pro-app .stepper input::-webkit-inner-spin-button,
+.pro-app .stepper input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.pro-app .product-description {
+  margin: 0;
+  color: var(--ink-2);
+  line-height: 1.65;
+  font-size: var(--t-body);
+}
+.pro-app .product-description p {
+  margin: 0 0 10px;
+}
+.pro-app .product-ref {
+  margin: 0;
+  font-size: var(--t-small);
+  color: var(--ink-3);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Panneau du devis ouvert */
+.pro-app .quote-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 18px;
+  top: 24px;
+}
+.pro-app .quote-panel header {
+  border-bottom: 1px solid var(--line);
+  gap: 4px;
+}
+.pro-app .quote-panel header small {
+  color: var(--ink-3);
+  font-size: var(--t-small);
+}
+.pro-app .quote-panel header strong {
+  font-weight: 500;
+  font-size: var(--t-name);
+}
+.pro-app .quote-panel header span {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+.pro-app .quote-panel h3 {
+  font-size: var(--t-small);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.pro-app .quote-panel li {
+  border-radius: var(--radius);
+  padding: 6px;
+}
+.pro-app .quote-panel li.active {
+  background: none;
+  outline: 1px solid var(--brass);
+}
+.pro-app .quote-panel li img,
+.pro-app .quote-panel li .thumb {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0;
+}
+.pro-app .quote-panel .text-button {
+  min-height: 32px;
+  font-size: var(--t-small);
+}
+.pro-app .quote-panel footer {
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 1100px) {
+  .pro-app .product-layout.with-quote {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 1fr);
+  }
+}
+@media (pointer: coarse) {
+  .pro-app .quote-panel .text-button,
+  .pro-app .breadcrumb a {
+    min-height: var(--touch);
+  }
+  .pro-app .product-thumbs button {
+    width: var(--touch);
+    height: var(--touch);
+  }
+}
+@media (max-width: 760px) {
+  .pro-app .product-layout,
+  .pro-app .product-layout.with-quote {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .pro-app .product-gallery {
+    margin-inline: calc(-1 * var(--gutter));
+  }
+  .pro-app .product-photo {
+    border-inline: 0;
+  }
+  .pro-app .product-thumbs {
+    padding-inline: var(--gutter);
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  .pro-app .product-thumbs button {
+    flex: none;
+  }
+}
+.pro-app .quote-panel li > span {
+  line-height: 1.35;
+}
+.pro-app .quote-panel li > span small {
+  display: block;
+  font-size: var(--t-small);
+  color: var(--ink-3);
+}
+.pro-app .quote-panel footer a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control);
+}
+.pro-app .quote-panel footer .text-button {
+  min-height: var(--control);
+}
+/* iPad paysage : le devis reste à côté de la fiche */
+@media (min-width: 900px) and (max-width: 1100px) {
+  .pro-app .product-layout.with-quote {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr) 250px;
+    gap: 24px;
+  }
+  .pro-app .product-layout.with-quote .quote-panel {
+    grid-column: auto;
+    position: sticky;
+    max-height: calc(100vh - 48px);
+    padding: 14px;
+  }
+}
+.pro-app .quote-panel li {
+  grid-template-columns: 40px minmax(0, 1fr);
+  row-gap: 2px;
+}
+.pro-app .quote-panel li > .text-button {
+  grid-column: 2;
+  justify-self: start;
+  padding: 0;
+}
+.pro-app .quote-panel li img,
+.pro-app .quote-panel li .thumb {
+  grid-row: span 2;
+  align-self: start;
 }

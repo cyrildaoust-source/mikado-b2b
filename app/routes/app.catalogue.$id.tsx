@@ -92,6 +92,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 const sameImage = (a: string, b: string) => a.split("?")[0] === b.split("?")[0];
 
+type Target = { quote: string; placement: string; label: string; button: string };
+
 export default function Product() {
   const { product, quotes, panel, initial, demo } =
     useLoaderData<typeof loader>();
@@ -101,6 +103,8 @@ export default function Product() {
   const result = useActionData<typeof action>();
   const busy = useNavigation().state !== "idle";
   const [variantId, setVariantId] = useState(initial);
+  const [qty, setQty] = useState(1);
+  const [allValues, setAllValues] = useState<string[]>([]);
   const variant =
     product.productVariants.find((v) => v.id === variantId) ||
     product.productVariants[0];
@@ -117,15 +121,108 @@ export default function Product() {
   ];
   const [shown, setShown] = useState<number | null>(null);
   const photo = images[shown ?? 0];
-  const finish = variant && variant.title !== "Default Title" ? variant.title : "";
+
+  // Une rangée par option Shopify ; une combinaison absente est grisée.
+  const axes = product.options.filter((o) => o.values.length > 1);
+  const current = (name: string) =>
+    variant?.options.find((o) => o.name === name)?.value || "";
+  const match = (name: string, value: string) => {
+    const wanted = (v: (typeof product.productVariants)[number]) =>
+      v.options.some((o) => o.name === name && o.value === value);
+    return (
+      product.productVariants.find(
+        (v) =>
+          wanted(v) &&
+          axes.every(
+            (a) => a.name === name || v.options.some((o) => o.name === a.name && o.value === current(a.name)),
+          ),
+      ) || null
+    );
+  };
+  const pick = (name: string, value: string) => {
+    const exact = match(name, value);
+    const any = product.productVariants.find((v) =>
+      v.options.some((o) => o.name === name && o.value === value),
+    );
+    const next = exact || any;
+    if (next) {
+      setVariantId(next.id);
+      setShown(null);
+    }
+  };
+
+  // Un seul choix « Ajouter à » : devis, pièce, alternative, option.
+  const targets: { group: string; items: Target[] }[] = [];
+  if (panel) {
+    for (const section of panel.sections)
+      targets.push({
+        group: `${panel.title} · ${section.title}`,
+        items: [
+          {
+            quote: String(panel.id),
+            placement: `section:${section.id}`,
+            label: `Nouveau produit dans ${section.title}`,
+            button: `Ajouter à ${section.title}`,
+          },
+          ...section.groups.map((g) => ({
+            quote: String(panel.id),
+            placement: `alternative:${g.id}`,
+            label: `Alternative à ${g.name}`,
+            button: "Ajouter en alternative",
+          })),
+        ],
+      });
+    targets.push({
+      group: panel.title,
+      items: [
+        {
+          quote: String(panel.id),
+          placement: "end",
+          label: panel.sections.length ? "À la suite du devis" : "Dans le devis",
+          button: "Ajouter au devis",
+        },
+        { quote: String(panel.id), placement: "option", label: "En option, hors total", button: "Ajouter en option" },
+      ],
+    });
+  }
+  const others = quotes.filter((q) => !panel || q.id !== panel.id);
+  targets.push({
+    group: panel ? "Autres devis" : "Devis",
+    items: [
+      ...others.map((q) => ({
+        quote: String(q.id),
+        placement: "end",
+        label: `${q.title}${q.customer ? ` · ${q.customer}` : ""} (${q.number})`,
+        button: "Ajouter au devis",
+      })),
+      { quote: "new", placement: "end", label: "Nouveau devis", button: "Créer un devis avec ce produit" },
+    ],
+  });
+  const key = (t: { quote: string; placement: string }) => `${t.quote}|${t.placement}`;
+  const all = targets.flatMap((g) => g.items);
+  const chosen =
+    all.find((t) => t.quote === quoteId && t.placement === (inPanel ? placement : "end")) ||
+    all[0];
+
   return (
     <main className="workspace product-page">
-      <p className="breadcrumb">
-        <Link to="/app/catalogue">Catalogue</Link> ·{" "}
+      <nav className="breadcrumb" aria-label="Fil d'Ariane">
+        <Link to="/app/catalogue">Catalogue</Link>
+        <span aria-hidden="true">/</span>
         <Link to={`/app/catalogue?marque=${encodeURIComponent(product.vendor)}`}>
           {product.vendor}
         </Link>
-      </p>
+        {product.productType && (
+          <>
+            <span aria-hidden="true">/</span>
+            <Link
+              to={`/app/catalogue?marque=${encodeURIComponent(product.vendor)}&famille=${encodeURIComponent(product.productType)}`}
+            >
+              {product.productType}
+            </Link>
+          </>
+        )}
+      </nav>
       {demo && <p className="demo-ribbon">Démonstration · catalogue fictif</p>}
       <div className={panel ? "product-layout with-quote" : "product-layout"}>
         <section className="product-gallery" aria-label="Photos">
@@ -133,7 +230,10 @@ export default function Product() {
             {photo ? (
               <img src={sized(photo.url, 1200)} alt={photo.alt} />
             ) : (
-              <span>Photo à venir</span>
+              <span className="catalogue-nophoto">
+                {product.vendor}
+                <small>Photo à venir</small>
+              </span>
             )}
           </div>
           {images.length > 1 && (
@@ -143,6 +243,7 @@ export default function Product() {
                   key={img.url}
                   type="button"
                   className={photo?.url === img.url ? "active" : ""}
+                  aria-pressed={photo?.url === img.url}
                   onClick={() => setShown(i)}
                   aria-label={`Photo ${i + 1}`}
                 >
@@ -153,98 +254,106 @@ export default function Product() {
           )}
         </section>
         <section className="product-info">
-          <small className="product-vendor">{product.vendor}</small>
-          <h1>{product.title}</h1>
-          {finish && <p className="product-finish">{finish}</p>}
-          {product.productType && (
-            <p className="muted">{product.productType}</p>
-          )}
+          <div className="product-titles">
+            <span className="product-vendor">
+              {product.vendor}
+              {product.productType ? ` · ${product.productType}` : ""}
+            </span>
+            <h1>{product.title}</h1>
+          </div>
           {variant && (
             <p className="product-price">
               {money(variant.price)} <small>HTVA · prix public</small>
             </p>
           )}
-          <Form method="post" className="product-add">
-            {product.productVariants.length > 1 && (
-              <label>
-                Finition
-                <select
-                  name="variant"
-                  value={variantId}
-                  onChange={(e) => {
-                    setVariantId(e.target.value);
-                    setShown(null);
-                  }}
-                >
-                  {product.productVariants.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.title} · {money(v.price)} HTVA
-                    </option>
+          {axes.map((axis) => {
+            const open = allValues.includes(axis.name);
+            const values = open || axis.values.length <= 12 ? axis.values : axis.values.slice(0, 11);
+            const sel = current(axis.name);
+            const visible = values.includes(sel) ? values : [...values, sel];
+            return (
+              <fieldset key={axis.name} className="product-option">
+                <legend>
+                  {axis.name} · <strong>{sel}</strong>
+                  {axis.values.length > 6 && (
+                    <span className="muted"> {axis.values.length} choix</span>
+                  )}
+                </legend>
+                <div className="product-values">
+                  {visible.map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={value === sel}
+                      className={match(axis.name, value) ? "" : "unavailable"}
+                      title={match(axis.name, value) ? undefined : "Pas avec ce choix : l'autre option changera"}
+                      onClick={() => pick(axis.name, value)}
+                    >
+                      {value}
+                    </button>
                   ))}
-                </select>
-              </label>
-            )}
-            {product.productVariants.length === 1 && (
-              <input type="hidden" name="variant" value={variant?.id} />
-            )}
+                  {visible.length < axis.values.length && (
+                    <button
+                      type="button"
+                      className="more"
+                      onClick={() => setAllValues([...allValues, axis.name])}
+                    >
+                      + {axis.values.length - visible.length}
+                    </button>
+                  )}
+                </div>
+              </fieldset>
+            );
+          })}
+          <Form method="post" className="product-add">
+            <input type="hidden" name="variant" value={variant?.id} />
+            <input type="hidden" name="quote" value={chosen.quote} />
+            <input type="hidden" name="placement" value={chosen.placement} />
             <label>
-              Quantité
-              <input
-                name="qty"
-                type="number"
-                min={1}
-                max={10000}
-                defaultValue={1}
-                required
-              />
-            </label>
-            <label>
-              Devis
+              Ajouter à
               <select
-                name="quote"
-                value={quoteId}
+                value={key(chosen)}
                 onChange={(e) => {
-                  setQuoteId(e.target.value);
-                  setPlacement("end");
+                  const [q, pl] = e.target.value.split("|");
+                  setQuoteId(q);
+                  setPlacement(pl);
                 }}
               >
-                <option value="new">Nouveau devis</option>
-                {quotes.map((q) => (
-                  <option key={q.id} value={q.id}>
-                    {q.title}
-                    {q.customer ? ` · ${q.customer}` : ""} ({q.number})
-                  </option>
+                {targets.map((g) => (
+                  <optgroup key={g.group} label={g.group}>
+                    {g.items.map((t) => (
+                      <option key={key(t)} value={key(t)}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </label>
-            {inPanel && panel && (
-              <label>
-                Où l’ajouter
-                <select
-                  name="placement"
-                  value={placement}
-                  onChange={(e) => setPlacement(e.target.value)}
-                >
-                  <option value="end">À la suite du devis</option>
-                  {panel.sections.map((section) => (
-                    <optgroup key={section.id} label={section.title}>
-                      <option value={`section:${section.id}`}>
-                        Nouveau produit dans « {section.title} »
-                      </option>
-                      {section.groups.map((g) => (
-                        <option key={g.id} value={`alternative:${g.id}`}>
-                          Alternative à {g.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                  <option value="option">En option (hors total)</option>
-                </select>
-              </label>
-            )}
-            <button className="primary" disabled={busy || !variant}>
-              Ajouter au devis
-            </button>
+            <div className="product-add-row">
+              <div className="stepper" role="group" aria-label="Quantité">
+                <button type="button" aria-label="Moins" onClick={() => setQty(Math.max(1, qty - 1))}>
+                  −
+                </button>
+                <input
+                  name="qty"
+                  type="number"
+                  inputMode="numeric"
+                  aria-label="Quantité"
+                  min={1}
+                  max={10000}
+                  value={qty}
+                  onChange={(e) => setQty(Math.min(10000, Math.max(1, Number(e.target.value) || 1)))}
+                  required
+                />
+                <button type="button" aria-label="Plus" onClick={() => setQty(Math.min(10000, qty + 1))}>
+                  +
+                </button>
+              </div>
+              <button className="primary" disabled={busy || !variant}>
+                {chosen.button}
+              </button>
+            </div>
             {result?.ok && (
               <p role="status" className="success">
                 {result.ok}
@@ -256,7 +365,6 @@ export default function Product() {
               </p>
             )}
           </Form>
-          {variant?.sku && <p className="muted">Référence {variant.sku}</p>}
           {product.description && (
             <div className="product-description">
               {product.description.split(/\n+/).map((para, i) => (
@@ -264,6 +372,7 @@ export default function Product() {
               ))}
             </div>
           )}
+          {variant?.sku && <p className="product-ref">Référence {variant.sku}</p>}
         </section>
         {panel && (
           <aside className="quote-panel" aria-label="Devis ouvert">
