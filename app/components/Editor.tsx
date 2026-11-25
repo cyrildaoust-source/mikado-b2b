@@ -380,7 +380,15 @@ export default function Editor({
       <header className="quote-header">
         <div>
           <div className="eyebrow">{q.number}</div>
-          <h1>{s.project}</h1>
+          <h1 className="quote-title">
+            <input
+              aria-label="Nom du projet"
+              value={s.project}
+              maxLength={150}
+              disabled={busy || locked}
+              onChange={(e) => field("project", e.target.value)}
+            />
+          </h1>
           <div className="status-line">
             <s-badge tone={ready && !dirty ? "success" : "info"}>
               {dirty
@@ -564,7 +572,7 @@ export default function Editor({
           </div>
         </div>
       )}
-      {sections.length > 0 && (
+      {sections.length > 1 && (
         <nav className="lot-summary" aria-label="Sommaire des pièces">
           <strong>Vos pièces</strong>
           <div>
@@ -596,16 +604,6 @@ export default function Editor({
       <div className="editor-grid">
         <div className="editor-main">
           <fieldset disabled={busy || locked} className="unframed">
-            <s-section heading="Le projet">
-              <label>
-                Nom du projet
-                <input
-                  value={s.project}
-                  maxLength={150}
-                  onChange={(e) => field("project", e.target.value)}
-                />
-              </label>
-            </s-section>
             <s-section heading="Produits">
               <div className="section-toolbar">
                 <span className="muted">Prix unitaires HTVA</span>

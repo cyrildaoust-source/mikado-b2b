@@ -992,3 +992,327 @@ body:has(.auth-page) {
   grid-row: span 2;
   align-self: start;
 }
+
+/* ------------------------------------------------------------------ */
+/* Devis : éditeur                                                     */
+/* Polaris n'est pas chargé dans l'outil autonome : s-section et       */
+/* s-badge sont habillés ici.                                          */
+/* ------------------------------------------------------------------ */
+.pro-app s-section:not(:defined) {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: none;
+  padding: 24px;
+}
+.pro-app s-section[heading]:not(:defined)::before {
+  font-size: var(--t-section);
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+.pro-app s-badge:not(:defined) {
+  background: var(--ground);
+  color: var(--ink-2);
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+  font-size: var(--t-small);
+}
+.pro-app s-badge[tone="success"]:not(:defined) {
+  background: #e6f0ea;
+  color: #1f5a3d;
+}
+.pro-app .back-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  margin-bottom: 8px;
+  color: var(--ink-2);
+  font-size: var(--t-body);
+}
+.pro-app .quote-header {
+  align-items: flex-end;
+  margin-bottom: 24px;
+}
+.pro-app .quote-header h1 {
+  font-size: var(--t-title);
+  font-weight: 500;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.pro-app .eyebrow {
+  font-size: var(--t-small);
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 4px;
+}
+.pro-app .status-line {
+  margin-top: 10px;
+}
+.pro-app .action-menu > summary {
+  min-height: var(--control);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid var(--field);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  list-style: none;
+}
+.pro-app .action-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.pro-app .editor-grid {
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+}
+.pro-app .editor-sidebar {
+  top: 24px;
+}
+.pro-app .lot-summary {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin-bottom: 16px;
+}
+.pro-app .section-toolbar {
+  margin-bottom: 16px;
+}
+.pro-app .section-toolbar .muted {
+  font-size: var(--t-small);
+}
+
+/* Pièces et lignes */
+.pro-app .quote-lot {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+}
+.pro-app .lot-heading {
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  padding: 8px 16px;
+}
+.pro-app .lot-heading input:not([type="checkbox"]) {
+  font-size: var(--t-section);
+  font-weight: 500;
+  border-color: transparent;
+  background: transparent;
+  min-height: var(--control);
+  padding: 0 8px;
+  margin-left: -8px;
+  max-width: 65%;
+}
+.pro-app .lot-heading input:not([type="checkbox"]):hover {
+  border-color: var(--line);
+}
+.pro-app .lot-heading input:not([type="checkbox"]):focus {
+  background: var(--surface);
+  border-color: var(--field);
+}
+.pro-app .lot-heading > span {
+  font-weight: 500;
+  font-size: var(--t-body);
+  font-variant-numeric: tabular-nums;
+}
+.pro-app .alternative-group + .alternative-group {
+  border-top: 1px solid var(--line);
+}
+.pro-app .product-row {
+  grid-template-columns: minmax(160px, 1fr) 64px 96px 72px 104px 36px;
+  padding: 14px 16px;
+  gap: 12px;
+}
+.pro-app .product-row > label {
+  font-size: var(--t-small);
+  color: var(--ink-3);
+}
+.pro-app .product-row > label input:not([type="checkbox"]) {
+  min-height: 36px;
+  height: 36px;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.pro-app .alternative-row {
+  background: var(--paper);
+  border-top: 1px dashed var(--line);
+}
+.pro-app .selected-row {
+  border-left: 2px solid var(--brass);
+  padding-left: 14px;
+}
+.pro-app .selection-label {
+  color: var(--brass);
+  font-weight: 500;
+  font-size: var(--t-small);
+}
+.pro-app .alternative-caption,
+.pro-app .product-name .muted {
+  font-size: var(--t-small);
+}
+.pro-app .product-name strong {
+  font-weight: 500;
+  font-size: var(--t-name);
+}
+.pro-app .product-thumb,
+.pro-app .product-placeholder {
+  width: 44px;
+  height: 44px;
+  border-radius: 0;
+  border-color: var(--line);
+  background: var(--surface);
+}
+.pro-app .product-heading input[type="radio"] {
+  accent-color: var(--brass);
+}
+.pro-app .line-amount > span {
+  font-size: var(--t-small);
+  color: var(--ink-3);
+}
+.pro-app .product-row > .line-amount > strong {
+  min-height: 36px;
+  font-weight: 500;
+}
+.pro-app .icon-button {
+  width: 36px;
+  min-height: 36px;
+  border: 0;
+  border-radius: var(--radius);
+  color: var(--ink-3);
+  font-size: 20px;
+  background: none;
+}
+.pro-app .icon-button:hover {
+  background: var(--ground);
+  color: var(--error);
+}
+.pro-app .product-details summary,
+.pro-app .group-footer > details > summary,
+.pro-app .notes-details > summary,
+.pro-app .optional-row details summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  font-size: var(--t-small);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.pro-app .group-footer {
+  padding: 0 16px 8px;
+  align-items: center;
+}
+.pro-app .group-footer .text-button,
+.pro-app .lot-add {
+  min-height: 32px;
+  font-size: var(--t-body);
+}
+.pro-app .lot-add {
+  margin: 8px 16px 12px;
+}
+/* Ordinateur : intitulés des champs une seule fois par pièce */
+@media (min-width: 1101px) {
+  .pro-app .quote-lot .alternative-group ~ .alternative-group .product-row > label,
+  .pro-app .quote-lot .product-row + .product-row > label,
+  .pro-app .quote-lot .alternative-group ~ .alternative-group .product-row > .line-amount > span,
+  .pro-app .quote-lot .product-row + .product-row > .line-amount > span {
+    font-size: 0;
+  }
+  .pro-app .quote-lot .alternative-group ~ .alternative-group .product-row > label input,
+  .pro-app .quote-lot .product-row + .product-row > label input {
+    margin-top: 0;
+    font-size: var(--t-body);
+  }
+}
+
+/* Options et prestations */
+.pro-app .optional-row {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.pro-app .optional-row.not-included {
+  background: var(--paper);
+  border-style: dashed;
+}
+.pro-app .option-fields strong {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Colonne de droite */
+.pro-app .editor-sidebar s-section:not(:defined) {
+  padding: 20px;
+}
+.pro-app .full-button {
+  min-height: var(--touch);
+}
+.pro-app .summary-footnote {
+  font-size: var(--t-small);
+  text-align: center;
+}
+.pro-app .save-strip {
+  border: 1px solid var(--error);
+  background: var(--error-bg);
+  border-radius: var(--radius);
+}
+
+@media (pointer: coarse) {
+  .pro-app .back-link,
+  .pro-app .action-menu > summary,
+  .pro-app .product-details summary,
+  .pro-app .group-footer > details > summary,
+  .pro-app .notes-details > summary,
+  .pro-app .optional-row details summary,
+  .pro-app .group-footer .text-button,
+  .pro-app .lot-add,
+  .pro-app s-section .text-button,
+  .pro-app .icon-button {
+    min-height: var(--touch);
+  }
+  .pro-app .icon-button {
+    width: var(--touch);
+  }
+  .pro-app .product-row > label input:not([type="checkbox"]) {
+    min-height: var(--touch);
+    height: var(--touch);
+  }
+}
+@media (max-width: 1100px) {
+  .pro-app .product-row {
+    grid-template-columns: minmax(100px, 1fr) 56px 84px 64px 88px 44px;
+    gap: 8px;
+    padding: 12px;
+  }
+}
+@media (max-width: 560px) {
+  .pro-app s-section:not(:defined) {
+    padding: 16px;
+    margin-inline: calc(-1 * var(--gutter) / 2);
+  }
+  .pro-app .product-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 44px;
+  }
+}
+.pro-app .quote-title input:not([type="checkbox"]) {
+  font: inherit;
+  letter-spacing: inherit;
+  color: var(--ink);
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 0 8px;
+  margin-left: -9px;
+  min-height: 44px;
+  width: min(640px, 100%);
+}
+.pro-app .quote-title input:hover {
+  border-color: var(--line);
+}
+.pro-app .quote-title input:focus {
+  background: var(--surface);
+  border-color: var(--field);
+}
+.pro-app .quote-header > div:first-child {
+  flex: 1;
+  min-width: 0;
+}

@@ -20,6 +20,12 @@ export const config = { maxDuration: 60, memory: 2048 };
 export default function App() {
   useEffect(() => {
     if (document.getElementById("polaris-script")) return;
+    // Outil pro autonome : pas de composants Polaris, son propre thème
+    // (pro-theme.css) habille s-section et s-badge. Polaris reste chargé
+    // dans l'admin Shopify (iframe) et sur la connexion Shopify (/auth).
+    const inAdmin =
+      window.top !== window.self || location.pathname.startsWith("/auth");
+    if (!inAdmin) return;
     const script = document.createElement("script");
     script.id = "polaris-script";
     script.src = "https://cdn.shopify.com/shopifycloud/polaris.js";
