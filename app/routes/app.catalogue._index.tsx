@@ -66,16 +66,44 @@ export default function Catalogue() {
   // Ajout rapide au devis ouvert (dernière pièce), puis « Annuler ».
   const adder = useFetcher<{ ok?: string; error?: string; quote?: number; line?: string }>();
   const undoer = useFetcher<{ ok?: string; error?: string }>();
-  const [added, setAdded] = useState<{ title: string; product: string } | null>(null);
+  const [added, setAdded] = useState<{ title: string; product: string; where: string } | null>(null);
   const lastRoom = openQuote?.sections.at(-1)?.title || "";
-  const quickAdd = (p: { id: string; numericId: string; title: string }) => {
+  type Card = { id: string; numericId: string; title: string };
+  const quickAdd = (p: Card, placement = "end", where = lastRoom ? `à ${lastRoom}` : "") => {
     if (!openQuote) return;
-    setAdded({ title: p.title, product: p.numericId });
+    setAdded({ title: p.title, product: p.numericId, where });
     adder.submit(
-      { variant: p.id, qty: "1", quote: String(openQuote.id), placement: "end" },
+      { variant: p.id, qty: "1", quote: String(openQuote.id), placement },
       { method: "post", action: `/app/catalogue/${p.numericId}` },
     );
   };
+  // Glisser une carte vers le devis ouvert : un panneau de dépôt apparaît
+  // pendant le geste, avec les pièces et les produits du devis.
+  const [dragCard, setDragCard] = useState<Card | null>(null);
+  const [dropKey, setDropKey] = useState("");
+  const dragRef = useRef<Card | null>(null);
+  const dropZone = (key: string, placement: string, where: string) => ({
+    onDragOver: (e: React.DragEvent) => {
+      if (!dragRef.current) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = "copy";
+      if (dropKey !== key) setDropKey(key);
+    },
+    onDragLeave: (e: React.DragEvent) => {
+      if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropKey("");
+    },
+    onDrop: (e: React.DragEvent) => {
+      const card = dragRef.current;
+      if (!card) return;
+      e.preventDefault();
+      e.stopPropagation();
+      quickAdd(card, placement, where);
+      dragRef.current = null;
+      setDragCard(null);
+      setDropKey("");
+    },
+  });
   const undo = () => {
     if (!added || !adder.data?.line || !openQuote) return;
     undoer.submit(
@@ -225,7 +253,21 @@ export default function Catalogue() {
       {items.length ? (
         <ul className="catalogue-grid" aria-busy={busy} ref={grid}>
           {shown.map((p) => (
-            <li key={p.id} className="catalogue-item">
+            <li
+              key={p.id}
+              className={`catalogue-item${dragCard?.id === p.id ? " is-dragging" : ""}`}
+              onDragStart={(e) => {
+                if (!openQuote) return;
+                e.dataTransfer.effectAllowed = "copy";
+                dragRef.current = p;
+                setDragCard(p);
+              }}
+              onDragEnd={() => {
+                dragRef.current = null;
+                setDragCard(null);
+                setDropKey("");
+              }}
+            >
               {openQuote && (
                 <button
                   type="button"
@@ -281,6 +323,56 @@ export default function Catalogue() {
           </div>
         )
       )}
+      {openQuote && (
+        <aside
+          className={`drop-panel${dragCard ? " open" : ""}`}
+          aria-hidden={!dragCard}
+        >
+          <header>
+            <small>Déposer dans {openQuote.title}</small>
+            {dragCard && <strong>{dragCard.title}</strong>}
+          </header>
+          {openQuote.sections.map((section) => (
+            <section
+              key={section.id}
+              className={dropKey === `s:${section.id}` ? "over" : ""}
+              {...dropZone(`s:${section.id}`, `section:${section.id}`, `à ${section.title}`)}
+            >
+              <h3>{section.title}</h3>
+              <p className="drop-hint">Nouveau produit dans cette pièce</p>
+              {section.groups.map((g) => (
+                <div
+                  key={g.id}
+                  className={`drop-group${dropKey === `g:${g.id}` ? " over" : ""}`}
+                  {...dropZone(`g:${g.id}`, `alternative:${g.id}`, `en alternative à ${g.name}`)}
+                >
+                  {g.image ? <img src={sized(g.image, 96)} alt="" /> : <span className="thumb" />}
+                  <span>
+                    {g.name}
+                    <small>En alternative</small>
+                  </span>
+                </div>
+              ))}
+            </section>
+          ))}
+          {openQuote.sections.length === 0 && (
+            <section
+              className={dropKey === "end" ? "over" : ""}
+              {...dropZone("end", "end", "au devis")}
+            >
+              <h3>Devis vide</h3>
+              <p className="drop-hint">Déposer ici pour commencer</p>
+            </section>
+          )}
+          <section
+            className={`drop-option${dropKey === "option" ? " over" : ""}`}
+            {...dropZone("option", "option", "en option")}
+          >
+            <h3>En option</h3>
+            <p className="drop-hint">Hors total</p>
+          </section>
+        </aside>
+      )}
       {added && (
         <div className="catalogue-toast" role="status">
           {adder.state !== "idle" ? (
@@ -292,7 +384,7 @@ export default function Catalogue() {
           ) : (
             <>
               <span>
-                {added.title} ajouté{lastRoom ? ` à ${lastRoom}` : ""}
+                {added.title} ajouté{added.where ? ` ${added.where}` : ""}
               </span>
               <button type="button" className="text-button" onClick={undo}>
                 Annuler

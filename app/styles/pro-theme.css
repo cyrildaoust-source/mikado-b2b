@@ -1691,3 +1691,117 @@ body:has(.auth-page) {
 .pro-app .alternative-group.is-dragging {
   opacity: 0.45;
 }
+
+/* Catalogue : panneau de dépôt vers le devis ouvert (pendant le glisser) */
+.pro-app .catalogue-item.is-dragging {
+  opacity: 0.45;
+}
+.pro-app .drop-panel {
+  position: fixed;
+  top: 72px;
+  right: 16px;
+  bottom: 16px;
+  width: 320px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-float);
+  padding: 16px;
+  z-index: 30;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateX(16px);
+  transition:
+    opacity 0.15s,
+    transform 0.15s,
+    visibility 0s 0.15s;
+}
+.pro-app .drop-panel.open {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
+}
+.pro-app .drop-panel header {
+  display: grid;
+  gap: 2px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.pro-app .drop-panel header small {
+  color: var(--ink-3);
+  font-size: var(--t-small);
+}
+.pro-app .drop-panel header strong {
+  font-weight: 500;
+}
+.pro-app .drop-panel section {
+  border: 1px dashed var(--field);
+  border-radius: var(--radius);
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+  transition: background 0.1s;
+}
+.pro-app .drop-panel section.over,
+.pro-app .drop-panel .drop-group.over {
+  background: #f6f1e9;
+  border-color: var(--brass);
+  border-style: solid;
+}
+.pro-app .drop-panel h3 {
+  margin: 0;
+  font-size: var(--t-small);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.pro-app .drop-hint {
+  margin: 0;
+  font-size: var(--t-small);
+  color: var(--ink-3);
+}
+.pro-app .drop-group {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: var(--t-body);
+}
+.pro-app .drop-group img,
+.pro-app .drop-group .thumb {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  display: block;
+}
+.pro-app .drop-group small {
+  display: block;
+  color: var(--ink-3);
+  font-size: var(--t-small);
+}
+@media (max-width: 700px) {
+  .pro-app .drop-panel {
+    left: 16px;
+    width: auto;
+    top: auto;
+    max-height: 55vh;
+  }
+}
+@media (pointer: coarse) {
+  .pro-app .status-line .text-button {
+    min-height: var(--touch);
+  }
+}
