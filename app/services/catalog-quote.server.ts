@@ -4,6 +4,7 @@ import {
   lineSchema,
   quoteSchema,
   quoteSections,
+  removeLine,
   repriceExtras,
   upgradeQuote,
   type Line,
@@ -37,9 +38,10 @@ export function addLineToState(
   line: Line,
   qty: number,
   placement: Placement = { kind: "end" },
+  itemId: string = crypto.randomUUID(),
 ) {
   const s = state.schemaVersion === 1 ? upgradeQuote(state) : state;
-  const item = { ...line, id: crypto.randomUUID(), qty };
+  const item = { ...line, id: itemId, qty };
   if (placement.kind === "option")
     return repriceExtras(
       quoteSchema.parse({
@@ -140,30 +142,52 @@ export async function addToQuote(opts: {
 }) {
   if (!Number.isInteger(opts.qty) || opts.qty < 1 || opts.qty > 10000)
     throw Error("Quantité invalide.");
-  const line = await lineFor(opts.admin, opts.product, opts.variantId);
+  const line = await lineFor(opts.admin, opts.product, opts.variantId),
+    lineId = crypto.randomUUID();
   if (opts.quoteId === "new") {
     const shop = await shopInfo(opts.admin);
     const state = addLineToState(
       { ...newQuote(shop.taxesIncluded), project: opts.product.title },
       line,
       opts.qty,
+      { kind: "end" },
+      lineId,
     );
-    return (await createQuote(opts.shop, state, opts.ownerId)).id;
+    return { id: (await createQuote(opts.shop, state, opts.ownerId)).id, lineId };
   }
-  const where =
-    opts.owner === null
-      ? { id: opts.quoteId, shop: opts.shop }
-      : { id: opts.quoteId, shop: opts.shop, ownerId: opts.owner };
-  if (!(await db.quote.findFirst({ where, select: { id: true } })))
-    throw Error("Devis introuvable.");
-  const q = await getQuote(opts.shop, opts.quoteId);
+  const q = await ownQuote(opts.shop, opts.owner, opts.quoteId);
   const state = addLineToState(
     quoteSchema.parse(JSON.parse(q.state)),
     line,
     opts.qty,
     opts.placement,
+    lineId,
   );
   await saveQuote(opts.shop, q.id, q.version, state);
+  return { id: q.id, lineId };
+}
+
+async function ownQuote(shop: string, owner: number | null, id: number) {
+  const where =
+    owner === null ? { id, shop } : { id, shop, ownerId: owner };
+  if (!(await db.quote.findFirst({ where, select: { id: true } })))
+    throw Error("Devis introuvable.");
+  return getQuote(shop, id);
+}
+
+/** « Annuler » après un ajout : retire la ligne que l'ajout vient de créer. */
+export async function undoAdd(opts: {
+  shop: string;
+  owner: number | null;
+  quoteId: number;
+  lineId: string;
+}) {
+  const q = await ownQuote(opts.shop, opts.owner, opts.quoteId);
+  const state = quoteSchema.parse(JSON.parse(q.state));
+  if (!state.groups.some((g) => g.items.some((i) => i.id === opts.lineId)) &&
+      !state.extras.some((e) => e.id === opts.lineId))
+    return q.id;
+  await saveQuote(opts.shop, q.id, q.version, repriceExtras(removeLine(state, opts.lineId)));
   return q.id;
 }
 

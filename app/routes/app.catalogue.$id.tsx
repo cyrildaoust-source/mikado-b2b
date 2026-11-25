@@ -16,6 +16,7 @@ import {
   addToQuote,
   openQuotes,
   parsePlacement,
+  undoAdd,
 } from "../services/catalog-quote.server";
 import {
   currentQuoteId,
@@ -54,7 +55,16 @@ export async function action({ request, params }: ActionFunctionArgs) {
     );
   const open = await currentQuoteId(request);
   try {
-    const id = await addToQuote({
+    if (form.get("intent") === "undo") {
+      await undoAdd({
+        shop: c.shop,
+        owner: ownerScope(c),
+        quoteId: Number(form.get("quote")),
+        lineId: String(form.get("line")).slice(0, 100),
+      });
+      return { ok: "Ajout annulé.", error: "" };
+    }
+    const { id, lineId } = await addToQuote({
       shop: c.shop,
       admin: c.admin,
       owner: ownerScope(c),
@@ -66,7 +76,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
       placement: parsePlacement(String(form.get("placement") || "")),
     });
     // Devis ouvert à côté : on reste sur la fiche, le panneau se met à jour.
-    if (id === open) return { ok: "Ajouté au devis.", error: "" };
+    if (id === open)
+      return { ok: "Ajouté au devis.", error: "", quote: id, line: lineId };
     return redirect(`/app/quotes/${id}`);
   } catch (e) {
     return {

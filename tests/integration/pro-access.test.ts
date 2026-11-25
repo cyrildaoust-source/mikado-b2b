@@ -14,7 +14,7 @@ import {
   findInvite,
   verifyPassword,
 } from "../../app/services/auth.server";
-import { addToQuote, openQuotes } from "../../app/services/catalog-quote.server";
+import { addToQuote, openQuotes, undoAdd } from "../../app/services/catalog-quote.server";
 import { demoProducts } from "../../app/services/catalog.server";
 
 const shop = "pro-test.myshopify.com";
@@ -53,7 +53,7 @@ test("chaque architecte ne voit que ses devis ; Mikado Deco voit tout", async ()
       quoteId: qb.id,
     }),
   );
-  const id = await addToQuote({
+  const { id, lineId } = await addToQuote({
     shop,
     admin: null,
     owner: a.id,
@@ -67,8 +67,13 @@ test("chaque architecte ne voit que ses devis ; Mikado Deco voit tout", async ()
   assert.equal(state.groups.length, 1);
   assert.equal(state.groups[0].items[0].qty, 3);
   assert.equal(state.groups[0].items[0].price, product.productVariants[1].price);
+  assert.equal(state.groups[0].items[0].id, lineId);
+  // « Annuler » retire la ligne ajoutée ; un autre architecte ne peut pas le faire.
+  await assert.rejects(() => undoAdd({ shop, owner: a.id + 999, quoteId: id, lineId }));
+  await undoAdd({ shop, owner: a.id, quoteId: id, lineId });
+  assert.equal(JSON.parse((await getQuote(shop, id)).state).groups.length, 0);
   // Un nouveau devis créé depuis le catalogue appartient à l'architecte.
-  const fresh = await addToQuote({
+  const { id: fresh } = await addToQuote({
     shop,
     admin: null,
     owner: a.id,

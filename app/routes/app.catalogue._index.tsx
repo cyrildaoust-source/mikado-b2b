@@ -7,7 +7,8 @@ import {
   useSubmit,
   type LoaderFunctionArgs,
 } from "react-router";
-import { context } from "../services/context.server";
+import { context, ownerScope } from "../services/context.server";
+import { currentQuoteId, quotePanel } from "../services/current-quote.server";
 import {
   brandFamilies,
   catalogFacets,
@@ -29,12 +30,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
       after: u.searchParams.get("apres") || undefined,
     };
   try {
+    // Devis ouvert : permet l'ajout rapide depuis une carte (action de la fiche produit).
+    const openQuote = await currentQuoteId(request)
+      .then((id) => quotePanel(c.shop, id, ownerScope(c)))
+      .catch(() => null);
     const [list, facets, families] = await Promise.all([
       listCatalog(c.admin, filters),
       catalogFacets(c.admin),
       brandFamilies(c.admin, filters.vendors).catch(() => []),
     ]);
-    return { ...list, facets, families, filters, demo: c.demo, error: null };
+    return { ...list, facets, families, filters, openQuote, demo: c.demo, error: null };
   } catch {
     return {
       items: [],
@@ -42,6 +47,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       facets: { vendors: [], types: [] },
       families: [] as { type: string; count: number }[],
       filters,
+      openQuote: null,
       demo: c.demo,
       error: "Catalogue indisponible pour le moment. Réessayez dans un instant.",
     };
