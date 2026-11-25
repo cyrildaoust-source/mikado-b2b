@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   emptyQuote,
   setDeliveryFee,
+  newQuote,
   costBreakdown,
   paymentSchedule,
   quoteSchema,
@@ -713,7 +714,7 @@ test("livraison à 3 % : remise, recalcul, TVA, activation unique et retrait", (
   s.groups[0].items[1].qty = 2;
   s.groups[0].items[1].discount = 15;
   const before = totals(s).total;
-  s = setDeliveryFee(s, true, "delivery");
+  s = setDeliveryFee(s, true, "delivery", 3);
   assert.equal(
     s.extras.find((e) => e.deliveryFee)?.name,
     "Livraison + montage",
@@ -748,4 +749,21 @@ test("livraison à 3 % : remise, recalcul, TVA, activation unique et retrait", (
     false,
   );
   assert.equal(s.extras.length, 1);
+});
+
+test("livraison + montage : 5 % par défaut sur un nouveau devis, taux modifiable", () => {
+  let s = newQuote();
+  const fee = () => s.extras.find((e) => e.deliveryFee);
+  assert.equal(fee()?.chargePercent, 5);
+  assert.equal(fee()?.price, 0);
+  s.groups = fixture().groups;
+  s.groups[0].syncQty = false;
+  s = repriceExtras(s);
+  const base = costBreakdown(s).products;
+  assert.equal(fee()?.price, Math.round(base * 0.05));
+  s = setDeliveryFee(s, true, fee()!.id, 4);
+  assert.equal(fee()?.price, Math.round(base * 0.04));
+  assert.equal(s.extras.filter((e) => e.deliveryFee).length, 1);
+  s = setDeliveryFee(s, false, "x");
+  assert.equal(fee(), undefined);
 });

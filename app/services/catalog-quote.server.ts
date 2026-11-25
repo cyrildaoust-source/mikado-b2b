@@ -1,9 +1,10 @@
 import db from "../db.server";
 import {
-  emptyQuote,
+  newQuote,
   lineSchema,
   quoteSchema,
   quoteSections,
+  repriceExtras,
   upgradeQuote,
   type Line,
   type QuoteState,
@@ -17,7 +18,8 @@ export function addLineToState(state: QuoteState, line: Line, qty: number) {
   const s = state.schemaVersion === 1 ? upgradeQuote(state) : state;
   const last = quoteSections(s).at(-1);
   const item = { ...line, id: crypto.randomUUID(), qty };
-  return quoteSchema.parse({
+  // repriceExtras : la livraison au pourcentage suit les produits ajoutés.
+  return repriceExtras(quoteSchema.parse({
     ...s,
     groups: [
       ...s.groups,
@@ -30,7 +32,7 @@ export function addLineToState(state: QuoteState, line: Line, qty: number) {
         items: [item],
       },
     ],
-  });
+  }));
 }
 
 async function lineFor(
@@ -77,7 +79,7 @@ export async function addToQuote(opts: {
   if (opts.quoteId === "new") {
     const shop = await shopInfo(opts.admin);
     const state = addLineToState(
-      { ...emptyQuote(shop.taxesIncluded), project: opts.product.title },
+      { ...newQuote(shop.taxesIncluded), project: opts.product.title },
       line,
       opts.qty,
     );

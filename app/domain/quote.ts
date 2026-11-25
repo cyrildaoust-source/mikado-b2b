@@ -391,6 +391,11 @@ export function emptyQuote(_taxesIncluded = false): QuoteState {
   });
 }
 
+/** Nouveau devis : livraison + montage déjà ajoutée au taux par défaut, à retirer au besoin. */
+export function newQuote(taxesIncluded = false): QuoteState {
+  return setDeliveryFee(emptyQuote(taxesIncluded), true, crypto.randomUUID());
+}
+
 export function repriceExtras(s: QuoteState): QuoteState {
   const base = s.groups.reduce(
     (n, g) => n + lineTotal(g.items.find((i) => i.id === g.selected)!),
@@ -507,12 +512,20 @@ export function quoteSections(s: QuoteState) {
   return [...map.values()];
 }
 
+/** Taux par défaut de la ligne « Livraison + montage » (décision de Cyril, 25/11/2026). */
+export const DELIVERY_PERCENT = 5;
+
 export function setDeliveryFee(
   s: QuoteState,
   enabled: boolean,
   id: string,
+  percent?: number,
 ): QuoteState {
   const existing = s.extras.find((e) => e.deliveryFee);
+  const rate = Math.min(
+    100,
+    Math.max(0, percent ?? existing?.chargePercent ?? DELIVERY_PERCENT),
+  );
   const extras = s.extras.filter((e) => !e.deliveryFee);
   if (enabled)
     extras.push({
@@ -522,7 +535,7 @@ export function setDeliveryFee(
         qty: 1,
         price: 0,
         discount: 0,
-        chargePercent: 3,
+        chargePercent: rate,
         deliveryFee: true,
         taxable: true,
         vatRate: 21,

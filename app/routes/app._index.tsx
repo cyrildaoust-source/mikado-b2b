@@ -10,7 +10,7 @@ import {
 import { context, ownerScope } from "../services/context.server";
 import { listQuotes, createQuote } from "../services/quotes.server";
 import {
-  emptyQuote,
+  newQuote,
   quoteSchema,
   totals,
   money,
@@ -44,7 +44,7 @@ export async function action({ request }: ActionFunctionArgs) {
       return { error: "Cette version prend en charge les boutiques en EUR." };
     const q = await createQuote(
       c.shop,
-      emptyQuote(shop.taxesIncluded),
+      newQuote(shop.taxesIncluded),
       c.user?.id || null,
     );
     return redirect(`/app/quotes/${q.id}`);

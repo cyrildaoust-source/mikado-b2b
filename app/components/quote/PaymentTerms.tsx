@@ -2,6 +2,7 @@ import {
   type QuoteState,
   paymentText,
   setDeliveryFee,
+  DELIVERY_PERCENT,
   money,
   lineTotal,
 } from "../../domain/quote";
@@ -120,8 +121,29 @@ export function PaymentTerms({
               onChange(setDeliveryFee(s, e.target.checked, crypto.randomUUID()))
             }
           />
-          Ajouter la livraison + montage — 3 %
+          Ajouter la livraison + montage
         </label>
+        {s.extras
+          .filter((e) => e.deliveryFee && e.selected)
+          .map((e) => (
+            <label key={`${e.id}-rate`} className="inline">
+              Taux{" "}
+              <input
+                type="number"
+                min={0}
+                max={20}
+                step={0.5}
+                value={e.chargePercent ?? DELIVERY_PERCENT}
+                onChange={(ev) =>
+                  onChange(
+                    setDeliveryFee(s, true, e.id, Number(ev.target.value) || 0),
+                  )
+                }
+                style={{ width: "5em" }}
+              />{" "}
+              % du montant des produits
+            </label>
+          ))}
         <p className="muted">
           Calculée sur les produits retenus après remise, hors TVA. Le montant
           s’ajoute au devis et se recalcule lorsque les produits changent.
