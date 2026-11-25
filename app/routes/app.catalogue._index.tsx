@@ -1,7 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Form,
   Link,
+  useFetcher,
   useLoaderData,
   useNavigation,
   useSubmit,
@@ -55,8 +56,36 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export default function Catalogue() {
-  const { items, next, facets, families, filters, demo, error } =
+  const { items, next, facets, families, filters, openQuote, demo, error } =
     useLoaderData<typeof loader>();
+  // Ajout rapide au devis ouvert (dernière pièce), puis « Annuler ».
+  const adder = useFetcher<{ ok?: string; error?: string; quote?: number; line?: string }>();
+  const undoer = useFetcher<{ ok?: string; error?: string }>();
+  const [added, setAdded] = useState<{ title: string; product: string } | null>(null);
+  const lastRoom = openQuote?.sections.at(-1)?.title || "";
+  const quickAdd = (p: { id: string; numericId: string; title: string }) => {
+    if (!openQuote) return;
+    setAdded({ title: p.title, product: p.numericId });
+    adder.submit(
+      { variant: p.id, qty: "1", quote: String(openQuote.id), placement: "end" },
+      { method: "post", action: `/app/catalogue/${p.numericId}` },
+    );
+  };
+  const undo = () => {
+    if (!added || !adder.data?.line || !openQuote) return;
+    undoer.submit(
+      { intent: "undo", quote: String(openQuote.id), line: adder.data.line },
+      { method: "post", action: `/app/catalogue/${added.product}` },
+    );
+  };
+  useEffect(() => {
+    if (undoer.data?.ok) setAdded(null);
+  }, [undoer.data]);
+  useEffect(() => {
+    if (!added || adder.state !== "idle" || !adder.data?.ok) return;
+    const t = setTimeout(() => setAdded(null), 8000);
+    return () => clearTimeout(t);
+  }, [added, adder.state, adder.data]);
   // Chaque filtre s'applique tout de suite : pas de bouton « Afficher ».
   const submit = useSubmit(),
     timer = useRef<ReturnType<typeof setTimeout>>();
@@ -84,6 +113,16 @@ export default function Catalogue() {
     return `?${p}`;
   };
   const busy = useNavigation().state === "loading";
+  // Les familles des marques choisies, sinon toutes ; repliées au-delà de huit.
+  const familyList = families.length
+    ? families
+    : facets.types.map((type) => ({ type, count: 0 }));
+  const [allFamilies, setAllFamilies] = useState(false);
+  const selected = familyList.filter((f) => f.type === filters.type);
+  const shownFamilies = allFamilies
+    ? familyList
+    : [...familyList.slice(0, 8), ...selected.filter((f) => familyList.indexOf(f) >= 8)];
+  const hiddenFamilies = familyList.length - shownFamilies.length;
   const brandLabel = filters.vendors.length
     ? filters.vendors.length === 1
       ? filters.vendors[0]
@@ -91,11 +130,16 @@ export default function Catalogue() {
     : "Toutes les marques";
   return (
     <main className="workspace catalogue">
-      <header className="list-header">
-        <div>
-          <h1>Catalogue</h1>
-          <p>Toutes les marques Mikado Deco. Prix publics HTVA.</p>
-        </div>
+      <header className="catalogue-head">
+        <h1>Catalogue</h1>
+        <p>Prix publics HTVA</p>
+        {openQuote && (
+          <Link to={`/app/quotes/${openQuote.id}`} className="catalogue-open-quote">
+            <small>Devis ouvert</small>
+            <strong>{openQuote.title}</strong>
+            <span>{money(openQuote.total)}</span>
+          </Link>
+        )}
       </header>
       {demo && <p className="demo-ribbon">Démonstration · catalogue fictif</p>}
       <Form method="get" className="catalogue-filters">
@@ -119,7 +163,7 @@ export default function Catalogue() {
                   defaultChecked={filters.vendors.includes(v)}
                   onChange={(e) => {
                     const form = e.currentTarget.form!;
-                    (form.elements.namedItem("famille") as HTMLSelectElement).value = "";
+                    (form.elements.namedItem("famille") as HTMLInputElement).value = "";
                     apply(form);
                   }}
                 />
@@ -128,40 +172,37 @@ export default function Catalogue() {
             ))}
           </div>
         </details>
-        <select
-          name="famille"
-          aria-label="Famille"
-          defaultValue={filters.type}
-          key={filters.vendors.join("|")}
-          onChange={(e) => apply(e.currentTarget.form!)}
-        >
-          <option value="">Toutes les familles</option>
-          {(families.length ? families.map((f) => f.type) : facets.types).map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
+        <input type="hidden" name="famille" defaultValue={filters.type} key={filters.vendors.join("|") + filters.type} />
         {(filters.q || filters.vendors.length > 0 || filters.type) && (
-          <Link to="/app/catalogue" reloadDocument>
-            Effacer
+          <Link to="/app/catalogue" reloadDocument className="catalogue-reset">
+            Tout effacer
           </Link>
         )}
       </Form>
-      {filters.vendors.length > 0 && (
+      {familyList.length > 1 && (
         <nav className="family-chips" aria-label="Familles">
-          <Link to={link({ famille: "" })} className={filters.type ? "" : "active"}>
-            Tout {filters.vendors.length === 1 ? filters.vendors[0] : "les marques choisies"}
+          <Link
+            to={link({ famille: "" })}
+            className={filters.type ? "" : "active"}
+            aria-current={filters.type ? undefined : "true"}
+          >
+            Toutes les familles
           </Link>
-          {families.map((f) => (
+          {shownFamilies.map((f) => (
             <Link
               key={f.type}
               to={link({ famille: f.type })}
               className={filters.type === f.type ? "active" : ""}
+              aria-current={filters.type === f.type ? "true" : undefined}
             >
-              {f.type} <span>{f.count}</span>
+              {f.type} {f.count > 0 && <span>{f.count}</span>}
             </Link>
           ))}
+          {hiddenFamilies > 0 && (
+            <button type="button" className="chip-more" onClick={() => setAllFamilies(true)}>
+              + {hiddenFamilies} familles
+            </button>
+          )}
         </nav>
       )}
       {error && (
@@ -169,11 +210,22 @@ export default function Catalogue() {
           {error}
         </p>
       )}
-      {busy && <p role="status">Chargement…</p>}
       {items.length ? (
-        <ul className="catalogue-grid">
+        <ul className="catalogue-grid" aria-busy={busy}>
           {items.map((p) => (
-            <li key={p.id}>
+            <li key={p.id} className="catalogue-item">
+              {openQuote && (
+                <button
+                  type="button"
+                  className="catalogue-add"
+                  aria-label={`Ajouter ${p.title} au devis ${openQuote.title}`}
+                  title={lastRoom ? `Ajouter à ${lastRoom}` : "Ajouter au devis"}
+                  disabled={adder.state !== "idle"}
+                  onClick={() => quickAdd(p)}
+                >
+                  <span aria-hidden="true">+</span>
+                </button>
+              )}
               <Link
                 to={`/app/catalogue/${p.numericId}?variante=${p.variantNumericId}`}
                 className="catalogue-card"
@@ -186,16 +238,19 @@ export default function Catalogue() {
                       loading="lazy"
                     />
                   ) : (
-                    <span>Photo à venir</span>
+                    <span className="catalogue-nophoto">
+                      {p.vendor}
+                      <small>Photo à venir</small>
+                    </span>
                   )}
                 </div>
                 <div className="catalogue-meta">
                   <small>{p.vendor}</small>
-                  <strong>{p.title}</strong>
-                  {p.variantTitle && (
+                  <strong title={p.title}>{p.title}</strong>
+                  <span className="catalogue-row">
                     <span className="catalogue-finish">{p.variantTitle}</span>
-                  )}
-                  <span>{money(p.minPrice)} HTVA</span>
+                    <span className="catalogue-price">{money(p.minPrice)}</span>
+                  </span>
                 </div>
               </Link>
             </li>
@@ -204,15 +259,50 @@ export default function Catalogue() {
       ) : (
         !error && (
           <div className="empty-state">
-            <span className="empty-symbol">◇</span>
             <h2>Aucun produit trouvé</h2>
-            <p>Essayez une autre marque, une autre famille ou un autre mot.</p>
+            <p>Retirez un filtre ou cherchez un autre mot.</p>
+            {(filters.q || filters.vendors.length > 0 || filters.type) && (
+              <Link to="/app/catalogue" reloadDocument>
+                Voir tout le catalogue
+              </Link>
+            )}
           </div>
         )
       )}
+      {added && (
+        <div className="catalogue-toast" role="status">
+          {adder.state !== "idle" ? (
+            <span>Ajout de {added.title}…</span>
+          ) : adder.data?.error ? (
+            <span>{adder.data.error}</span>
+          ) : undoer.state !== "idle" ? (
+            <span>Annulation…</span>
+          ) : (
+            <>
+              <span>
+                {added.title} ajouté{lastRoom ? ` à ${lastRoom}` : ""}
+              </span>
+              <button type="button" className="text-button" onClick={undo}>
+                Annuler
+              </button>
+              {openQuote && (
+                <Link to={`/app/quotes/${openQuote.id}`}>Voir le devis</Link>
+              )}
+            </>
+          )}
+          <button
+            type="button"
+            className="catalogue-toast-close"
+            aria-label="Fermer"
+            onClick={() => setAdded(null)}
+          >
+            ×
+          </button>
+        </div>
+      )}
       {next && (
         <p className="catalogue-more">
-          <Link to={link({ apres: next })}>Voir la suite</Link>
+          <Link to={link({ apres: next })} className="catalogue-next">Voir les produits suivants</Link>
         </p>
       )}
     </main>

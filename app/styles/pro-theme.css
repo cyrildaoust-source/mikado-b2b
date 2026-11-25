@@ -276,3 +276,372 @@ body:has(.auth-page) {
 .auth-brand {
   font-weight: 600;
 }
+
+/* ---------- Catalogue ---------- */
+.pro-app .catalogue-head {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 0 0 18px;
+}
+.pro-app .catalogue-head p {
+  margin: 0;
+  color: var(--ink-2);
+}
+.pro-app .catalogue-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.pro-app .catalogue-filters input[type="search"] {
+  flex: 1 1 280px;
+  max-width: 420px;
+  margin: 0;
+}
+.pro-app .brand-picker summary {
+  min-height: var(--control);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  border: 1px solid var(--field);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--ink);
+}
+.pro-app .brand-picker summary::after {
+  content: "";
+  float: none;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 4px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+}
+.pro-app .brand-picker[open] summary,
+.pro-app .brand-picker:has(input:checked) summary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
+}
+.pro-app .brand-picker-list {
+  border: 1px solid var(--field);
+  border-radius: 8px;
+  box-shadow: var(--shadow-float);
+  min-width: 260px;
+  max-height: 380px;
+}
+.pro-app .brand-picker-list label {
+  min-height: 40px;
+  font-size: var(--t-body);
+  color: var(--ink);
+}
+.pro-app .brand-picker-list label:hover {
+  background: var(--ground);
+}
+.pro-app .catalogue-reset {
+  margin-left: auto;
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.pro-app .family-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 4px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.pro-app .family-chips a,
+.pro-app .family-chips .chip-more {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  border: 1px solid var(--field);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 400;
+  font-size: var(--t-body);
+}
+.pro-app .family-chips a span {
+  color: var(--ink-2);
+  font-size: var(--t-small);
+}
+.pro-app .family-chips a.active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
+}
+.pro-app .family-chips a.active span {
+  color: inherit;
+  opacity: 0.7;
+}
+.pro-app .family-chips .chip-more {
+  border-style: dashed;
+  color: var(--ink-2);
+}
+@media (pointer: coarse) {
+  .pro-app .family-chips a,
+  .pro-app .family-chips .chip-more {
+    min-height: var(--touch);
+  }
+}
+.pro-app .catalogue-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 32px 20px;
+  padding-top: 20px;
+  transition: opacity 0.15s;
+}
+.pro-app .catalogue-grid[aria-busy="true"] {
+  opacity: 0.5;
+}
+@media (min-width: 1360px) {
+  .pro-app .catalogue-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1100px) {
+  .pro-app .catalogue-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .pro-app .catalogue-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px 12px;
+  }
+}
+.pro-app .catalogue-card,
+.pro-app .catalogue-card:hover {
+  background: none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+.pro-app .catalogue-photo {
+  aspect-ratio: 4 / 5;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.pro-app .catalogue-photo img {
+  mix-blend-mode: normal;
+  object-fit: contain;
+  padding: 8%;
+  transition: transform 0.3s ease;
+}
+.pro-app .catalogue-card:hover .catalogue-photo img {
+  transform: scale(1.03);
+}
+.pro-app .catalogue-nophoto {
+  display: grid;
+  gap: 4px;
+  text-align: center;
+  color: var(--ink-2);
+  font-weight: 500;
+}
+.pro-app .catalogue-nophoto small {
+  font-weight: 400;
+}
+.pro-app .catalogue-photo:has(.catalogue-nophoto) {
+  background: var(--ground);
+}
+.pro-app .catalogue-meta {
+  padding: 12px 0 0;
+  gap: 2px;
+}
+.pro-app .catalogue-meta small {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--t-small);
+  color: var(--ink-2);
+}
+.pro-app .catalogue-meta strong {
+  font-size: var(--t-name);
+  font-weight: 500;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.pro-app .catalogue-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--ink-2);
+}
+.pro-app .catalogue-finish {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pro-app .catalogue-price {
+  color: var(--ink);
+  white-space: nowrap;
+}
+.pro-app .catalogue-more {
+  margin: 40px 0 0;
+}
+.pro-app .catalogue-more a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch);
+  padding: 0 20px;
+  border: 1px solid var(--field);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 500;
+}
+.pro-app .catalogue .empty-state {
+  padding: 48px 0;
+  border-top: 1px solid var(--line);
+}
+.pro-app .catalogue .empty-state h2 {
+  margin: 0 0 6px;
+}
+.pro-app .catalogue-open-quote {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--control);
+  padding: 0 14px;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+}
+.pro-app .catalogue-open-quote small {
+  color: var(--ink-2);
+}
+.pro-app .catalogue-open-quote span {
+  color: var(--ink-2);
+}
+.pro-app .catalogue-item {
+  position: relative;
+}
+.pro-app .catalogue-add {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  right: 8px;
+  width: var(--touch);
+  height: var(--touch);
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  border-color: var(--field);
+  background: var(--surface);
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1;
+}
+.pro-app .catalogue-add:hover {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
+}
+.pro-app .catalogue-toast {
+  position: fixed;
+  z-index: 30;
+  left: 50%;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: calc(100vw - 32px);
+  padding: 8px 8px 8px 16px;
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--surface);
+  box-shadow: var(--shadow-float);
+}
+.pro-app .catalogue-toast > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pro-app .catalogue-toast a,
+.pro-app .catalogue-toast .text-button {
+  color: var(--surface);
+  text-decoration-color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+}
+.pro-app .catalogue-toast .text-button {
+  min-height: var(--touch);
+  background: none;
+}
+.pro-app .catalogue-toast-close {
+  width: var(--touch);
+  height: var(--touch);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--surface);
+  font-size: 20px;
+}
+.pro-app .catalogue-toast-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+@media (pointer: coarse) {
+  .pro-app .pro-nav a {
+    min-height: var(--touch);
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+/* Téléphone : barre et pastilles sur une ligne, qui défilent */
+@media (max-width: 700px) {
+  .pro-app {
+    --gutter: 16px;
+    --t-title: 24px;
+  }
+  .pro-app .pro-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .pro-app .pro-nav .pro-user {
+    display: none;
+  }
+  .pro-app .pro-nav .pro-new-quote {
+    margin-left: 8px;
+    flex: none;
+  }
+  .pro-app .pro-nav a {
+    flex: none;
+  }
+  .pro-app .workspace {
+    padding-top: 20px;
+  }
+  .pro-app .family-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-inline: calc(-1 * var(--gutter));
+    padding-inline: var(--gutter);
+  }
+  .pro-app .family-chips > * {
+    flex: none;
+  }
+  .pro-app .catalogue-open-quote {
+    margin-left: 0;
+    width: 100%;
+  }
+}
