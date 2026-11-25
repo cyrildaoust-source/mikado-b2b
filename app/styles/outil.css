@@ -3074,7 +3074,7 @@ html:has(.quote-workspace) {
     bottom: max(16px, env(safe-area-inset-bottom));
     margin-left: 112px;
   }
-  .total-gross {
+  .total-bar-gross {
     display: none;
   }
 }

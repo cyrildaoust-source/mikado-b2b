@@ -1407,7 +1407,7 @@ export default function Editor({
           <a className="total-bar" href="#recapitulatif">
             <span>Total HTVA</span>
             <strong>{money(fiscal.net)}</strong>
-            <span className="total-gross">TVAC {money(fiscal.gross)}</span>
+            <span className="total-bar-gross">TVAC {money(fiscal.gross)}</span>
           </a>
         </div>
       )}
