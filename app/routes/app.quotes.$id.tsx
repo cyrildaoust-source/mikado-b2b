@@ -211,6 +211,3 @@ export default function Quote() {
     <Editor key={`${data.q.id}-${data.q.version}`} {...data} result={result} />
   );
 }
-
-// Vercel : la génération du PDF (Chromium) peut prendre plus que la durée par défaut.
-export const config = { maxDuration: 60, memory: 2048 };

@@ -22,8 +22,17 @@
   font-weight: 700;
   margin-right: 12px;
 }
-.pro-nav .pro-user {
+.pro-nav .pro-new-quote {
   margin-left: auto;
+}
+.pro-nav .pro-new-quote .primary {
+  background: #fff;
+  color: #111;
+  border-color: #fff;
+  padding: 6px 14px;
+  font-weight: 600;
+}
+.pro-nav .pro-user {
   color: #aaa;
 }
 .pro-nav form .text-button {
@@ -270,4 +279,32 @@ label.inline {
   .pro-nav .pro-user {
     margin-left: 0;
   }
+}
+
+.family-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 20px;
+}
+.family-chips a {
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  padding: 5px 12px;
+  color: #333;
+  font-size: 14px;
+  text-decoration: none;
+  background: #fff;
+}
+.family-chips a span {
+  color: #999;
+  margin-left: 4px;
+}
+.family-chips a.active {
+  background: #111;
+  border-color: #111;
+  color: #fff;
+}
+.family-chips a.active span {
+  color: #bbb;
 }

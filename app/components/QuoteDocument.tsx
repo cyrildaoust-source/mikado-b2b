@@ -164,8 +164,8 @@ export function QuoteDocument({
         dans le total.
       </p>
       {sections.length > 0 && (
-        <nav className="doc-lot-summary" aria-label="Sommaire des lots">
-          <strong>Sommaire des lots</strong>
+        <nav className="doc-lot-summary" aria-label="Sommaire des pièces">
+          <strong>Sommaire des pièces</strong>
           {sections.map((section, index) => (
             <a key={section.id} href={`#doc-lot-${index + 1}`}>
               <span>

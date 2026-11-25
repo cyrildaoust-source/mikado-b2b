@@ -34,16 +34,19 @@ export default function App() {
         <NavLink to="/app/catalogue" className="pro-brand">
           Mikado Deco · Pro
         </NavLink>
-        <NavLink to="/app/catalogue">Catalogue</NavLink>
         <NavLink to="/app" end>
-          Devis
+          {user?.role === "admin" ? "Devis" : "Mes devis"}
         </NavLink>
+        <NavLink to="/app/catalogue">Catalogue</NavLink>
         {user?.role === "admin" && (
           <>
             <NavLink to="/app/marques">Marques</NavLink>
             <NavLink to="/app/utilisateurs">Accès</NavLink>
           </>
         )}
+        <Form method="post" action="/app?index" className="pro-new-quote">
+          <button className="primary">Nouveau devis</button>
+        </Form>
         <span className="pro-user">
           {demo ? "Mode local · catalogue fictif" : user?.name}
         </span>

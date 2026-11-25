@@ -11,6 +11,10 @@ export const links = () => [
 ];
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
 
+// Vercel : une seule fonction pour toute l'app, assez longue et large pour le PDF
+// (Chromium). Une config par route coupait l'app en deux fonctions.
+export const config = { maxDuration: 60, memory: 2048 };
+
 export default function App() {
   useEffect(() => {
     if (document.getElementById("polaris-script")) return;

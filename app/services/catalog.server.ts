@@ -171,6 +171,49 @@ export async function catalogFacets(admin: Admin | null) {
   };
 }
 
+/** Familles d'une marque, avec le nombre de fiches visibles (jusqu'à 1 000 fiches lues). */
+export async function brandFamilies(
+  admin: Admin | null,
+  vendor: string,
+): Promise<{ type: string; count: number }[]> {
+  if (!vendor) return [];
+  const rules = await brandRules();
+  const counts = new Map<string, number>();
+  const add = (t: string) => t && counts.set(t, (counts.get(t) || 0) + 1);
+  if (!admin) {
+    demoProducts
+      .filter((p) => p.vendor === vendor && isVisible(p, rules))
+      .forEach((p) => add(p.productType));
+  } else {
+    let after: string | null = null;
+    for (let page = 0; page < 4; page++) {
+      const data: {
+        products: {
+          nodes: { productType: string; vendor: string; status: string }[];
+          pageInfo: { hasNextPage: boolean; endCursor: string };
+        };
+      } = await gql(
+        admin,
+        `query Families($query: String!, $after: String) {
+          products(first: 250, after: $after, query: $query) {
+            nodes { productType vendor status }
+            pageInfo { hasNextPage endCursor }
+          }
+        }`,
+        { query: catalogQuery(rules, { vendor }), after },
+      );
+      data.products.nodes
+        .filter((p) => isVisible(p, rules))
+        .forEach((p) => add(p.productType));
+      if (!data.products.pageInfo.hasNextPage) break;
+      after = data.products.pageInfo.endCursor;
+    }
+  }
+  return [...counts]
+    .map(([type, count]) => ({ type, count }))
+    .sort((a, b) => a.type.localeCompare(b.type, "fr"));
+}
+
 export async function allVendors(admin: Admin | null) {
   if (!admin) return [...new Set(demoProducts.map((p) => p.vendor))].sort();
   const data = await gql<{ productVendors: { nodes: string[] } }>(

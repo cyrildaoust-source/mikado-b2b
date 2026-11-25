@@ -499,8 +499,8 @@ export default function Editor({
         </div>
       )}
       {sections.length > 0 && (
-        <nav className="lot-summary" aria-label="Sommaire des lots">
-          <strong>Vos lots</strong>
+        <nav className="lot-summary" aria-label="Sommaire des pièces">
+          <strong>Vos pièces</strong>
           <div>
             {sections.map((section, index) => (
               <a key={section.id} href={`#lot-${section.id}`}>
@@ -545,7 +545,7 @@ export default function Editor({
                 <span className="muted">Prix unitaires HTVA</span>
                 <div>
                   <button onClick={() => setNewLot(true)}>
-                    Ajouter un lot
+                    Ajouter une pièce
                   </button>
                   <button onClick={() => pick({ kind: "products" })}>
                     Ajouter des produits
@@ -557,8 +557,8 @@ export default function Editor({
                   <span className="empty-symbol">◇</span>
                   <h3>Composez votre proposition</h3>
                   <p>
-                    Ajoutez vos produits Shopify, puis proposez des alternatives
-                    si nécessaire.
+                    Créez une pièce par espace du projet, ajoutez-y vos produits,
+                    puis proposez des alternatives si nécessaire.
                   </p>
                   <button
                     className="primary"
@@ -576,7 +576,7 @@ export default function Editor({
                 >
                   <div className="lot-heading">
                     <input
-                      aria-label={`Nom du lot ${section.title}`}
+                      aria-label={`Nom de la pièce ${section.title}`}
                       value={section.title}
                       maxLength={150}
                       onChange={(e) =>
@@ -674,7 +674,7 @@ export default function Editor({
                               </label>
                             )}
                             <label>
-                              Déplacer vers le lot
+                              Déplacer vers la pièce
                               <select
                                 value={section.id}
                                 onChange={(e) => {
@@ -727,7 +727,7 @@ export default function Editor({
                       pick({ kind: "products", section: section.id })
                     }
                   >
-                    Ajouter un produit à ce lot
+                    Ajouter un produit à cette pièce
                   </button>
                 </div>
               ))}
@@ -1292,7 +1292,7 @@ export default function Editor({
         </Modal>
       )}
       {newLot && (
-        <Modal title="Ajouter un lot" onClose={() => setNewLot(false)}>
+        <Modal title="Ajouter une pièce" onClose={() => setNewLot(false)}>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -1304,10 +1304,10 @@ export default function Editor({
             }}
           >
             <p className="muted">
-              Nommez le lot, puis choisissez ses produits.
+              Nommez la pièce (salon, cuisine, chambre…), puis choisissez ses produits.
             </p>
             <label>
-              Nom du lot
+              Nom de la pièce
               <input
                 name="title"
                 required

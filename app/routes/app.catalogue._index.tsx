@@ -6,7 +6,11 @@ import {
   type LoaderFunctionArgs,
 } from "react-router";
 import { context } from "../services/context.server";
-import { catalogFacets, listCatalog } from "../services/catalog.server";
+import {
+  brandFamilies,
+  catalogFacets,
+  listCatalog,
+} from "../services/catalog.server";
 import { money } from "../domain/quote";
 import { sized } from "../components/catalog/image";
 
@@ -20,16 +24,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
       after: u.searchParams.get("apres") || undefined,
     };
   try {
-    const [list, facets] = await Promise.all([
+    const [list, facets, families] = await Promise.all([
       listCatalog(c.admin, filters),
       catalogFacets(c.admin),
+      brandFamilies(c.admin, filters.vendor).catch(() => []),
     ]);
-    return { ...list, facets, filters, demo: c.demo, error: null };
+    return { ...list, facets, families, filters, demo: c.demo, error: null };
   } catch {
     return {
       items: [],
       next: null,
       facets: { vendors: [], types: [] },
+      families: [] as { type: string; count: number }[],
       filters,
       demo: c.demo,
       error: "Catalogue indisponible pour le moment. Réessayez dans un instant.",
@@ -38,8 +44,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export default function Catalogue() {
-  const { items, next, facets, filters, demo, error } =
+  const { items, next, facets, families, filters, demo, error } =
     useLoaderData<typeof loader>();
+  const family = (type: string) =>
+    "?" + new URLSearchParams({ q: filters.q, marque: filters.vendor, famille: type });
   const busy = useNavigation().state === "loading";
   const more = new URLSearchParams({
     q: filters.q,
@@ -63,7 +71,16 @@ export default function Catalogue() {
           placeholder="Produit, designer, référence…"
           defaultValue={filters.q}
         />
-        <select name="marque" aria-label="Marque" defaultValue={filters.vendor}>
+        <select
+          name="marque"
+          aria-label="Marque"
+          defaultValue={filters.vendor}
+          onChange={(e) => {
+            const form = e.currentTarget.form!;
+            (form.elements.namedItem("famille") as HTMLSelectElement).value = "";
+            form.requestSubmit();
+          }}
+        >
           <option value="">Toutes les marques</option>
           {facets.vendors.map((v) => (
             <option key={v} value={v}>
@@ -71,9 +88,14 @@ export default function Catalogue() {
             </option>
           ))}
         </select>
-        <select name="famille" aria-label="Famille" defaultValue={filters.type}>
+        <select
+          name="famille"
+          aria-label="Famille"
+          defaultValue={filters.type}
+          onChange={(e) => e.currentTarget.form!.requestSubmit()}
+        >
           <option value="">Toutes les familles</option>
-          {facets.types.map((t) => (
+          {(families.length ? families.map((f) => f.type) : facets.types).map((t) => (
             <option key={t} value={t}>
               {t}
             </option>
@@ -84,6 +106,25 @@ export default function Catalogue() {
           <Link to="/app/catalogue">Effacer</Link>
         )}
       </Form>
+      {families.length > 1 && (
+        <nav className="family-chips" aria-label={`Familles ${filters.vendor}`}>
+          <Link
+            to={family("")}
+            className={filters.type ? "" : "active"}
+          >
+            Tout {filters.vendor}
+          </Link>
+          {families.map((f) => (
+            <Link
+              key={f.type}
+              to={family(f.type)}
+              className={filters.type === f.type ? "active" : ""}
+            >
+              {f.type} <span>{f.count}</span>
+            </Link>
+          ))}
+        </nav>
+      )}
       {error && (
         <p role="alert" className="error">
           {error}
