@@ -19,6 +19,12 @@ export type CatalogueTarget = {
   group: string;
   name: string;
   mode: "alternative" | "option";
+  /** Famille du produit d'origine : le catalogue s'ouvre filtré sur elle. */
+  family?: string;
+  /** Variantes déjà proposées pour ce produit (identifiant ou désignation). */
+  taken: string[];
+  /** Complément (famille retrouvée) d'une cible déjà ouverte. */
+  refine?: boolean;
 };
 
 /** Carte en cours de glisser : lue par les zones de dépôt de l'éditeur.
@@ -64,13 +70,33 @@ export function CatalogueBrowser({
   const first = useFetcher<Page>();
   const more = useFetcher<Page>();
   const [query, setQuery] = useState(() => new URLSearchParams());
-  const [extra, setExtra] = useState<{ items: Page["items"]; next: string | null }>({
+  const [extra, setExtra] = useState<{
+    items: Page["items"];
+    next: string | null;
+  }>({
     items: [],
     next: null,
   });
   const [dragId, setDragId] = useState("");
   const timer = useRef<ReturnType<typeof setTimeout>>();
   const pane = useRef<HTMLElement>(null);
+  const form = useRef<HTMLFormElement>(null);
+  // Alternative ou option : le catalogue s'ouvre sur la famille du produit,
+  // puis revient à tout le catalogue quand on a choisi.
+  const auto = useRef(false);
+  const family = alternative?.family || "";
+  useEffect(() => {
+    if (family) {
+      form.current?.reset();
+      setQuery(new URLSearchParams([["famille", family]]));
+      auto.current = true;
+    } else if (auto.current) {
+      form.current?.reset();
+      setQuery(new URLSearchParams());
+      auto.current = false;
+    }
+  }, [family, alternative?.group, alternative?.mode]);
+  const taken = new Set(alternative?.taken || []);
   const sentinel = useRef<HTMLDivElement>(null);
 
   const url = (q: URLSearchParams, after?: string) => {
@@ -101,7 +127,10 @@ export function CatalogueBrowser({
     if (!el || !cursor) return;
     const io = new IntersectionObserver(
       (entries) => entries.some((e) => e.isIntersecting) && loadMore(),
-      { root: pane.current?.querySelector(".pane-scroll"), rootMargin: "600px 0px" },
+      {
+        root: pane.current?.querySelector(".pane-scroll"),
+        rootMargin: "600px 0px",
+      },
     );
     io.observe(el);
     return () => io.disconnect();
@@ -136,7 +165,11 @@ export function CatalogueBrowser({
       <header className="pane-head">
         <h2>Catalogue</h2>
         <small>Glissez un produit dans une pièce, ou utilisez +</small>
-        <button type="button" className="text-button pane-close" onClick={onClose}>
+        <button
+          type="button"
+          className="text-button pane-close"
+          onClick={onClose}
+        >
           Fermer
         </button>
       </header>
@@ -151,12 +184,47 @@ export function CatalogueBrowser({
                 : "Choisissez un produit avec +, ou glissez-le sur la ligne."}
             </small>
           </p>
-          <button type="button" className="text-button" onClick={onCancelAlternative}>
+          <button
+            type="button"
+            className="text-button"
+            onClick={onCancelAlternative}
+          >
             Annuler
           </button>
+          {family && (
+            <p className="banner-family">
+              {types.length === 1 && types[0] === family ? (
+                <>
+                  Même famille : {family}
+                  <button
+                    type="button"
+                    className="text-button"
+                    onClick={() => {
+                      form.current?.reset();
+                      setQuery(new URLSearchParams());
+                    }}
+                  >
+                    Tout le catalogue
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => {
+                    form.current?.reset();
+                    setQuery(new URLSearchParams([["famille", family]]));
+                  }}
+                >
+                  Revenir à la famille {family}
+                </button>
+              )}
+            </p>
+          )}
         </div>
       )}
       <form
+        ref={form}
         className="catalogue-filters"
         onSubmit={(e) => {
           e.preventDefault();
@@ -175,7 +243,10 @@ export function CatalogueBrowser({
           name="marque"
           all="Toutes les marques"
           plural="marques"
-          options={(data?.facets.vendors || []).map((v) => ({ value: v, count: 0 }))}
+          options={(data?.facets.vendors || []).map((v) => ({
+            value: v,
+            count: 0,
+          }))}
           selected={vendors}
           onChange={(form) => {
             form
@@ -186,7 +257,7 @@ export function CatalogueBrowser({
         />
         {families.length > 1 && (
           <Picker
-            key={`f-${vendors.join("|")}`}
+            key={`f-${vendors.join("|")}-${types.join("|")}`}
             name="famille"
             all="Toutes les familles"
             plural="familles"
@@ -213,90 +284,111 @@ export function CatalogueBrowser({
         )}
         {items.length > 0 && (
           <ul className="catalogue-grid" aria-busy={busy}>
-            {items.map((p) => (
-              <li
-                key={p.id}
-                className={`catalogue-item${dragId === p.id ? " is-dragging" : ""}`}
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.effectAllowed = "copy";
-                  e.dataTransfer.setData("text/plain", p.title);
-                  catalogueDrag.current = p;
-                  setDragId(p.id);
-                  document.documentElement.classList.add("is-dragging-card");
-                }}
-                onDragEnd={() => {
-                  catalogueDrag.current = null;
-                  setDragId("");
-                  document.documentElement.classList.remove("is-dragging-card");
-                }}
-              >
-                <button
-                  type="button"
-                  className={`catalogue-add${alternative ? " as-alternative" : ""}`}
-                  aria-label={
-                    alternative?.mode === "option"
-                      ? `Ajouter ${p.title} en option de ${alternative.name}`
-                      : alternative
-                        ? `Proposer ${p.title} en alternative à ${alternative.name}`
-                        : `Ajouter ${p.title} au devis`
-                  }
-                  title={
-                    alternative?.mode === "option"
-                      ? "Ajouter en option"
-                      : alternative
-                        ? "Proposer en alternative"
-                        : "Ajouter à la dernière pièce"
-                  }
-                  onClick={() => {
-                    window.dispatchEvent(
-                      new CustomEvent<CatalogueCard>(CATALOGUE_ADD, {
-                        detail: {
-                          id: p.id,
-                          numericId: p.numericId,
-                          title: p.title,
-                          group: alternative?.group,
-                          mode: alternative?.mode,
-                        },
-                      }),
+            {items.map((p) => {
+              // Même variante que le produit visé : on ne la propose pas deux fois.
+              const already =
+                !!alternative &&
+                (taken.has(p.id) ||
+                  taken.has(`${p.title} - ${p.variantTitle}`));
+              return (
+                <li
+                  key={p.id}
+                  className={`catalogue-item${dragId === p.id ? " is-dragging" : ""}${
+                    already ? " is-taken" : ""
+                  }`}
+                  draggable={!already}
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = "copy";
+                    e.dataTransfer.setData("text/plain", p.title);
+                    catalogueDrag.current = p;
+                    setDragId(p.id);
+                    document.documentElement.classList.add("is-dragging-card");
+                  }}
+                  onDragEnd={() => {
+                    catalogueDrag.current = null;
+                    setDragId("");
+                    document.documentElement.classList.remove(
+                      "is-dragging-card",
                     );
-                    if (alternative) onCancelAlternative?.();
                   }}
                 >
-                  <span aria-hidden="true">+</span>
-                  {alternative && (
-                    <span className="add-label">
-                      {alternative.mode === "option" ? "Option" : "Alternative"}
-                    </span>
+                  {already ? (
+                    <span className="catalogue-taken">Déjà proposé</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className={`catalogue-add${alternative ? " as-alternative" : ""}`}
+                      aria-label={
+                        alternative?.mode === "option"
+                          ? `Ajouter ${p.title} en option de ${alternative.name}`
+                          : alternative
+                            ? `Proposer ${p.title} en alternative à ${alternative.name}`
+                            : `Ajouter ${p.title} au devis`
+                      }
+                      title={
+                        alternative?.mode === "option"
+                          ? "Ajouter en option"
+                          : alternative
+                            ? "Proposer en alternative"
+                            : "Ajouter à la dernière pièce"
+                      }
+                      onClick={() => {
+                        window.dispatchEvent(
+                          new CustomEvent<CatalogueCard>(CATALOGUE_ADD, {
+                            detail: {
+                              id: p.id,
+                              numericId: p.numericId,
+                              title: p.title,
+                              group: alternative?.group,
+                              mode: alternative?.mode,
+                            },
+                          }),
+                        );
+                        if (alternative) onCancelAlternative?.();
+                      }}
+                    >
+                      <span aria-hidden="true">+</span>
+                      {alternative && (
+                        <span className="add-label">
+                          {alternative.mode === "option"
+                            ? "Option"
+                            : "Alternative"}
+                        </span>
+                      )}
+                    </button>
                   )}
-                </button>
-                <div className="catalogue-card">
-                  <div className="catalogue-photo">
-                    {p.image ? (
-                      <img
-                        src={sized(p.image, 400)}
-                        alt={p.imageAlt}
-                        loading="lazy"
-                        draggable={false}
-                      />
-                    ) : (
-                      <span className="catalogue-nophoto">
-                        {p.vendor}
-                        <small>Photo à venir</small>
+                  <div className="catalogue-card">
+                    <div className="catalogue-photo">
+                      {p.image ? (
+                        <img
+                          src={sized(p.image, 400)}
+                          alt={p.imageAlt}
+                          loading="lazy"
+                          draggable={false}
+                        />
+                      ) : (
+                        <span className="catalogue-nophoto">
+                          {p.vendor}
+                          <small>Photo à venir</small>
+                        </span>
+                      )}
+                    </div>
+                    <div className="catalogue-meta">
+                      <small>{p.vendor}</small>
+                      <strong title={p.title}>{p.title}</strong>
+                      <span className="catalogue-row">
+                        <span className="catalogue-finish">
+                          {p.variantTitle}
+                        </span>
+                        <span className="catalogue-price">
+                          {money(p.minPrice)}
+                        </span>
                       </span>
-                    )}
+                    </div>
                   </div>
-                  <div className="catalogue-meta">
-                    <small>{p.vendor}</small>
-                    <strong title={p.title}>{p.title}</strong>
-                    <span className="catalogue-row">
-                      <span className="catalogue-finish">{p.variantTitle}</span>
-                      <span className="catalogue-price">{money(p.minPrice)}</span>
-                    </span>
-                  </div>
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         )}
         {data && !items.length && !data.error && (
@@ -307,8 +399,14 @@ export function CatalogueBrowser({
         )}
         {cursor && (
           <div className="catalogue-more" ref={sentinel}>
-            <button type="button" onClick={loadMore} disabled={more.state !== "idle"}>
-              {more.state !== "idle" ? "Chargement…" : "Afficher plus de produits"}
+            <button
+              type="button"
+              onClick={loadMore}
+              disabled={more.state !== "idle"}
+            >
+              {more.state !== "idle"
+                ? "Chargement…"
+                : "Afficher plus de produits"}
             </button>
           </div>
         )}

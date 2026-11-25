@@ -8,6 +8,7 @@ import {
 import {
   brandRules,
   getCatalogProduct,
+  demoProducts,
   visibilityQuery,
 } from "../services/catalog.server";
 import { lineFor } from "../services/catalog-quote.server";
@@ -22,6 +23,23 @@ export async function loader({ request }: LoaderFunctionArgs) {
       { items: [], next: null, error: "Saisissez les coordonnées de votre client dans le devis." },
       { headers: { "Cache-Control": "no-store" } },
     );
+  if (u.searchParams.get("kind") === "family") {
+    // Famille d'un produit déjà au devis (lignes ajoutées avant qu'on l'enregistre).
+    const variant = u.searchParams.get("variante") || "",
+      sku = (u.searchParams.get("sku") || "").slice(0, 150);
+    let family = "";
+    try {
+      if (c.admin && /^gid:\/\/shopify\/ProductVariant\/\d+$/.test(variant))
+        family = (await productsByIds(c.admin, [variant])).items[0]?.family || "";
+      else if (!c.admin && sku)
+        family =
+          demoProducts.find((p) => p.productVariants.some((v) => v.sku === sku))
+            ?.productType || "";
+    } catch {
+      family = "";
+    }
+    return Response.json({ family }, { headers: { "Cache-Control": "no-store" } });
+  }
   if (u.searchParams.get("kind") === "line") {
     // Une carte du catalogue glissée dans le devis : même ligne que l'ajout
     // rapide, avec les mêmes règles de visibilité des marques.

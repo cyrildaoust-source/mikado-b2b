@@ -131,6 +131,7 @@ export async function lineFor(
       variantId: null,
       image: product.image,
       vatRate: 21,
+      family: product.productType || undefined,
     });
   const [line] = (await productsByIds(admin, [variantId])).items;
   if (!line.taxable)
