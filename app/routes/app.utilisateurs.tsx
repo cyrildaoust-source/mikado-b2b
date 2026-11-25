@@ -41,9 +41,9 @@ const newUser = z.object({
   role: z.enum(["architect", "admin"]),
 });
 
+// L'adresse de la page ouverte : un lien créé sur une Preview mène à cette Preview.
 function inviteUrl(request: Request, token: string) {
-  const base = process.env.SHOPIFY_APP_URL || new URL(request.url).origin;
-  return `${base.replace(/\/$/, "")}/invitation/${token}`;
+  return `${new URL(request.url).origin}/invitation/${token}`;
 }
 
 export async function action({ request }: ActionFunctionArgs) {
