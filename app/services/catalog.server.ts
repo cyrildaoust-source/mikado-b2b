@@ -2,13 +2,12 @@ import db from "../db.server";
 import { cents } from "../domain/quote";
 import { gql, searchPrefix, shopInfo, type Admin } from "./shopify-api.server";
 
-// Catalogue pro : lecture côté serveur des fiches Shopify, avec le réglage par
-// marque tenu par Mikado Deco (visible, brouillons inclus). Rien n'est publié.
+// Catalogue pro : lecture côté serveur des fiches Shopify, actives et en brouillon
+// (gold ou non), avec les marques que Mikado Deco masque. Rien n'est publié.
 
 export type BrandRule = {
   vendor: string;
   visible: boolean;
-  includeDrafts: boolean;
 };
 export type CatalogCard = {
   id: string;
@@ -42,16 +41,8 @@ const quoted = (v: string) => '"' + v.replace(/[\\"]/g, "\\$&") + '"';
 
 /** Requête de recherche Shopify qui limite le catalogue à ce que Mikado Deco ouvre aux pros. */
 export function visibilityQuery(rules: BrandRule[]) {
-  const hidden = rules.filter((r) => !r.visible).map((r) => r.vendor),
-    drafts = rules
-      .filter((r) => r.visible && r.includeDrafts)
-      .map((r) => r.vendor);
-  const active = ["status:active", ...hidden.map((v) => `-vendor:${quoted(v)}`)]
-    .join(" AND ");
-  const draft = drafts.length
-    ? ` OR (status:draft AND (${drafts.map((v) => `vendor:${quoted(v)}`).join(" OR ")}))`
-    : "";
-  return `((${active})${draft})`;
+  const hidden = rules.filter((r) => !r.visible).map((r) => r.vendor);
+  return `((${["(status:active OR status:draft)", ...hidden.map((v) => `-vendor:${quoted(v)}`)].join(" AND ")}))`;
 }
 
 export function catalogQuery(
@@ -71,8 +62,7 @@ export function isVisible(
 ) {
   const rule = rules.find((r) => r.vendor === p.vendor);
   if (rule && !rule.visible) return false;
-  if (p.status === "ACTIVE") return true;
-  return p.status === "DRAFT" && !!rule?.includeDrafts;
+  return p.status === "ACTIVE" || p.status === "DRAFT";
 }
 
 /** Prix public HTVA en centimes, à partir du prix catalogue (TVAC si la boutique l'est). */

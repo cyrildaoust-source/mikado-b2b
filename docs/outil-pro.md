@@ -19,9 +19,9 @@ réglage par marque.
 
 Les fiches sont lues dans Shopify côté serveur. Rien n'est publié ni modifié.
 
-- Par défaut, une marque est visible avec ses fiches **actives**.
-- Page « Marques » : masquer une marque, ou y inclure ses fiches **en brouillon**
-  (marques en représentation indirecte, absentes du site public).
+- Toutes les fiches encodées sont visibles, **actives ou en brouillon**, gold ou non
+  (décision de Cyril du 25/11/2026).
+- Page « Marques » : masquer une marque entière.
 - Une fiche archivée n'apparaît jamais. Une fiche masquée renvoie une page introuvable,
   même si on devine son adresse.
 - Les prix affichés sont les prix publics HTVA (prix Shopify TVAC divisé par 1,21).

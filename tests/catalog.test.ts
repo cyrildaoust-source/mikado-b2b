@@ -17,22 +17,22 @@ import {
 import { emptyQuote, lineSchema, selectedLines } from "../app/domain/quote";
 import { sized } from "../app/components/catalog/image";
 
-test("sans réglage, seules les fiches actives sont visibles", () => {
-  assert.equal(visibilityQuery([]), "((status:active))");
+test("sans réglage, les fiches actives et en brouillon sont visibles, jamais les archivées", () => {
+  assert.equal(visibilityQuery([]), "(((status:active OR status:draft)))");
   assert.equal(isVisible({ vendor: "HAY", status: "ACTIVE" }, []), true);
-  assert.equal(isVisible({ vendor: "HAY", status: "DRAFT" }, []), false);
+  assert.equal(isVisible({ vendor: "HAY", status: "DRAFT" }, []), true);
   assert.equal(isVisible({ vendor: "HAY", status: "ARCHIVED" }, []), false);
 });
 
-test("une marque masquée disparaît, une marque indirecte montre ses brouillons", () => {
+test("une marque masquée disparaît entièrement", () => {
   const rules = [
-    { vendor: "IHR", visible: false, includeDrafts: true },
-    { vendor: "Knoll", visible: true, includeDrafts: true },
-    { vendor: 'Carl Hansen & "Søn"', visible: true, includeDrafts: true },
+    { vendor: "IHR", visible: false },
+    { vendor: "Knoll", visible: true },
+    { vendor: 'Carl Hansen & "Søn"', visible: false },
   ];
   assert.equal(
     visibilityQuery(rules),
-    '((status:active AND -vendor:"IHR") OR (status:draft AND (vendor:"Knoll" OR vendor:"Carl Hansen & \\"Søn\\"")))',
+    '(((status:active OR status:draft) AND -vendor:"IHR" AND -vendor:"Carl Hansen & \\"Søn\\""))',
   );
   assert.equal(isVisible({ vendor: "IHR", status: "ACTIVE" }, rules), false);
   assert.equal(isVisible({ vendor: "IHR", status: "DRAFT" }, rules), false);
@@ -44,12 +44,12 @@ test("les filtres s'ajoutent à la visibilité sans pouvoir l'élargir", () => {
   const q = catalogQuery([], {
     vendor: "Vitra",
     type: "Chaises",
-    q: "eames OR status:draft",
+    q: "eames OR status:archived",
   });
-  assert.ok(q.startsWith("((status:active)) AND "));
+  assert.ok(q.startsWith("(((status:active OR status:draft))) AND "));
   assert.match(q, /vendor:"Vitra"/);
   assert.match(q, /product_type:"Chaises"/);
-  assert.doesNotMatch(q, /status:draft/);
+  assert.doesNotMatch(q, /status:archived/);
 });
 
 test("prix public HTVA depuis un catalogue TVAC", () => {

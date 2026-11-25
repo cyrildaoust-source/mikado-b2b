@@ -150,8 +150,7 @@ model Invite {
 
 // Réglage par marque du catalogue pro, tenu par Cyril.
 model BrandSetting {
-  vendor        String   @id
-  visible       Boolean  @default(true)
-  includeDrafts Boolean  @default(false)
-  updatedAt     DateTime @updatedAt
+  vendor    String   @id
+  visible   Boolean  @default(true)
+  updatedAt DateTime @updatedAt
 }

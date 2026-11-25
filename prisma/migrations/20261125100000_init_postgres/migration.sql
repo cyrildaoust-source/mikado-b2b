@@ -144,7 +144,6 @@ CREATE TABLE "Invite" (
 CREATE TABLE "BrandSetting" (
     "vendor" TEXT NOT NULL,
     "visible" BOOLEAN NOT NULL DEFAULT true,
-    "includeDrafts" BOOLEAN NOT NULL DEFAULT false,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "BrandSetting_pkey" PRIMARY KEY ("vendor")

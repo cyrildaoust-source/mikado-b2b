@@ -26,7 +26,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
       return {
         vendor,
         visible: r?.visible ?? true,
-        includeDrafts: r?.includeDrafts ?? false,
       };
     }),
   };
@@ -38,12 +37,11 @@ export async function action({ request }: ActionFunctionArgs) {
   const form = await readForm(request),
     vendor = String(form.get("vendor") || "").slice(0, 255);
   if (!vendor) return { error: "Marque manquante." };
-  const visible = form.get("visible") === "on",
-    includeDrafts = form.get("includeDrafts") === "on";
+  const visible = form.get("visible") === "on";
   await db.brandSetting.upsert({
     where: { vendor },
-    create: { vendor, visible, includeDrafts },
-    update: { visible, includeDrafts },
+    create: { vendor, visible },
+    update: { visible },
   });
   return { ok: `${vendor} : réglage enregistré.` };
 }
@@ -77,7 +75,7 @@ export default function Brands() {
           <thead>
             <tr>
               <th>Marque</th>
-              <th>Réglage pour les architectes</th>
+              <th>Catalogue des architectes</th>
             </tr>
           </thead>
           <tbody>
@@ -95,14 +93,6 @@ export default function Brands() {
                       />{" "}
                       Visible
                     </label>
-                    <label className="inline">
-                      <input
-                        type="checkbox"
-                        name="includeDrafts"
-                        defaultChecked={b.includeDrafts}
-                      />{" "}
-                      Brouillons inclus
-                    </label>
                     <button>Enregistrer</button>
                   </Form>
                 </td>
@@ -111,10 +101,9 @@ export default function Brands() {
           </tbody>
         </table>
         <p className="muted brand-note">
-          Par défaut, une marque est visible avec ses seules fiches actives.
-          Cochez « Brouillons inclus » pour une marque que vous ne vendez pas en
-          ligne (par exemple une marque en représentation indirecte) : ses
-          fiches en brouillon apparaissent alors aux architectes connectées.
+          Toutes les fiches encodées sont visibles, actives ou en brouillon,
+          gold ou non. Décochez « Visible » pour retirer une marque du
+          catalogue des architectes. Les fiches archivées n'apparaissent jamais.
         </p>
       </div>
     </main>
