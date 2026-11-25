@@ -61,8 +61,8 @@ export function ProductRow({
           {base && (
             <span className="alternative-caption">
               {i.qty === base.qty
-                ? `${signedMoney(lineTotal(i) - lineTotal(base))} HTVA pour ${i.qty} unités`
-                : `${i.qty} unités · ${money(lineTotal(i))} HTVA`}
+                ? `${signedMoney(lineTotal(i) - lineTotal(base))} HTVA pour ${i.qty} unité${i.qty > 1 ? "s" : ""}`
+                : `${i.qty} unité${i.qty > 1 ? "s" : ""} · ${money(lineTotal(i))} HTVA`}
             </span>
           )}
           {option && (

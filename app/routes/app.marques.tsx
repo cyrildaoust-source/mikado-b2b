@@ -10,6 +10,8 @@ import { context, requireAdmin } from "../services/context.server";
 import { allVendors, brandRules } from "../services/catalog.server";
 import { readForm } from "../services/form.server";
 
+export const meta = () => [{ title: "Marques · Mikado Deco Pro" }];
+
 export async function loader({ request }: LoaderFunctionArgs) {
   const c = await context(request);
   requireAdmin(c);

@@ -15,6 +15,8 @@ import {
   safeNext,
 } from "../services/auth.server";
 
+export const meta = () => [{ title: "Connexion · Mikado Deco Pro" }];
+
 export async function loader({ request }: LoaderFunctionArgs) {
   if (!isStandalone()) throw redirect("/app");
   const next = safeNext(new URL(request.url).searchParams.get("suite") || "");
