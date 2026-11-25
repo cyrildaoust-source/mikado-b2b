@@ -13,21 +13,21 @@ export async function listQuotes(
     archived: Prisma.sql`q.status = 'archived'`,
     deleted: Prisma.sql`q.status = 'deleted'`,
     ordered: Prisma.sql`q.status = 'converted'`,
-    draft: Prisma.sql`q.status = 'draft' AND NOT EXISTS(SELECT 1 FROM Revision r WHERE r.quoteId=q.id AND r.version=q.version AND r.pdfGeneratedAt IS NOT NULL)`,
-    ready: Prisma.sql`q.status = 'draft' AND EXISTS(SELECT 1 FROM Revision r WHERE r.quoteId=q.id AND r.version=q.version AND r.pdfGeneratedAt IS NOT NULL AND r.sentAt IS NULL)`,
-    sent: Prisma.sql`q.status = 'draft' AND EXISTS(SELECT 1 FROM Revision r WHERE r.quoteId=q.id AND r.version=q.version AND r.pdfGeneratedAt IS NOT NULL AND r.sentAt IS NOT NULL)`,
+    draft: Prisma.sql`q.status = 'draft' AND NOT EXISTS(SELECT 1 FROM "Revision" r WHERE r."quoteId"=q.id AND r.version=q.version AND r."pdfGeneratedAt" IS NOT NULL)`,
+    ready: Prisma.sql`q.status = 'draft' AND EXISTS(SELECT 1 FROM "Revision" r WHERE r."quoteId"=q.id AND r.version=q.version AND r."pdfGeneratedAt" IS NOT NULL AND r."sentAt" IS NULL)`,
+    sent: Prisma.sql`q.status = 'draft' AND EXISTS(SELECT 1 FROM "Revision" r WHERE r."quoteId"=q.id AND r.version=q.version AND r."pdfGeneratedAt" IS NOT NULL AND r."sentAt" IS NOT NULL)`,
   };
   const ownerSql =
-    owner === null ? Prisma.sql`1=1` : Prisma.sql`q.ownerId=${owner}`;
-  const where = Prisma.sql`q.shop=${shop} AND ${ownerSql} AND (q.title LIKE ${term} ESCAPE '\\' OR q.customer LIKE ${term} ESCAPE '\\' OR q.number LIKE ${term} ESCAPE '\\') AND ${states[filter] || Prisma.sql`q.status NOT IN ('archived', 'deleted')`}`;
+    owner === null ? Prisma.sql`1=1` : Prisma.sql`q."ownerId"=${owner}`;
+  const where = Prisma.sql`q.shop=${shop} AND ${ownerSql} AND (q.title ILIKE ${term} ESCAPE '\\' OR q.customer ILIKE ${term} ESCAPE '\\' OR q.number ILIKE ${term} ESCAPE '\\') AND ${states[filter] || Prisma.sql`q.status NOT IN ('archived', 'deleted')`}`;
   const count = await db.$queryRaw<{ n: bigint }[]>(
-    Prisma.sql`SELECT COUNT(*) as n FROM Quote q WHERE ${where}`,
+    Prisma.sql`SELECT COUNT(*) AS n FROM "Quote" q WHERE ${where}`,
   );
   const total = Number(count[0].n),
     pages = Math.max(1, Math.ceil(total / 25)),
     current = Math.min(Math.max(1, page), pages);
   const ids = await db.$queryRaw<{ id: number }[]>(
-    Prisma.sql`SELECT q.id FROM Quote q WHERE ${where} ORDER BY q.updatedAt DESC,q.id DESC LIMIT 25 OFFSET ${(current - 1) * 25}`,
+    Prisma.sql`SELECT q.id FROM "Quote" q WHERE ${where} ORDER BY q."updatedAt" DESC, q.id DESC LIMIT 25 OFFSET ${(current - 1) * 25}`,
   );
   const quotes = await db.quote.findMany({
     where: { shop, id: { in: ids.map((q) => q.id) } },

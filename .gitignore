@@ -40,3 +40,6 @@ pnpm-lock.yaml
 # Bases locales
 *.sqlite
 *.sqlite-journal
+
+# Vercel
+.vercel

@@ -1,6 +1,6 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { chromium } from "playwright";
+import inter400 from "../../public/fonts/inter-400.woff2?inline";
+import inter700 from "../../public/fonts/inter-700.woff2?inline";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createElement } from "react";
 import db from "../db.server";
@@ -9,15 +9,27 @@ import { quoteSchema, reference } from "../domain/quote";
 import { QuoteDocument } from "../components/QuoteDocument";
 import legacyCss from "../styles/legacy-document.css?raw";
 import css from "../styles/document.css?raw";
+// Polices intégrées au build : aucun accès disque à l'exécution (Vercel).
 const embeddedCss = css
-  .replaceAll(
-    "/fonts/inter-400.woff2",
-    `data:font/woff2;base64,${readFileSync(resolve("public/fonts/inter-400.woff2")).toString("base64")}`,
-  )
-  .replaceAll(
-    "/fonts/inter-700.woff2",
-    `data:font/woff2;base64,${readFileSync(resolve("public/fonts/inter-700.woff2")).toString("base64")}`,
-  );
+  .replaceAll("/fonts/inter-400.woff2", inter400)
+  .replaceAll("/fonts/inter-700.woff2", inter700);
+
+/** Chromium local (Playwright) ou, sur Vercel, la version prévue pour les fonctions. */
+async function launchBrowser() {
+  if (process.env.VERCEL) {
+    const { default: serverless } = await import("@sparticuz/chromium");
+    return chromium.launch({
+      headless: true,
+      executablePath: await serverless.executablePath(),
+      args: serverless.args,
+    });
+  }
+  return chromium.launch({
+    headless: true,
+    executablePath:
+      process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
+  });
+}
 const escapeHtml = (value: string) =>
   value
     .replaceAll("&", "&amp;")
@@ -51,11 +63,7 @@ async function generatePdf(shop: string, id: number, version: number) {
       demo: shop === "demo.local",
     }),
   );
-  const browser = await chromium.launch({
-    headless: true,
-    executablePath:
-      process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
-  });
+  const browser = await launchBrowser();
   const deadline = setTimeout(() => {
     void browser.close().catch(() => {});
   }, 45000);

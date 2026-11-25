@@ -55,4 +55,39 @@ Sans `APP_MODE`, l'application reste l'app intégrée à l'admin Shopify, comme 
 ## Essai local
 
 `npm run dev:local` ouvre la démonstration avec un catalogue fictif, sans Shopify ni
-connexion.
+connexion. Il faut un Postgres local (`DATABASE_URL` dans `.env`, voir `.env.example`).
+
+## Mise en ligne sur Vercel
+
+La base est Postgres (Neon, ajouté depuis l'onglet « Storage » du projet Vercel). Sur Vercel :
+
+1. Importer le dépôt `mikado-b2b` dans l'équipe Vercel (offre Pro).
+2. Storage → créer une base Neon, région Francfort, reliée au projet. L'intégration fournit
+   `DATABASE_URL` et `DATABASE_URL_UNPOOLED`, avec une branche de base par Preview.
+3. Variables d'environnement : `APP_MODE`, `SHOPIFY_SHOP`, `SHOPIFY_API_KEY`,
+   `SHOPIFY_API_SECRET`, `SHOPIFY_APP_URL`, `SESSION_SECRET`, `SCOPES`, et les
+   coordonnées vendeur (`SELLER_*`) pour le PDF.
+4. Le build (`npm run vercel-build`) applique les migrations puis construit l'app. Les
+   fonctions tournent à Francfort (`vercel.json`).
+5. Domaine : `pro.mikadodeco.be`, avec un enregistrement CNAME chez GoDaddy vers
+   l'adresse indiquée par Vercel.
+6. Premier accès, sans terminal : définir `BOOTSTRAP_ADMIN_EMAIL` (l'e-mail de Cyril) et
+   `BOOTSTRAP_TOKEN` (32 caractères aléatoires ou plus), puis ouvrir
+   `https://pro.mikadodeco.be/premier-acces?jeton=<BOOTSTRAP_TOKEN>`. La page mène au choix
+   du mot de passe. Elle ne fait plus rien dès qu'un accès existe ; on peut alors retirer
+   les deux variables.
+
+Le PDF utilise `@sparticuz/chromium` sur Vercel (fonction de 60 s et 2 Go) et le Chromium
+de Playwright ailleurs.
+
+**Facturation Odoo : non disponible sur Vercel pour l'instant.** Le pont Odoo est un
+script Python et le worker tourne en continu ; ni l'un ni l'autre n'existe dans une
+fonction Vercel. L'automatisation était déjà désactivée. La porter en TypeScript, avec une
+tâche planifiée Vercel, sera un chantier à part.
+
+## Tests
+
+```sh
+npm test                      # unitaires
+TEST_DATABASE_URL=postgresql://… npm run test:integration   # Postgres, schéma jetable
+```

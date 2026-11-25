@@ -24,3 +24,6 @@ export async function action({ request, params }: ActionFunctionArgs) {
     },
   });
 }
+
+// Vercel : la génération du PDF (Chromium) peut prendre plus que la durée par défaut.
+export const config = { maxDuration: 60, memory: 2048 };
