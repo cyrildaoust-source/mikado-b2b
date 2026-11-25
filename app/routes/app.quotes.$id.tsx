@@ -41,7 +41,10 @@ import {
 import { billingKinds, type BillingKind } from "../domain/billing";
 import { fiscalTotals } from "../domain/quote";
 import Editor from "../components/Editor";
-import { CatalogueBrowser } from "../components/quote/CatalogueBrowser";
+import {
+  CatalogueBrowser,
+  type CatalogueTarget,
+} from "../components/quote/CatalogueBrowser";
 import { useState } from "react";
 import { rememberQuote } from "../services/current-quote.server";
 export async function loader({ request, params }: LoaderFunctionArgs) {
@@ -221,12 +224,9 @@ export default function Quote() {
   const data = useLoaderData<typeof loader>();
   const result = useActionData<typeof action>();
   const [catalogue, setCatalogue] = useState(false);
-  // Alternative en cours : le catalogue ajoute sous ce produit du devis.
-  const [alternative, setAlternative] = useState<{
-    group: string;
-    name: string;
-  } | null>(null);
-  const chooseAlternative = (t: { group: string; name: string } | null) => {
+  // Alternative ou option en cours : le catalogue ajoute sous ce produit.
+  const [alternative, setAlternative] = useState<CatalogueTarget | null>(null);
+  const chooseAlternative = (t: CatalogueTarget | null) => {
     setAlternative(t);
     if (t) {
       setCatalogue(true);
@@ -254,8 +254,8 @@ export default function Quote() {
       key={`${data.q.id}-${data.q.version}`}
       {...data}
       result={result}
-      alternativeFor={alternative?.group || null}
-      onAlternative={chooseAlternative}
+      catalogueTarget={alternative}
+      onCatalogueTarget={chooseAlternative}
     />
   );
   return (

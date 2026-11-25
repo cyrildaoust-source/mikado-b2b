@@ -72,7 +72,11 @@ export function QuoteDocument({
     ]
       .filter(Boolean)
       .join("\n");
-  const sections = quoteSections(s);
+  const sections = quoteSections(s),
+    // Les options rattachées se lisent sous leur produit ; le reste est une prestation.
+    prestations = s.extras.filter(
+      (e) => !s.groups.some((g) => g.id === e.parent),
+    );
   const row = (i: Line, rep: string, selected: boolean, caption: string) => (
     <tr key={i.id} className={selected ? "retained" : "excluded"}>
       <td>{rep}</td>
@@ -232,6 +236,16 @@ export function QuoteDocument({
                         : "Proposition de base",
                     ),
                   )}
+                  {s.extras
+                    .filter((e) => e.parent === g.id)
+                    .map((e, k) =>
+                      row(
+                        e,
+                        `${sectionIndex + 1}.${index + 1}+${k + 1}`,
+                        e.selected,
+                        `Option de ${g.items[0].name}`,
+                      ),
+                    )}
                 </Fragment>
               ))}
               <tr className="section-total">
@@ -249,20 +263,20 @@ export function QuoteDocument({
               </tr>
             </Fragment>
           ))}
-          {s.extras.length > 0 && (
+          {prestations.length > 0 && (
             <tr>
               <td colSpan={cols} className="doc-section">
-                Options et prestations
+                Prestations
               </td>
             </tr>
           )}
-          {s.extras.map((e, n) =>
+          {prestations.map((e, n) =>
             row(
               e,
-              `O${n + 1}`,
+              `P${n + 1}`,
               e.selected,
               e.chargePercent === null
-                ? "Option supplémentaire"
+                ? "Prestation"
                 : `Frais ${e.chargePercent} % sur les produits retenus${showDiscount ? " après remises" : ""}`,
             ),
           )}
@@ -301,7 +315,7 @@ export function QuoteDocument({
           ))}
           {breakdown.options !== 0 && (
             <div>
-              <span>Options retenues</span>
+              <span>Options et prestations retenues</span>
               <span>{money(breakdown.options)}</span>
             </div>
           )}

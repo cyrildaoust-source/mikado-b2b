@@ -90,7 +90,17 @@ export const quoteSchema = z
         }),
       )
       .max(200),
-    extras: z.array(lineSchema.extend({ selected: z.boolean() })).max(100),
+    // Options et prestations. Une option rattachée (parent = groupe) se
+    // présente sous son produit, dans sa pièce ; sans parent, c'est une
+    // prestation (menuisier, carreleur, livraison…). Cochée, elle entre au total.
+    extras: z
+      .array(
+        lineSchema.extend({
+          selected: z.boolean(),
+          parent: z.string().max(100).optional(),
+        }),
+      )
+      .max(100),
   })
   .superRefine((s, ctx) => {
     if (
@@ -166,10 +176,7 @@ export const quoteSchema = z
       ctx.addIssue({ code: "custom", message: "Date de validité incorrecte." });
   })
   .transform((s) => {
-    const base = s.groups.reduce(
-      (n, g) => n + lineTotal(g.items.find((i) => i.id === g.selected)!),
-      0,
-    );
+    const base = chargeBase(s);
     return {
       ...s,
       terms: paymentText(s.payment, s.depositPercent, s.terms),
@@ -327,9 +334,24 @@ export function removeLine(s: QuoteState, id: string): QuoteState {
     groups: sectionOrder.flatMap((sectionId) =>
       groupsBySection.get(sectionId) || [],
     ),
-    extras: s.extras.filter((extra) => extra.id !== id),
+    // Les options d'un produit retiré partent avec lui.
+    extras: s.extras.filter(
+      (extra) =>
+        extra.id !== id &&
+        (!extra.parent ||
+          !s.groups.some((g) => g.id === extra.parent) ||
+          remainingGroups.some((g) => g.id === extra.parent)),
+    ),
   };
 }
+/** Options rattachées à un produit du devis. */
+export const optionsOf = (s: QuoteState, groupId: string) =>
+  s.extras.filter((e) => e.parent === groupId);
+/** Prestations : lignes hors produits, sans rattachement (ou orphelines). */
+export const services = (s: QuoteState) =>
+  s.extras.filter(
+    (e) => !e.deliveryFee && !s.groups.some((g) => g.id === e.parent),
+  );
 export function fromGross(l: Line, rate: number): Line {
   if (l.sourcePrice === null) throw Error("Prix source absent.");
   return {
@@ -444,11 +466,32 @@ export function newQuote(taxesIncluded = false): QuoteState {
   return setDeliveryFee(emptyQuote(taxesIncluded), true, crypto.randomUUID());
 }
 
-export function repriceExtras(s: QuoteState): QuoteState {
-  const base = s.groups.reduce(
-    (n, g) => n + lineTotal(g.items.find((i) => i.id === g.selected)!),
-    0,
+/**
+ * Base des frais au pourcentage (livraison + montage) : produits retenus et
+ * options cochées rattachées à un produit, une option étant un produit acheté
+ * en plus. Les prestations sans produit n'y entrent pas.
+ */
+function chargeBase(s: {
+  groups: { id: string; selected: string; items: z.infer<typeof lineSchema>[] }[];
+  extras: (z.infer<typeof lineSchema> & { selected: boolean; parent?: string })[];
+}): number {
+  return (
+    s.groups.reduce(
+      (n, g) => n + lineTotal(g.items.find((i) => i.id === g.selected)!),
+      0,
+    ) +
+    s.extras
+      .filter(
+        (e) =>
+          e.selected &&
+          e.chargePercent === null &&
+          s.groups.some((g) => g.id === e.parent),
+      )
+      .reduce((n, e) => n + lineTotal(e), 0)
   );
+}
+export function repriceExtras(s: QuoteState): QuoteState {
+  const base = chargeBase(s);
   return {
     ...s,
     extras: s.extras.map((e) =>

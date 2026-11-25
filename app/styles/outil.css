@@ -1757,6 +1757,35 @@ s-section > small {
   border-bottom: 1.5px solid var(--line-strong);
   border-bottom-left-radius: 6px;
 }
+/* Option d'un produit : rattachée comme l'alternative, cochée pour entrer au total */
+.option-row {
+  border-top: 1px dashed var(--line);
+}
+.option-row > .product-heading {
+  position: relative;
+  padding-left: 22px;
+}
+.option-row > .product-heading::before {
+  content: "+";
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  text-align: center;
+  color: var(--ink-3);
+  font-weight: 500;
+}
+.option-row > .product-heading > input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--brass);
+}
+.option-row.not-included .line-amount strong {
+  color: var(--ink-3);
+  font-weight: 400;
+}
 /* Produit dont on choisit l'alternative dans le catalogue */
 .alternative-group.is-target {
   outline: 2px solid var(--brass);
