@@ -21,7 +21,11 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const product = await getCatalogProduct(c.admin, String(params.id));
   if (!product) throw new Response("Produit introuvable", { status: 404 });
   const quotes = await openQuotes(c.shop, ownerScope(c));
-  return { product, quotes, demo: c.demo };
+  const wanted = new URL(request.url).searchParams.get("variante") || "";
+  const initial =
+    product.productVariants.find((v) => v.id.endsWith(`/${wanted}`))?.id ||
+    product.productVariants[0]?.id;
+  return { product, quotes, initial, demo: c.demo };
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -52,26 +56,30 @@ export async function action({ request, params }: ActionFunctionArgs) {
   }
 }
 
+const sameImage = (a: string, b: string) => a.split("?")[0] === b.split("?")[0];
+
 export default function Product() {
-  const { product, quotes, demo } = useLoaderData<typeof loader>();
+  const { product, quotes, initial, demo } = useLoaderData<typeof loader>();
   const result = useActionData<typeof action>();
   const busy = useNavigation().state !== "idle";
-  const [variantId, setVariantId] = useState(product.productVariants[0]?.id);
+  const [variantId, setVariantId] = useState(initial);
   const variant =
     product.productVariants.find((v) => v.id === variantId) ||
     product.productVariants[0];
-  const images = product.images.length
+  // Photo de la variante d'abord, puis les photos d'ambiance du produit.
+  const base = product.images.length
     ? product.images
     : product.image
       ? [{ url: product.image, alt: product.imageAlt }]
       : [];
+  const own = variant?.image ? [{ url: variant.image, alt: product.title }] : [];
+  const images = [
+    ...own,
+    ...base.filter((i) => !own.some((o) => sameImage(o.url, i.url))),
+  ];
   const [shown, setShown] = useState<number | null>(null);
-  const photo =
-    shown !== null
-      ? images[shown]
-      : variant?.image
-        ? { url: variant.image, alt: product.title }
-        : images[0];
+  const photo = images[shown ?? 0];
+  const finish = variant && variant.title !== "Default Title" ? variant.title : "";
   return (
     <main className="workspace product-page">
       <p className="breadcrumb">
@@ -109,6 +117,7 @@ export default function Product() {
         <section className="product-info">
           <small className="product-vendor">{product.vendor}</small>
           <h1>{product.title}</h1>
+          {finish && <p className="product-finish">{finish}</p>}
           {product.productType && (
             <p className="muted">{product.productType}</p>
           )}

@@ -21,6 +21,13 @@ export type CatalogCard = {
   minPrice: number;
   maxPrice: number;
   variants: number;
+  /** Fiche du catalogue = une variante : identifiant numérique et nom de finition. */
+  variantNumericId?: string;
+  variantTitle?: string;
+};
+export type CatalogVariantCard = CatalogCard & {
+  variantNumericId: string;
+  variantTitle: string;
 };
 export type CatalogVariant = {
   id: string;
@@ -40,16 +47,17 @@ export type CatalogProduct = CatalogCard & {
 const quoted = (v: string) => '"' + v.replace(/[\\"]/g, "\\$&") + '"';
 
 /** Requête de recherche Shopify qui limite le catalogue à ce que Mikado Deco ouvre aux pros. */
-export function visibilityQuery(rules: BrandRule[]) {
+export function visibilityQuery(rules: BrandRule[], status = "status") {
   const hidden = rules.filter((r) => !r.visible).map((r) => r.vendor);
-  return `((${["(status:active OR status:draft)", ...hidden.map((v) => `-vendor:${quoted(v)}`)].join(" AND ")}))`;
+  return `((${[`(${status}:active OR ${status}:draft)`, ...hidden.map((v) => `-vendor:${quoted(v)}`)].join(" AND ")}))`;
 }
 
 export function catalogQuery(
   rules: BrandRule[],
   filters: { vendor?: string; type?: string; q?: string },
+  status = "status",
 ) {
-  const parts = [visibilityQuery(rules)];
+  const parts = [visibilityQuery(rules, status)];
   if (filters.vendor) parts.push(`vendor:${quoted(filters.vendor)}`);
   if (filters.type) parts.push(`product_type:${quoted(filters.type)}`);
   if (filters.q?.trim()) parts.push(`(${searchPrefix(filters.q)})`);
@@ -111,6 +119,19 @@ function card(p: RawCard, taxesIncluded: boolean): CatalogCard {
   };
 }
 
+const numeric = (gid: string) => gid.split("/").pop() || "";
+export const finish = (title: string) =>
+  title === "Default Title" ? "" : title;
+
+type RawVariant = {
+  id: string;
+  title: string;
+  price: string;
+  media: { nodes: { preview: { image: { url: string; altText: string | null } | null } | null }[] };
+  product: RawCard;
+};
+
+/** Catalogue pro : une carte par variante, sans rien changer dans Shopify. */
 export async function listCatalog(
   admin: Admin | null,
   filters: { vendor?: string; type?: string; q?: string; after?: string },
@@ -119,32 +140,51 @@ export async function listCatalog(
   if (!admin) return demoList(filters, rules);
   const info = await shopInfo(admin);
   const data = await gql<{
-    products: {
-      nodes: RawCard[];
+    productVariants: {
+      nodes: RawVariant[];
       pageInfo: { hasNextPage: boolean; endCursor: string };
     };
   }>(
     admin,
-    `query Catalog($query: String!, $after: String, $sort: ProductSortKeys!, $reverse: Boolean!) {
-      products(first: 24, after: $after, query: $query, sortKey: $sort, reverse: $reverse) {
-        nodes { ${cardFields} }
+    `query Catalog($query: String!, $after: String, $sort: ProductVariantSortKeys!) {
+      productVariants(first: 24, after: $after, query: $query, sortKey: $sort) {
+        nodes {
+          id title price
+          media(first: 1) { nodes { preview { image { url altText } } } }
+          product { ${cardFields} }
+        }
         pageInfo { hasNextPage endCursor }
       }
     }`,
     {
-      query: catalogQuery(rules, filters),
+      query: catalogQuery(rules, filters, "product_status"),
       after: filters.after || null,
-      sort: filters.q?.trim() ? "RELEVANCE" : "TITLE",
-      reverse: false,
+      sort: filters.q?.trim() ? "RELEVANCE" : "FULL_TITLE",
     },
   );
   return {
-    items: data.products.nodes
-      .filter((p) => isVisible(p, rules))
-      .map((p) => card(p, info.taxesIncluded)),
-    next: data.products.pageInfo.hasNextPage
-      ? data.products.pageInfo.endCursor
+    items: data.productVariants.nodes
+      .filter((v) => isVisible(v.product, rules))
+      .map((v) => variantCard(v, info.taxesIncluded)),
+    next: data.productVariants.pageInfo.hasNextPage
+      ? data.productVariants.pageInfo.endCursor
       : null,
+  };
+}
+
+function variantCard(v: RawVariant, taxesIncluded: boolean): CatalogVariantCard {
+  const base = card(v.product, taxesIncluded),
+    price = netPrice(v.price, taxesIncluded),
+    own = v.media.nodes[0]?.preview?.image;
+  return {
+    ...base,
+    id: v.id,
+    image: own?.url || base.image,
+    imageAlt: own?.altText || base.imageAlt,
+    minPrice: price,
+    maxPrice: price,
+    variantNumericId: numeric(v.id),
+    variantTitle: finish(v.title),
   };
 }
 
@@ -249,7 +289,7 @@ export async function getCatalogProduct(
               sku: string | null;
               price: string;
               selectedOptions: { name: string; value: string }[];
-              image: { url: string } | null;
+              media: { nodes: { preview: { image: { url: string } | null } | null }[] };
             }[];
           };
         })
@@ -262,7 +302,7 @@ export async function getCatalogProduct(
         description
         media(first: 20) { nodes { ... on MediaImage { image { url altText } } } }
         options { name values }
-        variants(first: 100) { nodes { id title sku price selectedOptions { name value } image { url } } }
+        variants(first: 100) { nodes { id title sku price selectedOptions { name value } media(first: 1) { nodes { preview { image { url } } } } } }
       }
     }`,
     { id: `gid://shopify/Product/${numericId}` },
@@ -282,7 +322,7 @@ export async function getCatalogProduct(
       sku: v.sku || "",
       price: netPrice(v.price, info.taxesIncluded),
       options: v.selectedOptions,
-      image: v.image?.url || "",
+      image: v.media.nodes[0]?.preview?.image?.url || "",
     })),
   };
 }
@@ -357,8 +397,20 @@ function demoList(
       .filter((p) => isVisible(p, rules))
       .filter((p) => !filters.vendor || p.vendor === filters.vendor)
       .filter((p) => !filters.type || p.productType === filters.type)
-      .filter((p) => !q || `${p.title} ${p.vendor} ${p.productType}`.toLowerCase().includes(q))
-      .map(({ description: _d, images: _i, options: _o, productVariants: _v, ...c }) => c),
+      .flatMap(({ description: _d, images: _i, options: _o, productVariants, ...c }) =>
+        productVariants.map(
+          (v): CatalogVariantCard => ({
+            ...c,
+            id: v.id,
+            image: v.image || c.image,
+            minPrice: v.price,
+            maxPrice: v.price,
+            variantNumericId: numeric(v.id),
+            variantTitle: finish(v.title),
+          }),
+        ),
+      )
+      .filter((p) => !q || `${p.title} ${p.variantTitle} ${p.vendor} ${p.productType}`.toLowerCase().includes(q)),
     next: null as string | null,
   };
 }

@@ -308,3 +308,12 @@ label.inline {
 .family-chips a.active span {
   color: #bbb;
 }
+.catalogue-finish {
+  color: #666;
+  font-size: 14px;
+}
+.product-finish {
+  font-size: 18px;
+  color: #444;
+  margin: -4px 0 8px;
+}

@@ -135,7 +135,10 @@ export default function Catalogue() {
         <ul className="catalogue-grid">
           {items.map((p) => (
             <li key={p.id}>
-              <Link to={`/app/catalogue/${p.numericId}`} className="catalogue-card">
+              <Link
+                to={`/app/catalogue/${p.numericId}?variante=${p.variantNumericId}`}
+                className="catalogue-card"
+              >
                 <div className="catalogue-photo">
                   {p.image ? (
                     <img
@@ -150,13 +153,10 @@ export default function Catalogue() {
                 <div className="catalogue-meta">
                   <small>{p.vendor}</small>
                   <strong>{p.title}</strong>
-                  <span>
-                    {p.minPrice === p.maxPrice
-                      ? money(p.minPrice)
-                      : `dès ${money(p.minPrice)}`}{" "}
-                    HTVA
-                  </span>
-                  {p.variants > 1 && <small>{p.variants} finitions</small>}
+                  {p.variantTitle && (
+                    <span className="catalogue-finish">{p.variantTitle}</span>
+                  )}
+                  <span>{money(p.minPrice)} HTVA</span>
                 </div>
               </Link>
             </li>

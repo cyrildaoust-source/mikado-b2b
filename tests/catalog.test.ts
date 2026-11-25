@@ -40,6 +40,13 @@ test("une marque masquée disparaît entièrement", () => {
   assert.equal(isVisible({ vendor: "Knoll", status: "ARCHIVED" }, rules), false);
 });
 
+test("le catalogue par variante filtre sur le statut du produit", () => {
+  assert.equal(
+    visibilityQuery([{ vendor: "IHR", visible: false }], "product_status"),
+    '(((product_status:active OR product_status:draft) AND -vendor:"IHR"))',
+  );
+});
+
 test("les filtres s'ajoutent à la visibilité sans pouvoir l'élargir", () => {
   const q = catalogQuery([], {
     vendor: "Vitra",
