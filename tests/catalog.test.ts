@@ -49,12 +49,12 @@ test("le catalogue par variante filtre sur le statut du produit", () => {
 
 test("les filtres s'ajoutent à la visibilité sans pouvoir l'élargir", () => {
   const q = catalogQuery([], {
-    vendor: "Vitra",
+    vendors: ["Vitra", "Hay"],
     type: "Chaises",
     q: "eames OR status:archived",
   });
   assert.ok(q.startsWith("(((status:active OR status:draft))) AND "));
-  assert.match(q, /vendor:"Vitra"/);
+  assert.match(q, /\(vendor:"Vitra" OR vendor:"Hay"\)/);
   assert.match(q, /product_type:"Chaises"/);
   assert.doesNotMatch(q, /status:archived/);
 });

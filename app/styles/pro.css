@@ -44,9 +44,9 @@
 
 .catalogue-filters {
   display: grid;
-  grid-template-columns: minmax(180px, 2fr) repeat(2, minmax(150px, 1fr)) auto auto;
+  grid-template-columns: minmax(180px, 2fr) repeat(2, minmax(150px, 1fr)) auto;
   gap: 10px;
-  align-items: end;
+  align-items: start;
   margin: 0 0 22px;
 }
 .catalogue-filters input,
@@ -55,6 +55,59 @@
 }
 .catalogue-filters a {
   align-self: center;
+}
+.brand-picker {
+  position: relative;
+}
+.brand-picker summary {
+  list-style: none;
+  cursor: pointer;
+  border: 1px solid #c9c6c0;
+  border-radius: 8px;
+  background: #fff;
+  padding: 9px 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.brand-picker summary::-webkit-details-marker {
+  display: none;
+}
+.brand-picker summary::after {
+  content: "▾";
+  float: right;
+  margin-left: 8px;
+  color: #777;
+}
+.brand-picker-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  max-height: 340px;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #e3e0db;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 6px;
+}
+.brand-picker-list label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.brand-picker-list label:hover {
+  background: #f4f2ef;
+}
+.brand-picker-list input {
+  width: auto;
+  margin: 0;
 }
 .catalogue-grid {
   list-style: none;

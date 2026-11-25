@@ -1,7 +1,8 @@
 import { NumberField } from "./quote/NumberField";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Link,
+  useFetcher,
   useNavigation,
   useSubmit,
   useNavigate,
@@ -151,6 +152,44 @@ export default function Editor({
       setModal(null);
     }
   }, [result]);
+  // Hors Shopify, chaque modification s'enregistre seule, sans bouton.
+  const autosave = useFetcher<{ ok?: string; error?: string }>(),
+    autoSaving = autosave.state !== "idle",
+    autoSent = useRef<QuoteState | null>(null),
+    autoFailed = useRef<QuoteState | null>(null),
+    auto = !embedded && !locked;
+  useEffect(() => {
+    if (!auto || !dirty || autoSaving || busy || autoFailed.current === s)
+      return;
+    const t = setTimeout(() => {
+      const parsed = quoteSchema.safeParse(s);
+      if (!parsed.success) {
+        autoFailed.current = s;
+        setError(parsed.error.issues.map((e) => e.message).join(" "));
+        return;
+      }
+      autoSent.current = s;
+      autosave.submit(
+        {
+          intent: "save",
+          version: q.version,
+          state: JSON.stringify(parsed.data),
+        },
+        { method: "post" },
+      );
+    }, 700);
+    return () => clearTimeout(t);
+  }, [auto, dirty, autoSaving, busy, s, q.version]);
+  useEffect(() => {
+    if (autosave.state !== "idle" || !autosave.data) return;
+    if (autosave.data.error) {
+      autoFailed.current = autoSent.current;
+      setError(autosave.data.error);
+    } else if (autoSent.current === s) {
+      draft.saved();
+      setError("");
+    }
+  }, [autosave.state, autosave.data]);
   function field<K extends keyof QuoteState>(key: K, value: QuoteState[K]) {
     change({ ...s, [key]: value });
     setError("");
@@ -171,7 +210,11 @@ export default function Editor({
   }
   function send(intent: string, extra: Record<string, string> = {}) {
     if (dirty && !["save", "prepare"].includes(intent)) {
-      setError("Enregistrez vos modifications avant cette action.");
+      setError(
+        auto
+          ? "Enregistrement en cours, réessayez dans un instant."
+          : "Enregistrez vos modifications avant cette action.",
+      );
       return;
     }
     if (["save", "prepare"].includes(intent)) {
@@ -340,7 +383,11 @@ export default function Editor({
           <h1>{s.project}</h1>
           <div className="status-line">
             <s-badge tone={ready && !dirty ? "success" : "info"}>
-              {dirty ? "Modifications non enregistrées" : commercialStatus(q)}
+              {dirty
+                ? auto
+                  ? "Enregistrement…"
+                  : "Modifications non enregistrées"
+                : commercialStatus(q)}
             </s-badge>
             {lastReady && lastReady.version !== q.version && (
               <button
@@ -500,7 +547,7 @@ export default function Editor({
           <button disabled={busy} onClick={draft.discard}></button>
         </SaveBar>
       )}
-      {!embedded && dirty && !locked && (
+      {auto && dirty && autoFailed.current === s && (
         <div className="save-strip">
           <span>Modifications non enregistrées</span>
           <div>

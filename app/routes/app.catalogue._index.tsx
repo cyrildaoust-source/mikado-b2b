@@ -1,8 +1,10 @@
+import { useEffect, useRef } from "react";
 import {
   Form,
   Link,
   useLoaderData,
   useNavigation,
+  useSubmit,
   type LoaderFunctionArgs,
 } from "react-router";
 import { context } from "../services/context.server";
@@ -18,7 +20,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const c = await context(request),
     u = new URL(request.url),
     filters = {
-      vendor: (u.searchParams.get("marque") || "").slice(0, 150),
+      vendors: [...new Set(u.searchParams.getAll("marque"))]
+        .map((v) => v.slice(0, 150))
+        .filter(Boolean)
+        .slice(0, 30),
       type: (u.searchParams.get("famille") || "").slice(0, 150),
       q: (u.searchParams.get("q") || "").slice(0, 150),
       after: u.searchParams.get("apres") || undefined,
@@ -27,7 +32,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const [list, facets, families] = await Promise.all([
       listCatalog(c.admin, filters),
       catalogFacets(c.admin),
-      brandFamilies(c.admin, filters.vendor).catch(() => []),
+      brandFamilies(c.admin, filters.vendors).catch(() => []),
     ]);
     return { ...list, facets, families, filters, demo: c.demo, error: null };
   } catch {
@@ -46,15 +51,38 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export default function Catalogue() {
   const { items, next, facets, families, filters, demo, error } =
     useLoaderData<typeof loader>();
-  const family = (type: string) =>
-    "?" + new URLSearchParams({ q: filters.q, marque: filters.vendor, famille: type });
+  // Chaque filtre s'applique tout de suite : pas de bouton « Afficher ».
+  const submit = useSubmit(),
+    timer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const picker = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const close = (e: MouseEvent) => {
+      if (picker.current && !picker.current.contains(e.target as Node))
+        picker.current.open = false;
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+  const apply = (form: HTMLFormElement, delay = 0) => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => submit(form, { replace: true }), delay);
+  };
+  const link = (over: { famille?: string; apres?: string }) => {
+    const p = new URLSearchParams();
+    if (filters.q) p.set("q", filters.q);
+    filters.vendors.forEach((v) => p.append("marque", v));
+    const famille = over.famille ?? filters.type;
+    if (famille) p.set("famille", famille);
+    if (over.apres) p.set("apres", over.apres);
+    return `?${p}`;
+  };
   const busy = useNavigation().state === "loading";
-  const more = new URLSearchParams({
-    q: filters.q,
-    marque: filters.vendor,
-    famille: filters.type,
-    ...(next ? { apres: next } : {}),
-  });
+  const brandLabel = filters.vendors.length
+    ? filters.vendors.length === 1
+      ? filters.vendors[0]
+      : `${filters.vendors.length} marques`
+    : "Toutes les marques";
   return (
     <main className="workspace catalogue">
       <header className="list-header">
@@ -67,32 +95,39 @@ export default function Catalogue() {
       <Form method="get" className="catalogue-filters">
         <input
           name="q"
+          type="search"
           aria-label="Rechercher"
           placeholder="Produit, designer, référence…"
           defaultValue={filters.q}
+          onChange={(e) => apply(e.currentTarget.form!, 400)}
         />
-        <select
-          name="marque"
-          aria-label="Marque"
-          defaultValue={filters.vendor}
-          onChange={(e) => {
-            const form = e.currentTarget.form!;
-            (form.elements.namedItem("famille") as HTMLSelectElement).value = "";
-            form.requestSubmit();
-          }}
-        >
-          <option value="">Toutes les marques</option>
-          {facets.vendors.map((v) => (
-            <option key={v} value={v}>
-              {v}
-            </option>
-          ))}
-        </select>
+        <details className="brand-picker" ref={picker}>
+          <summary>{brandLabel}</summary>
+          <div className="brand-picker-list">
+            {facets.vendors.map((v) => (
+              <label key={v}>
+                <input
+                  type="checkbox"
+                  name="marque"
+                  value={v}
+                  defaultChecked={filters.vendors.includes(v)}
+                  onChange={(e) => {
+                    const form = e.currentTarget.form!;
+                    (form.elements.namedItem("famille") as HTMLSelectElement).value = "";
+                    apply(form);
+                  }}
+                />
+                {v}
+              </label>
+            ))}
+          </div>
+        </details>
         <select
           name="famille"
           aria-label="Famille"
           defaultValue={filters.type}
-          onChange={(e) => e.currentTarget.form!.requestSubmit()}
+          key={filters.vendors.join("|")}
+          onChange={(e) => apply(e.currentTarget.form!)}
         >
           <option value="">Toutes les familles</option>
           {(families.length ? families.map((f) => f.type) : facets.types).map((t) => (
@@ -101,23 +136,21 @@ export default function Catalogue() {
             </option>
           ))}
         </select>
-        <button className="primary">Afficher</button>
-        {(filters.q || filters.vendor || filters.type) && (
-          <Link to="/app/catalogue">Effacer</Link>
+        {(filters.q || filters.vendors.length > 0 || filters.type) && (
+          <Link to="/app/catalogue" reloadDocument>
+            Effacer
+          </Link>
         )}
       </Form>
-      {families.length > 1 && (
-        <nav className="family-chips" aria-label={`Familles ${filters.vendor}`}>
-          <Link
-            to={family("")}
-            className={filters.type ? "" : "active"}
-          >
-            Tout {filters.vendor}
+      {filters.vendors.length > 0 && (
+        <nav className="family-chips" aria-label="Familles">
+          <Link to={link({ famille: "" })} className={filters.type ? "" : "active"}>
+            Tout {filters.vendors.length === 1 ? filters.vendors[0] : "les marques choisies"}
           </Link>
           {families.map((f) => (
             <Link
               key={f.type}
-              to={family(f.type)}
+              to={link({ famille: f.type })}
               className={filters.type === f.type ? "active" : ""}
             >
               {f.type} <span>{f.count}</span>
@@ -173,7 +206,7 @@ export default function Catalogue() {
       )}
       {next && (
         <p className="catalogue-more">
-          <Link to={`?${more}`}>Voir la suite</Link>
+          <Link to={link({ apres: next })}>Voir la suite</Link>
         </p>
       )}
     </main>

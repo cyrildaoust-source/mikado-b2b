@@ -54,11 +54,13 @@ export function visibilityQuery(rules: BrandRule[], status = "status") {
 
 export function catalogQuery(
   rules: BrandRule[],
-  filters: { vendor?: string; type?: string; q?: string },
+  filters: { vendors?: string[]; type?: string; q?: string },
   status = "status",
 ) {
   const parts = [visibilityQuery(rules, status)];
-  if (filters.vendor) parts.push(`vendor:${quoted(filters.vendor)}`);
+  const vendors = (filters.vendors || []).filter(Boolean);
+  if (vendors.length)
+    parts.push(`(${vendors.map((v) => `vendor:${quoted(v)}`).join(" OR ")})`);
   if (filters.type) parts.push(`product_type:${quoted(filters.type)}`);
   if (filters.q?.trim()) parts.push(`(${searchPrefix(filters.q)})`);
   return parts.join(" AND ");
@@ -134,7 +136,7 @@ type RawVariant = {
 /** Catalogue pro : une carte par variante, sans rien changer dans Shopify. */
 export async function listCatalog(
   admin: Admin | null,
-  filters: { vendor?: string; type?: string; q?: string; after?: string },
+  filters: { vendors?: string[]; type?: string; q?: string; after?: string },
 ) {
   const rules = await brandRules();
   if (!admin) return demoList(filters, rules);
@@ -211,18 +213,18 @@ export async function catalogFacets(admin: Admin | null) {
   };
 }
 
-/** Familles d'une marque, avec le nombre de fiches visibles (jusqu'à 1 000 fiches lues). */
+/** Familles des marques choisies, avec le nombre de fiches visibles (jusqu'à 1 000 fiches lues). */
 export async function brandFamilies(
   admin: Admin | null,
-  vendor: string,
+  vendors: string[],
 ): Promise<{ type: string; count: number }[]> {
-  if (!vendor) return [];
+  if (!vendors.length) return [];
   const rules = await brandRules();
   const counts = new Map<string, number>();
   const add = (t: string) => t && counts.set(t, (counts.get(t) || 0) + 1);
   if (!admin) {
     demoProducts
-      .filter((p) => p.vendor === vendor && isVisible(p, rules))
+      .filter((p) => vendors.includes(p.vendor) && isVisible(p, rules))
       .forEach((p) => add(p.productType));
   } else {
     let after: string | null = null;
@@ -240,7 +242,7 @@ export async function brandFamilies(
             pageInfo { hasNextPage endCursor }
           }
         }`,
-        { query: catalogQuery(rules, { vendor }), after },
+        { query: catalogQuery(rules, { vendors }), after },
       );
       data.products.nodes
         .filter((p) => isVisible(p, rules))
@@ -388,14 +390,14 @@ export const demoProducts: CatalogProduct[] = [
 ];
 
 function demoList(
-  filters: { vendor?: string; type?: string; q?: string },
+  filters: { vendors?: string[]; type?: string; q?: string },
   rules: BrandRule[],
 ) {
   const q = (filters.q || "").toLowerCase().trim();
   return {
     items: demoProducts
       .filter((p) => isVisible(p, rules))
-      .filter((p) => !filters.vendor || p.vendor === filters.vendor)
+      .filter((p) => !filters.vendors?.length || filters.vendors.includes(p.vendor))
       .filter((p) => !filters.type || p.productType === filters.type)
       .flatMap(({ description: _d, images: _i, options: _o, productVariants, ...c }) =>
         productVariants.map(
