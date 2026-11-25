@@ -602,6 +602,15 @@ details > summary::-webkit-details-marker {
   overscroll-behavior: contain;
   align-content: start;
 }
+/* Ouvert du côté où il a la place (voir useMenus) */
+.brand-picker-list.flip {
+  left: auto;
+  right: 0;
+}
+.action-menu > div.flip {
+  left: 0;
+  right: auto;
+}
 .brand-picker-list .picker-search {
   position: sticky;
   top: -4px;
@@ -717,6 +726,21 @@ details > summary::-webkit-details-marker {
 }
 .pro-nav-end form {
   margin: 0;
+}
+/* Le nom de l'utilisateur cède la place avant tout le reste */
+.pro-nav-end {
+  min-width: 0;
+}
+.pro-nav-end .pro-user {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 900px) {
+  .pro-nav-end .pro-user {
+    display: none;
+  }
 }
 .pro-nav .pro-user {
   color: var(--ink-2);
@@ -1031,8 +1055,9 @@ s-badge[tone="success"] {
 }
 .catalogue-row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 12px;
+  gap: 0 12px;
   color: var(--ink-2);
 }
 .catalogue-finish {
@@ -1122,24 +1147,55 @@ button.catalogue-add:hover:not(:disabled) {
 /* Fiche produit                                                       */
 /* ================================================================== */
 .breadcrumb {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin: 0 0 20px;
+  margin: 0 0 16px;
   font-size: var(--t-small);
   color: var(--ink-3);
 }
-.breadcrumb a {
+.breadcrumb ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.breadcrumb li {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+}
+.breadcrumb li + li::before {
+  content: "";
+  flex: none;
+  width: 5px;
+  height: 5px;
+  margin: 0 10px 0 6px;
+  border-top: 1.2px solid var(--ink-3);
+  border-right: 1.2px solid var(--ink-3);
+  transform: rotate(45deg);
+}
+.breadcrumb a,
+.breadcrumb span {
   display: inline-flex;
   align-items: center;
   min-height: var(--compact);
+}
+.breadcrumb a {
   color: var(--ink-2);
   text-decoration: none;
 }
 .breadcrumb a:hover {
   color: var(--ink);
   text-decoration: underline;
+}
+.breadcrumb [aria-current="page"] {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: var(--compact);
+  color: var(--ink);
 }
 .product-layout {
   display: grid;
@@ -2097,6 +2153,8 @@ dialog > p {
   gap: 8px;
 }
 .search input {
+  flex: 1;
+  min-width: 0;
   margin: 0;
 }
 .searchresults {
@@ -2705,9 +2763,31 @@ dialog > p {
   .brand-table tr {
     align-items: center;
   }
+  /* « Enregistré » s'affiche sous l'interrupteur, sans pousser le nom */
+  .brand-form {
+    position: relative;
+  }
+  .brand-state {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    min-width: 0;
+    white-space: nowrap;
+    text-align: right;
+  }
+  .list-toolbar select {
+    flex: 1 1 100%;
+  }
+  .list-toolbar input {
+    min-width: 0;
+    flex-basis: 100%;
+  }
   .user-form {
     grid-template-columns: minmax(0, 1fr);
     padding: 16px;
+  }
+  s-section {
+    padding: 16px 12px;
   }
   .modal-actions {
     justify-content: stretch;
@@ -2758,6 +2838,17 @@ dialog > p {
   }
 }
 @container devis (max-width: 520px) {
+  /* Sans photo, pas de vignette vide : la place va au nom */
+  .product-row .product-placeholder {
+    display: none;
+  }
+  .product-row .product-thumb {
+    width: 44px;
+    height: 44px;
+  }
+  .product-row > label input:not([type="checkbox"]):not([type="radio"]) {
+    width: 100%;
+  }
   .product-row {
     grid-template-columns: repeat(3, minmax(0, 1fr)) 44px;
     padding: 12px 12px 8px 18px;
@@ -3260,4 +3351,43 @@ html:has(.quote-workspace) {
 /* Marques : l'interrupteur reste près du nom */
 .list-card:has(.brand-table) {
   max-width: 760px;
+}
+
+/* ================================================================== */
+/* Petit téléphone (≤ 420 px) : une seule rangée en haut               */
+/* ================================================================== */
+@media (max-width: 420px) {
+  .search {
+    flex-wrap: wrap;
+  }
+  .search input,
+  .search button {
+    flex: 1 1 100%;
+  }
+  .pro-brand-suffix,
+  .nav-new-suffix {
+    display: none;
+  }
+  .pro-nav {
+    flex-wrap: wrap;
+  }
+  .total-bar {
+    gap: 8px;
+    padding: 0 14px;
+    white-space: nowrap;
+  }
+  .total-bar strong {
+    font-size: var(--t-body);
+  }
+}
+/* Fil d'Ariane au doigt : chaque lien fait au moins 44 px de large */
+@media (pointer: coarse) {
+  .breadcrumb a {
+    position: relative;
+  }
+  .breadcrumb a::after {
+    content: "";
+    position: absolute;
+    inset: 0 -8px;
+  }
 }

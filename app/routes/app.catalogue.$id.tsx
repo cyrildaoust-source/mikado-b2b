@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Breadcrumb } from "../components/Breadcrumb";
 import {
   Form,
   Link,
@@ -26,6 +27,10 @@ import {
 import { readForm } from "../services/form.server";
 import { money } from "../domain/quote";
 import { sized } from "../components/catalog/image";
+
+export const meta = ({ data }: { data?: { product?: { title: string } } }) => [
+  { title: `${data?.product?.title || "Produit"} · Mikado Deco Pro` },
+];
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const c = await context(request);
@@ -213,23 +218,24 @@ export default function Product() {
 
   return (
     <main className="workspace product-page">
-      <nav className="breadcrumb" aria-label="Fil d'Ariane">
-        <Link to="/app/catalogue">Catalogue</Link>
-        <span aria-hidden="true">/</span>
-        <Link to={`/app/catalogue?marque=${encodeURIComponent(product.vendor)}`}>
-          {product.vendor}
-        </Link>
-        {product.productType && (
-          <>
-            <span aria-hidden="true">/</span>
-            <Link
-              to={`/app/catalogue?marque=${encodeURIComponent(product.vendor)}&famille=${encodeURIComponent(product.productType)}`}
-            >
-              {product.productType}
-            </Link>
-          </>
-        )}
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: "Catalogue", to: "/app/catalogue" },
+          {
+            label: product.vendor,
+            to: `/app/catalogue?marque=${encodeURIComponent(product.vendor)}`,
+          },
+          ...(product.productType
+            ? [
+                {
+                  label: product.productType,
+                  to: `/app/catalogue?marque=${encodeURIComponent(product.vendor)}&famille=${encodeURIComponent(product.productType)}`,
+                },
+              ]
+            : []),
+          { label: product.title },
+        ]}
+      />
       {demo && <p className="demo-ribbon">Démonstration · catalogue fictif</p>}
       <div className={panel ? "product-layout with-quote" : "product-layout"}>
         <section className="product-gallery" aria-label="Photos">

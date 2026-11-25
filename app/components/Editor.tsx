@@ -38,6 +38,7 @@ import {
   type CatalogueTarget,
 } from "./quote/CatalogueBrowser";
 import { Modal } from "./quote/Modal";
+import { Breadcrumb } from "./Breadcrumb";
 import { useDraft } from "./quote/useDraft";
 import { ProductRow } from "./quote/ProductRow";
 import { QuoteSummary } from "./quote/QuoteSummary";
@@ -1214,18 +1215,36 @@ export default function Editor({
   );
   return (
     <main className={embedded ? "workspace" : "workspace quote-editor"}>
-      <Link
-        to="/app"
-        className="back-link"
-        onClick={(e) => {
-          if (dirty) {
-            e.preventDefault();
-            setModal("leave");
-          }
-        }}
-      >
-        ← Devis
-      </Link>
+      {embedded ? (
+        <Link
+          to="/app"
+          className="back-link"
+          onClick={(e) => {
+            if (dirty) {
+              e.preventDefault();
+              setModal("leave");
+            }
+          }}
+        >
+          ← Devis
+        </Link>
+      ) : (
+        <Breadcrumb
+          items={[
+            {
+              label: "Devis",
+              to: "/app",
+              onClick: (e) => {
+                if (dirty) {
+                  e.preventDefault();
+                  setModal("leave");
+                }
+              },
+            },
+            { label: `${q.number} · ${s.project}` },
+          ]}
+        />
+      )}
       <header className="quote-header">
         <div>
           <div className="eyebrow">{q.number}</div>

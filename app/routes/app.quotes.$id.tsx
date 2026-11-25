@@ -47,6 +47,10 @@ import {
 } from "../components/quote/CatalogueBrowser";
 import { useState } from "react";
 import { rememberQuote } from "../services/current-quote.server";
+
+export const meta = ({ data }: { data?: { q?: { number: string } } }) => [
+  { title: `${data?.q?.number || "Devis"} · Mikado Deco Pro` },
+];
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const c = await context(request);
   await assertQuoteAccess(c.shop, Number(params.id), ownerScope(c));

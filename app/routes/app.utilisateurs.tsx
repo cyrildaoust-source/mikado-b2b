@@ -12,6 +12,8 @@ import { context, requireAdmin } from "../services/context.server";
 import { createInvite, normalizeEmail } from "../services/auth.server";
 import { readForm } from "../services/form.server";
 
+export const meta = () => [{ title: "Accès · Mikado Deco Pro" }];
+
 export async function loader({ request }: LoaderFunctionArgs) {
   const c = await context(request);
   requireAdmin(c);
@@ -193,7 +195,7 @@ export default function Users() {
             Rôle
             <select name="role" defaultValue="architect">
               <option value="architect">
-                Architecte (ses devis uniquement, sans prix d'achat)
+                Architecte · ses devis, sans prix d'achat
               </option>
               <option value="admin">Mikado Deco (tout voir, régler)</option>
             </select>

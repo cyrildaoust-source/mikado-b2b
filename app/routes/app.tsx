@@ -56,7 +56,9 @@ function ProNav({
       aria-label="Navigation principale"
     >
       <NavLink to="/app/catalogue" className="pro-brand">
-        Mikado Deco · Pro
+        <span>
+          Mikado Deco<span className="pro-brand-suffix"> · Pro</span>
+        </span>
       </NavLink>
       <div className="pro-nav-links" id="pro-nav-links">
         <NavLink to="/app" end>
@@ -84,7 +86,11 @@ function ProNav({
       </div>
       <div className="pro-nav-end">
         <Form method="post" action="/app?index" className="pro-new-quote">
-          <button>Nouveau devis</button>
+          <button aria-label="Nouveau devis">
+            <span>
+              Nouveau<span className="nav-new-suffix"> devis</span>
+            </span>
+          </button>
         </Form>
         <span className="pro-user">
           {demo ? "Mode local · catalogue fictif" : user?.name}
@@ -132,6 +138,12 @@ function useMenus() {
       const d = e.target as HTMLDetailsElement;
       if (!d.open || !d.matches?.(".action-menu, .brand-picker")) return;
       menus().forEach((m) => m !== d && (m.open = false));
+      // Le menu reste dans l'écran : il s'ouvre du côté où il a la place.
+      const pop = d.querySelector<HTMLElement>(":scope > div");
+      if (!pop) return;
+      pop.classList.remove("flip");
+      const r = pop.getBoundingClientRect();
+      if (r.right > window.innerWidth - 8 || r.left < 8) pop.classList.add("flip");
     };
     document.addEventListener("keydown", onKey);
     document.addEventListener("pointerdown", onDown);

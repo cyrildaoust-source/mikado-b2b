@@ -20,6 +20,8 @@ import {
   commercialStatus,
 } from "../domain/quote";
 import { shopInfo } from "../services/shopify-api.server";
+
+export const meta = () => [{ title: "Devis · Mikado Deco Pro" }];
 export async function loader({ request }: LoaderFunctionArgs) {
   const c = await context(request),
     u = new URL(request.url),
@@ -102,7 +104,7 @@ export default function Quotes() {
             onChange={(e) => apply(e.currentTarget.form, 250)}
             name="q"
             aria-label="Rechercher un devis"
-            placeholder="Rechercher par projet, client ou référence"
+            placeholder="Projet, client ou référence"
             defaultValue={search}
           />
           <select

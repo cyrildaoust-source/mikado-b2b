@@ -16,6 +16,8 @@ import {
 import { isDemo } from "./services/context.server";
 import { isStandalone } from "./services/mode.server";
 
+export const meta = () => [{ title: "Mikado Deco Pro" }];
+
 // Une feuille de style par usage. L'outil pro (autonome ou démo) n'a que la
 // sienne, outil.css ; l'app intégrée à l'admin Shopify garde les anciennes.
 // document.css habille le devis (aperçu), le PDF l'embarque à part.
