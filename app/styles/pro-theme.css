@@ -1316,3 +1316,116 @@ body:has(.auth-page) {
   flex: 1;
   min-width: 0;
 }
+
+/* ------------------------------------------------------------------ */
+/* Liste des devis                                                     */
+/* ------------------------------------------------------------------ */
+.pro-app .list-header {
+  margin: 0 0 20px;
+  align-items: flex-end;
+}
+.pro-app .list-header h1 {
+  font-size: var(--t-title);
+  font-weight: 500;
+  margin: 0 0 4px;
+}
+.pro-app .list-header p {
+  color: var(--ink-2);
+}
+.pro-app .list-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.pro-app .list-toolbar {
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.pro-app .list-toolbar input[type="search"] {
+  padding-left: 36px;
+  background: var(--surface)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%235f5d58' stroke-width='1.5'%3E%3Ccircle cx='7' cy='7' r='5'/%3E%3Cpath d='m11 11 3.5 3.5'/%3E%3C/svg%3E")
+    no-repeat 12px center;
+}
+.pro-app .quote-table th {
+  background: var(--paper);
+  color: var(--ink-3);
+  font-size: var(--t-small);
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.pro-app .quote-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 0 16px;
+  height: 60px;
+  font-variant-numeric: tabular-nums;
+}
+.pro-app .quote-table tbody tr {
+  position: relative;
+}
+.pro-app .quote-table td:first-child a {
+  font-weight: 500;
+  color: var(--ink);
+  text-decoration: none;
+}
+/* Toute la ligne ouvre le devis */
+.pro-app .quote-table td:first-child a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.pro-app .quote-table tbody tr:hover {
+  background: var(--paper);
+}
+.pro-app .quote-table td small {
+  color: var(--ink-3);
+  font-size: var(--t-small);
+  margin-top: 2px;
+}
+.pro-app .quote-table[aria-busy="true"] {
+  opacity: 0.55;
+  transition: opacity 0.2s;
+}
+.pro-app .pagination {
+  color: var(--ink-3);
+  font-size: var(--t-small);
+}
+.pro-app .pagination a {
+  min-height: var(--control);
+  display: inline-flex;
+  align-items: center;
+}
+.pro-app .list-card .empty-state {
+  padding: 48px 16px;
+  text-align: center;
+}
+@media (max-width: 700px) {
+  .pro-app .quote-table thead {
+    display: none;
+  }
+  .pro-app .quote-table tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .pro-app .quote-table td {
+    height: auto;
+    border: 0;
+    padding: 2px 0;
+  }
+  .pro-app .quote-table td:nth-child(2) {
+    grid-column: 1;
+    color: var(--ink-2);
+  }
+  .pro-app .quote-table td:nth-child(3) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .pro-app .quote-table td:nth-child(4) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .pro-app .quote-table td:nth-child(5) {
+    display: none;
+  }
+}

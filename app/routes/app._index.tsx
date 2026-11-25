@@ -1,9 +1,12 @@
+import { useRef } from "react";
 import {
   Form,
   Link,
   redirect,
   useLoaderData,
   useActionData,
+  useNavigation,
+  useSubmit,
   type LoaderFunctionArgs,
   type ActionFunctionArgs,
 } from "react-router";
@@ -59,6 +62,20 @@ export default function Quotes() {
   const { quotes, total, page, pages, search, filter, demo } =
       useLoaderData<typeof loader>(),
     result = useActionData<typeof action>();
+  // Recherche et filtre s'appliquent seuls, sans bouton Rechercher.
+  const submit = useSubmit();
+  const navigation = useNavigation();
+  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const busy =
+    navigation.state === "loading" && navigation.location?.pathname === "/app";
+  function apply(form: HTMLFormElement | null, delay = 0) {
+    if (!form) return;
+    clearTimeout(timer.current);
+    timer.current = setTimeout(
+      () => submit(form, { replace: true, preventScrollReset: true }),
+      delay,
+    );
+  }
   function href(p: number) {
     return (
       "?" + new URLSearchParams({ q: search, status: filter, page: String(p) })
@@ -71,9 +88,6 @@ export default function Quotes() {
           <h1>Devis</h1>
           <p>Vos projets, de la première proposition à la commande.</p>
         </div>
-        <Form method="post">
-          <button className="primary">Créer un devis</button>
-        </Form>
       </header>
       {demo && <p className="demo-ribbon">Démonstration · données fictives</p>}
       {result?.error && (
@@ -84,6 +98,8 @@ export default function Quotes() {
       <div className="list-card">
         <Form method="get" className="list-toolbar">
           <input
+            type="search"
+            onChange={(e) => apply(e.currentTarget.form, 250)}
             name="q"
             aria-label="Rechercher un devis"
             placeholder="Rechercher par projet, client ou référence"
@@ -93,6 +109,7 @@ export default function Quotes() {
             name="status"
             aria-label="Statut du devis"
             defaultValue={filter}
+            onChange={(e) => apply(e.currentTarget.form)}
           >
             <option value="all">Tous les devis actifs</option>
             <option value="draft">Brouillons et modifications</option>
@@ -102,10 +119,12 @@ export default function Quotes() {
             <option value="archived">Archives</option>
             <option value="deleted">Corbeille</option>
           </select>
-          <button>Rechercher</button>
+          <noscript>
+            <button>Rechercher</button>
+          </noscript>
         </Form>
         {quotes.length ? (
-          <table className="quote-table">
+          <table className="quote-table" aria-busy={busy}>
             <thead>
               <tr>
                 <th>Projet</th>
@@ -153,6 +172,11 @@ export default function Quotes() {
                 ? "Essayez un autre nom ou un autre filtre."
                 : "Choisissez un client, composez votre proposition et préparez son PDF."}
             </p>
+            {!search && filter === "all" && (
+              <Form method="post">
+                <button className="primary">Créer un devis</button>
+              </Form>
+            )}
           </div>
         )}
         <footer className="pagination">
