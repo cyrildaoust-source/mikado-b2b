@@ -8,6 +8,8 @@ import {
   optionsOf,
   quoteSchema,
   removeLine,
+  repriceExtras,
+  setDeliveryFee,
   services,
   type QuoteState,
 } from "../app/domain/quote";
@@ -67,4 +69,17 @@ test("depuis la fiche produit, « option:<groupe> » rattache l'option au produi
   assert.equal(added.selected, false);
   assert.equal(added.qty, 2);
   assert.throws(() => addLineToState(quote(), line("x"), 1, parsePlacement("option:absent")));
+});
+
+test("la livraison à 4 % compte les options cochées, pas celles hors total ni les prestations", () => {
+  const s = setDeliveryFee(quote(), true, "liv");
+  const fee = (q: QuoteState) => q.extras.find((e) => e.deliveryFee)!.price;
+  assert.equal(fee(s), 800);
+  const included = repriceExtras({
+    ...s,
+    extras: s.extras.map((e) => (e.id === "opt" ? { ...e, selected: true } : e)),
+  });
+  assert.equal(fee(included), 1000);
+  // La validation du devis (enregistrement, PDF) recalcule de la même façon.
+  assert.equal(fee(quoteSchema.parse(included)), 1000);
 });

@@ -176,10 +176,7 @@ export const quoteSchema = z
       ctx.addIssue({ code: "custom", message: "Date de validité incorrecte." });
   })
   .transform((s) => {
-    const base = s.groups.reduce(
-      (n, g) => n + lineTotal(g.items.find((i) => i.id === g.selected)!),
-      0,
-    );
+    const base = chargeBase(s);
     return {
       ...s,
       terms: paymentText(s.payment, s.depositPercent, s.terms),
@@ -469,11 +466,32 @@ export function newQuote(taxesIncluded = false): QuoteState {
   return setDeliveryFee(emptyQuote(taxesIncluded), true, crypto.randomUUID());
 }
 
-export function repriceExtras(s: QuoteState): QuoteState {
-  const base = s.groups.reduce(
-    (n, g) => n + lineTotal(g.items.find((i) => i.id === g.selected)!),
-    0,
+/**
+ * Base des frais au pourcentage (livraison + montage) : produits retenus et
+ * options cochées rattachées à un produit, une option étant un produit acheté
+ * en plus. Les prestations sans produit n'y entrent pas.
+ */
+function chargeBase(s: {
+  groups: { id: string; selected: string; items: z.infer<typeof lineSchema>[] }[];
+  extras: (z.infer<typeof lineSchema> & { selected: boolean; parent?: string })[];
+}): number {
+  return (
+    s.groups.reduce(
+      (n, g) => n + lineTotal(g.items.find((i) => i.id === g.selected)!),
+      0,
+    ) +
+    s.extras
+      .filter(
+        (e) =>
+          e.selected &&
+          e.chargePercent === null &&
+          s.groups.some((g) => g.id === e.parent),
+      )
+      .reduce((n, e) => n + lineTotal(e), 0)
   );
+}
+export function repriceExtras(s: QuoteState): QuoteState {
+  const base = chargeBase(s);
   return {
     ...s,
     extras: s.extras.map((e) =>
