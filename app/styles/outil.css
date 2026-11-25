@@ -1741,6 +1741,38 @@ s-section > small {
 .selected-row {
   box-shadow: inset 2px 0 0 var(--brass);
 }
+/* L'alternative se lit sous son produit : retrait et trait de rattachement */
+.alternative-row > .product-heading {
+  position: relative;
+  padding-left: 22px;
+}
+.alternative-row > .product-heading::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: -6px;
+  width: 12px;
+  height: 22px;
+  border-left: 1.5px solid var(--line-strong);
+  border-bottom: 1.5px solid var(--line-strong);
+  border-bottom-left-radius: 6px;
+}
+/* Produit dont on choisit l'alternative dans le catalogue */
+.alternative-group.is-target {
+  outline: 2px solid var(--brass);
+  outline-offset: -2px;
+  background: var(--brass-bg);
+}
+.alternative-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 0;
+  min-height: var(--touch);
+  color: var(--brass);
+  font-weight: 500;
+}
 .product-details {
   grid-column: 1 / -1;
   display: flex;
@@ -2818,6 +2850,49 @@ html:has(.quote-workspace) {
   width: 36px;
   min-height: 36px;
   font-size: 18px;
+}
+.catalogue-pane button.catalogue-add.as-alternative {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: auto;
+  padding: 0 12px 0 10px;
+  border-radius: var(--radius-pill);
+  border-color: var(--brass);
+  background: var(--brass);
+  color: #fff;
+  font-size: 18px;
+}
+.catalogue-pane button.catalogue-add.as-alternative:hover:not(:disabled) {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+.add-label {
+  font-size: var(--t-small);
+  font-weight: 500;
+}
+.alternative-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 20px 12px;
+  padding: 10px 8px 10px 14px;
+  border: 1px solid var(--brass);
+  border-radius: var(--radius);
+  background: var(--brass-bg);
+}
+.alternative-banner p {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  display: grid;
+  gap: 2px;
+}
+.alternative-banner strong {
+  overflow-wrap: anywhere;
+}
+.alternative-banner small {
+  color: var(--ink-2);
 }
 .catalogue-pane .catalogue-more {
   margin-top: 24px;

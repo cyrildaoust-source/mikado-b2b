@@ -85,6 +85,8 @@ export default function Editor({
   demo,
   embedded = !demo,
   admin = true,
+  alternativeFor = null,
+  onAlternative,
   shop,
   actor,
   result,
@@ -97,6 +99,9 @@ export default function Editor({
   demo: boolean;
   embedded?: boolean;
   admin?: boolean;
+  /** Espace devis : produit dont on cherche une alternative dans le catalogue. */
+  alternativeFor?: string | null;
+  onAlternative?: (target: { group: string; name: string } | null) => void;
   shop: string;
   actor: string | null;
   result?: { ok?: string; error?: string };
@@ -368,10 +373,15 @@ export default function Editor({
   const addCardRef = useRef(addCard);
   addCardRef.current = addCard;
   useEffect(() => {
-    const onAdd = (e: Event) =>
-      addCardRef.current((e as CustomEvent<CatalogueCard>).detail, {
-        kind: "products",
-      });
+    const onAdd = (e: Event) => {
+      const card = (e as CustomEvent<CatalogueCard>).detail;
+      addCardRef.current(
+        card,
+        card.group
+          ? { kind: "products", group: card.group }
+          : { kind: "products" },
+      );
+    };
     window.addEventListener(CATALOGUE_ADD, onAdd);
     return () => window.removeEventListener(CATALOGUE_ADD, onAdd);
   }, []);
@@ -443,6 +453,7 @@ export default function Editor({
           e.stopPropagation();
           catalogueDrag.current = null;
           setDropAt(null);
+          if (alternativeFor) onAlternative?.(null);
           void addCard(
             card,
             target.kind === "group"
@@ -593,6 +604,8 @@ export default function Editor({
                   {section.groups.map((g) => (
                     <div
                       className={`alternative-group${dropAt === `g:${g.id}` ? " drop-over" : ""}${
+                        alternativeFor === g.id ? " is-target" : ""
+                      }${
                         dragging?.kind === "group" && dragging.groupId === g.id
                           ? " is-dragging"
                           : ""
@@ -614,7 +627,7 @@ export default function Editor({
                           <ProductRow
                             line={i}
                             base={n ? g.items[0] : undefined}
-                            selected={g.selected === i.id}
+                            selected={g.items.length > 1 && g.selected === i.id}
                             onSelect={
                               g.items.length > 1
                                 ? () =>
@@ -634,14 +647,33 @@ export default function Editor({
                         </div>
                       ))}
                       <div className="group-footer">
-                        <button
-                          className="add-action"
-                          onClick={() =>
-                            pick({ kind: "products", group: g.id })
-                          }
-                        >
-                          Ajouter une alternative
-                        </button>
+                        {alternativeFor === g.id ? (
+                          <p className="alternative-hint" role="status">
+                            Choisissez l’alternative dans le catalogue
+                            <button
+                              type="button"
+                              className="text-button"
+                              onClick={() => onAlternative?.(null)}
+                            >
+                              Annuler
+                            </button>
+                          </p>
+                        ) : (
+                          <button
+                            type="button"
+                            className="add-action"
+                            onClick={() =>
+                              onAlternative
+                                ? onAlternative({
+                                    group: g.id,
+                                    name: g.items[0].name,
+                                  })
+                                : pick({ kind: "products", group: g.id })
+                            }
+                          >
+                            Proposer une alternative
+                          </button>
+                        )}
                         <details>
                           <summary>Organiser</summary>
                           <div className="group-settings">

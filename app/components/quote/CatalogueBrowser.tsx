@@ -9,6 +9,8 @@ export type CatalogueCard = {
   id: string; // variante (gid)
   numericId: string; // produit
   title: string;
+  /** Ajout en alternative de ce produit du devis. */
+  group?: string;
 };
 
 /** Carte en cours de glisser : lue par les zones de dépôt de l'éditeur.
@@ -42,9 +44,14 @@ type Page = {
 export function CatalogueBrowser({
   open,
   onClose,
+  alternative,
+  onCancelAlternative,
 }: {
   open: boolean;
   onClose: () => void;
+  /** Produit du devis dont on choisit une alternative. */
+  alternative?: { group: string; name: string } | null;
+  onCancelAlternative?: () => void;
 }) {
   const first = useFetcher<Page>();
   const more = useFetcher<Page>();
@@ -125,6 +132,17 @@ export function CatalogueBrowser({
           Fermer
         </button>
       </header>
+      {alternative && (
+        <div className="alternative-banner" role="status">
+          <p>
+            Alternative à <strong>{alternative.name}</strong>
+            <small>Choisissez un produit avec +, ou glissez-le sur la ligne.</small>
+          </p>
+          <button type="button" className="text-button" onClick={onCancelAlternative}>
+            Annuler
+          </button>
+        </div>
+      )}
       <form
         className="catalogue-filters"
         onSubmit={(e) => {
@@ -202,18 +220,29 @@ export function CatalogueBrowser({
               >
                 <button
                   type="button"
-                  className="catalogue-add"
-                  aria-label={`Ajouter ${p.title} au devis`}
-                  title="Ajouter à la dernière pièce"
-                  onClick={() =>
+                  className={`catalogue-add${alternative ? " as-alternative" : ""}`}
+                  aria-label={
+                    alternative
+                      ? `Proposer ${p.title} en alternative à ${alternative.name}`
+                      : `Ajouter ${p.title} au devis`
+                  }
+                  title={alternative ? "Proposer en alternative" : "Ajouter à la dernière pièce"}
+                  onClick={() => {
                     window.dispatchEvent(
                       new CustomEvent<CatalogueCard>(CATALOGUE_ADD, {
-                        detail: { id: p.id, numericId: p.numericId, title: p.title },
+                        detail: {
+                          id: p.id,
+                          numericId: p.numericId,
+                          title: p.title,
+                          group: alternative?.group,
+                        },
                       }),
-                    )
-                  }
+                    );
+                    if (alternative) onCancelAlternative?.();
+                  }}
                 >
                   <span aria-hidden="true">+</span>
+                  {alternative && <span className="add-label">Alternative</span>}
                 </button>
                 <div className="catalogue-card">
                   <div className="catalogue-photo">
