@@ -1,6 +1,6 @@
 import {
-  Form,
   useActionData,
+  useFetcher,
   useLoaderData,
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
@@ -83,18 +83,7 @@ export default function Brands() {
               <tr key={b.vendor}>
                 <td>{b.vendor}</td>
                 <td>
-                  <Form method="post" className="brand-form">
-                    <input type="hidden" name="vendor" value={b.vendor} />
-                    <label className="inline">
-                      <input
-                        type="checkbox"
-                        name="visible"
-                        defaultChecked={b.visible}
-                      />{" "}
-                      Visible
-                    </label>
-                    <button>Enregistrer</button>
-                  </Form>
+                  <BrandToggle vendor={b.vendor} visible={b.visible} />
                 </td>
               </tr>
             ))}
@@ -102,10 +91,52 @@ export default function Brands() {
         </table>
         <p className="muted brand-note">
           Toutes les fiches encodées sont visibles, actives ou en brouillon,
-          gold ou non. Décochez « Visible » pour retirer une marque du
-          catalogue des architectes. Les fiches archivées n'apparaissent jamais.
+          gold ou non. Décochez « Visible » pour retirer une marque du catalogue
+          des architectes. Les fiches archivées n'apparaissent jamais.
         </p>
       </div>
     </main>
+  );
+}
+
+// Un clic sur l'interrupteur enregistre : pas de bouton Enregistrer.
+function BrandToggle({
+  vendor,
+  visible,
+}: {
+  vendor: string;
+  visible: boolean;
+}) {
+  const fetcher = useFetcher<typeof action>();
+  const pending = fetcher.formData
+    ? fetcher.formData.get("visible") === "on"
+    : undefined;
+  const on = pending ?? visible;
+  const error =
+    fetcher.data && "error" in fetcher.data ? fetcher.data.error : "";
+  return (
+    <fetcher.Form method="post" className="brand-form">
+      <input type="hidden" name="vendor" value={vendor} />
+      <label className="switch">
+        <input
+          type="checkbox"
+          role="switch"
+          name="visible"
+          checked={on}
+          aria-label={`${vendor} visible dans le catalogue`}
+          onChange={(e) => fetcher.submit(e.currentTarget.form)}
+        />
+        <span>{on ? "Visible" : "Masquée"}</span>
+      </label>
+      <span className="brand-state" role="status">
+        {fetcher.state !== "idle"
+          ? "Enregistrement…"
+          : error
+            ? error
+            : fetcher.data
+              ? "Enregistré"
+              : ""}
+      </span>
+    </fetcher.Form>
   );
 }

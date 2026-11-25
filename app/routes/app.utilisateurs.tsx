@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Form,
   useActionData,
@@ -116,57 +117,67 @@ export default function Users() {
                 Envoyez-lui ce lien vous-même (e-mail ou WhatsApp). Il sert une
                 seule fois, pendant 7 jours, pour choisir son mot de passe :
               </p>
-              <input readOnly value={result.link} onFocus={(e) => e.target.select()} />
+              <div className="invite-link">
+                <input
+                  readOnly
+                  aria-label="Lien d'invitation"
+                  value={result.link}
+                  onFocus={(e) => e.target.select()}
+                />
+                <CopyButton text={result.link} />
+              </div>
             </>
           )}
         </div>
       )}
-      <div className="list-card">
-        <table className="quote-table">
-          <thead>
-            <tr>
-              <th>Nom</th>
-              <th>E-mail</th>
-              <th>Rôle</th>
-              <th>État</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id}>
-                <td>{u.name}</td>
-                <td>{u.email}</td>
-                <td>{u.role === "admin" ? "Mikado Deco" : "Architecte"}</td>
-                <td>
-                  {!u.active
-                    ? "Accès retiré"
-                    : u.ready
-                      ? u.lastLoginAt
-                        ? `Dernière connexion le ${new Date(u.lastLoginAt).toLocaleDateString("fr-BE")}`
-                        : "Prêt"
-                      : "Invitation en attente"}
-                </td>
-                <td className="row-actions">
-                  <Form method="post">
-                    <input type="hidden" name="id" value={u.id} />
-                    {u.active && (
-                      <button name="intent" value="invite">
-                        Nouveau lien
-                      </button>
-                    )}
-                    {u.id !== me && (
-                      <button name="intent" value="toggle">
-                        {u.active ? "Retirer l'accès" : "Rouvrir l'accès"}
-                      </button>
-                    )}
-                  </Form>
-                </td>
+      {users.length > 0 && (
+        <div className="list-card">
+          <table className="quote-table">
+            <thead>
+              <tr>
+                <th>Nom</th>
+                <th>E-mail</th>
+                <th>Rôle</th>
+                <th>État</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.id}>
+                  <td>{u.name}</td>
+                  <td>{u.email}</td>
+                  <td>{u.role === "admin" ? "Mikado Deco" : "Architecte"}</td>
+                  <td>
+                    {!u.active
+                      ? "Accès retiré"
+                      : u.ready
+                        ? u.lastLoginAt
+                          ? `Dernière connexion le ${new Date(u.lastLoginAt).toLocaleDateString("fr-BE")}`
+                          : "Prêt"
+                        : "Invitation en attente"}
+                  </td>
+                  <td className="row-actions">
+                    <Form method="post">
+                      <input type="hidden" name="id" value={u.id} />
+                      {u.active && (
+                        <button name="intent" value="invite">
+                          Nouveau lien
+                        </button>
+                      )}
+                      {u.id !== me && (
+                        <button name="intent" value="toggle">
+                          {u.active ? "Retirer l'accès" : "Rouvrir l'accès"}
+                        </button>
+                      )}
+                    </Form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       <div className="list-card">
         <Form method="post" className="user-form">
           <h2>Ajouter un accès</h2>
@@ -193,5 +204,25 @@ export default function Users() {
         </Form>
       </div>
     </main>
+  );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setDone(true);
+          setTimeout(() => setDone(false), 2500);
+        } catch {
+          setDone(false);
+        }
+      }}
+    >
+      {done ? "Lien copié" : "Copier le lien"}
+    </button>
   );
 }

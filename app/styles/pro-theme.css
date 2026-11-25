@@ -1429,3 +1429,136 @@ body:has(.auth-page) {
     display: none;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Marques, Accès, connexion                                           */
+/* ------------------------------------------------------------------ */
+.pro-app .list-card + .list-card {
+  margin-top: 20px;
+}
+.pro-app .brand-form {
+  gap: 16px;
+}
+.pro-app .switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--touch);
+  margin: 0;
+  cursor: pointer;
+  color: var(--ink);
+  font-size: var(--t-body);
+}
+.pro-app .switch input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 36px;
+  height: 20px;
+  margin: 0;
+  border-radius: var(--radius-pill);
+  background: var(--field);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex: none;
+}
+.pro-app .switch input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s;
+}
+.pro-app .switch input[type="checkbox"]:checked {
+  background: var(--ink);
+}
+.pro-app .switch input[type="checkbox"]:checked::after {
+  transform: translateX(16px);
+}
+.pro-app .brand-state {
+  font-size: var(--t-small);
+  color: var(--ink-3);
+}
+.pro-app .brand-note {
+  padding: 16px;
+  margin: 0;
+  font-size: var(--t-small);
+  border-top: 1px solid var(--line);
+}
+.pro-app .row-actions form {
+  gap: 4px;
+}
+.pro-app .row-actions button {
+  border-color: transparent;
+  background: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 400;
+  padding: 0 10px;
+}
+.pro-app .user-form {
+  padding: 24px;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: end;
+  max-width: none;
+  gap: 12px;
+}
+.pro-app .user-form h2 {
+  grid-column: 1 / -1;
+  font-size: var(--t-section);
+  font-weight: 500;
+}
+.pro-app .user-form label {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  color: var(--ink-2);
+  font-size: var(--t-body);
+}
+.pro-app .invite-link {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.pro-app .invite-link input {
+  flex: 1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--t-small);
+}
+@media (max-width: 900px) {
+  .pro-app .user-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Connexion, invitation, premier accès */
+.auth-page {
+  background: var(--paper, #fafaf8);
+}
+.auth-page .auth-card {
+  border: 1px solid #e6e4df;
+  border-radius: 6px;
+  padding: 32px;
+  box-shadow: none;
+}
+.auth-page .auth-brand {
+  font-weight: 600;
+  font-size: 13px;
+  color: #5f5d58;
+}
+.auth-page .auth-card h1 {
+  font-weight: 500;
+  font-size: 24px;
+}
+.auth-page label {
+  display: grid;
+  gap: 6px;
+  color: #5f5d58;
+}
+.auth-page .primary {
+  min-height: 44px;
+}
