@@ -227,6 +227,13 @@ export default function Quote() {
   // Alternative ou option en cours : le catalogue ajoute sous ce produit.
   const [alternative, setAlternative] = useState<CatalogueTarget | null>(null);
   const chooseAlternative = (t: CatalogueTarget | null) => {
+    if (t?.refine) {
+      // Famille retrouvée après coup : seulement si la même cible est encore ouverte.
+      setAlternative((cur) =>
+        cur && cur.group === t.group && cur.mode === t.mode ? t : cur,
+      );
+      return;
+    }
     setAlternative(t);
     if (t) {
       setCatalogue(true);

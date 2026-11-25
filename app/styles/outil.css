@@ -2910,6 +2910,38 @@ html:has(.quote-workspace) {
   border-radius: var(--radius);
   background: var(--brass-bg);
 }
+.alternative-banner {
+  flex-wrap: wrap;
+}
+.alternative-banner .banner-family {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(138, 106, 61, 0.25);
+  color: var(--ink-2);
+  font-size: var(--t-small);
+}
+.catalogue-pane .catalogue-item.is-taken {
+  cursor: default;
+}
+.catalogue-pane .catalogue-item.is-taken .catalogue-card {
+  opacity: 0.45;
+}
+.catalogue-taken {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  right: 8px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  color: var(--ink-2);
+  font-size: var(--t-small);
+}
 .alternative-banner p {
   flex: 1;
   min-width: 0;

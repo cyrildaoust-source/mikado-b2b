@@ -1,9 +1,9 @@
 export const operations = {
   shop: "query Shop { shop { name currencyCode taxesIncluded } }",
   products:
-    "query Products($query:String,$after:String) { productVariants(first:20,query:$query,after:$after) { nodes { id displayName sku taxable price product { description featuredMedia { preview { image { url } } } } image { url } } pageInfo { hasNextPage endCursor } } }",
+    "query Products($query:String,$after:String) { productVariants(first:20,query:$query,after:$after) { nodes { id displayName sku taxable price product { description productType featuredMedia { preview { image { url } } } } image { url } } pageInfo { hasNextPage endCursor } } }",
   variants:
-    "query Variants($ids:[ID!]!) { nodes(ids:$ids) { ... on ProductVariant { id displayName sku taxable price product { description featuredMedia { preview { image { url } } } } image { url } } } }",
+    "query Variants($ids:[ID!]!) { nodes(ids:$ids) { ... on ProductVariant { id displayName sku taxable price product { description productType featuredMedia { preview { image { url } } } } image { url } } } }",
   customers:
     "query Customers($query:String,$after:String) { customers(first:20,query:$query,after:$after) { nodes { id displayName defaultEmailAddress { emailAddress } defaultAddress { address1 address2 city zip countryCodeV2 company firstName lastName } } pageInfo { hasNextPage endCursor } } }",
   calculate:

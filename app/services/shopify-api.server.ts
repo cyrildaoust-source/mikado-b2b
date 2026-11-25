@@ -542,6 +542,7 @@ type CatalogVariant = {
   price: string;
   product: {
     description: string;
+    productType?: string;
     featuredMedia?: {
       preview: { image: { url: string } | null } | null;
     } | null;
@@ -569,6 +570,7 @@ function catalogLine(v: CatalogVariant, taxesIncluded: boolean) {
     image: v.image?.url || v.product.featuredMedia?.preview?.image?.url || "",
     taxable: v.taxable,
     requiresShipping: true,
+    family: v.product.productType || undefined,
   });
 }
 export async function productsByIds(admin: Admin | null, ids: string[]) {

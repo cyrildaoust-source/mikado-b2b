@@ -295,6 +295,22 @@ export default function Editor({
       ...i,
       id: crypto.randomUUID(),
     }));
+    // La même variante ne se propose pas deux fois pour un même produit.
+    const owner = target.group || target.parent;
+    if (owner) {
+      const g = s.groups.find((x) => x.id === owner);
+      const taken = new Set(
+        [...(g?.items || []), ...optionsOf(s, owner)].flatMap((l) =>
+          l.variantId ? [l.variantId, l.name] : [l.name],
+        ),
+      );
+      if (lines.some((l) => (l.variantId && taken.has(l.variantId)) || taken.has(l.name))) {
+        setError(
+          `Cette variante est déjà proposée pour « ${g?.items[0].name || "ce produit"} ». Choisissez une autre finition ou un autre produit.`,
+        );
+        return;
+      }
+    }
     if (lines.some((i) => !i.taxable)) {
       setError(
         "Un article Shopify est configuré sans taxe. Corrigez sa taxation dans Shopify avant de l’ajouter au devis à 21 %.",
@@ -378,6 +394,33 @@ export default function Editor({
           "Ce produit n’a pas pu être ajouté. Réessayez.",
       );
     }
+  }
+  // Ouvre le catalogue pour une alternative ou une option de ce produit,
+  // filtré sur sa famille, sans les variantes déjà proposées.
+  function aim(g: QuoteState["groups"][number], mode: CatalogueTarget["mode"]) {
+    if (!onCatalogueTarget) return;
+    const base = g.items[0],
+      target: CatalogueTarget = {
+        group: g.id,
+        name: base.name,
+        mode,
+        family: g.items.find((i) => i.family)?.family,
+        taken: [...g.items, ...optionsOf(s, g.id)].flatMap((l) =>
+          l.variantId ? [l.variantId, l.name] : [l.name],
+        ),
+      };
+    onCatalogueTarget(target);
+    if (target.family || (!base.variantId && !base.sku)) return;
+    const url = new URL("/app/catalog", location.origin);
+    url.searchParams.set("kind", "family");
+    if (base.variantId) url.searchParams.set("variante", base.variantId);
+    else url.searchParams.set("sku", base.sku);
+    fetch(url)
+      .then((r) => r.json())
+      .then((d: { family?: string }) => {
+        if (d.family) onCatalogueTarget({ ...target, family: d.family, refine: true });
+      })
+      .catch(() => {});
   }
   const addCardRef = useRef(addCard);
   addCardRef.current = addCard;
@@ -708,11 +751,7 @@ export default function Editor({
                               className="add-action"
                               onClick={() =>
                                 onCatalogueTarget
-                                  ? onCatalogueTarget({
-                                      group: g.id,
-                                      name: g.items[0].name,
-                                      mode: "alternative",
-                                    })
+                                  ? aim(g, "alternative")
                                   : pick({ kind: "products", group: g.id })
                               }
                             >
@@ -723,11 +762,7 @@ export default function Editor({
                               className="add-action"
                               onClick={() =>
                                 onCatalogueTarget
-                                  ? onCatalogueTarget({
-                                      group: g.id,
-                                      name: g.items[0].name,
-                                      mode: "option",
-                                    })
+                                  ? aim(g, "option")
                                   : pick({
                                       kind: "products",
                                       extra: true,

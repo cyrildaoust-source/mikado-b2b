@@ -37,6 +37,8 @@ export const lineSchema = z.object({
   deliveryFee: z.boolean().optional(),
   chargePercent: z.number().min(0).max(100).nullable().default(null),
   sourceVatRate: z.number().min(0).max(100).nullable().default(null),
+  // Famille du produit (type Shopify) : filtre du catalogue pour ses alternatives.
+  family: z.string().max(150).optional(),
 });
 export const quoteSchema = z
   .object({
