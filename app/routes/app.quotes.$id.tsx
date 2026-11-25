@@ -221,19 +221,54 @@ export default function Quote() {
   const data = useLoaderData<typeof loader>();
   const result = useActionData<typeof action>();
   const [catalogue, setCatalogue] = useState(false);
-  const editor = (
-    <Editor key={`${data.q.id}-${data.q.version}`} {...data} result={result} />
-  );
+  // Alternative en cours : le catalogue ajoute sous ce produit du devis.
+  const [alternative, setAlternative] = useState<{
+    group: string;
+    name: string;
+  } | null>(null);
+  const chooseAlternative = (t: { group: string; name: string } | null) => {
+    setAlternative(t);
+    if (t) {
+      setCatalogue(true);
+      // Clavier à l'écran : pas de focus automatique sur tablette et téléphone.
+      if (matchMedia("(pointer: fine)").matches)
+        requestAnimationFrame(() =>
+        document
+          .querySelector<HTMLInputElement>('.catalogue-pane input[type="search"]')
+          ?.focus({ preventScroll: true }),
+      );
+    } else if (matchMedia("(max-width: 1000px)").matches) setCatalogue(false);
+  };
   // Outil pro : le catalogue à gauche du devis, tant que le devis se modifie.
   const editable =
     data.q.status === "draft" &&
     !["creating", "uncertain", "complete"].includes(
       data.q.conversion?.status || "",
     );
-  if (data.embedded || !editable) return editor;
+  if (data.embedded || !editable)
+    return (
+      <Editor key={`${data.q.id}-${data.q.version}`} {...data} result={result} />
+    );
+  const editor = (
+    <Editor
+      key={`${data.q.id}-${data.q.version}`}
+      {...data}
+      result={result}
+      alternativeFor={alternative?.group || null}
+      onAlternative={chooseAlternative}
+    />
+  );
   return (
     <div className={`quote-workspace${catalogue ? " catalogue-open" : ""}`}>
-      <CatalogueBrowser open={catalogue} onClose={() => setCatalogue(false)} />
+      <CatalogueBrowser
+        open={catalogue}
+        onClose={() => {
+          setCatalogue(false);
+          setAlternative(null);
+        }}
+        alternative={alternative}
+        onCancelAlternative={() => chooseAlternative(null)}
+      />
       <div className="quote-pane">
         {editor}
         <button
