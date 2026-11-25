@@ -29,7 +29,7 @@ export default function App() {
       </AppProvider>
     );
   return (
-    <>
+    <div className="pro-app">
       <nav className="localbar pro-nav" aria-label="Navigation principale">
         <NavLink to="/app/catalogue" className="pro-brand">
           Mikado Deco · Pro
@@ -57,7 +57,7 @@ export default function App() {
         )}
       </nav>
       <Outlet />
-    </>
+    </div>
   );
 }
 export function ErrorBoundary() {

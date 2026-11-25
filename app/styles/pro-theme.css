@@ -1,0 +1,278 @@
+/*
+ * Outil pro : fondations visuelles (refonte du 25/11/2026).
+ * Tout est limité à .pro-app (mode autonome) et aux pages de connexion :
+ * l'app intégrée à l'admin Shopify et le PDF ne changent pas.
+ * Les couleurs, tailles et rayons ne s'écrivent qu'ici, en variables.
+ */
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+
+.pro-app,
+.auth-page {
+  /* Couleurs */
+  --paper: #fafaf8;
+  --surface: #ffffff;
+  --ground: #f1f0ec;
+  --line: #e6e4df;
+  --field: #8c8981;
+  --ink: #16181a;
+  --ink-2: #5f5d58;
+  --ink-3: #8a877f;
+  --brass: #8a6a3d;
+  --ok: #2f6b4a;
+  --warn: #9a5d16;
+  --error: #a33a2b;
+  --error-bg: #fbf1ef;
+  /* Typographie : quatre tailles, deux graisses */
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --t-title: 28px;
+  --t-section: 16px;
+  --t-name: 14px;
+  --t-body: 13px;
+  --t-small: 12px;
+  /* Formes */
+  --radius: 6px;
+  --radius-pill: 999px;
+  --control: 40px;
+  --touch: 44px;
+  --gutter: 24px;
+  --shadow-float: 0 10px 30px rgba(22, 24, 26, 0.12);
+
+  font-family: var(--font);
+  font-size: var(--t-body);
+  line-height: 1.45;
+  color: var(--ink);
+  background: var(--paper);
+  font-variant-numeric: tabular-nums;
+  min-height: 100vh;
+}
+@media (pointer: coarse) {
+  .pro-app,
+  .auth-page {
+    --control: var(--touch);
+  }
+}
+body:has(.pro-app),
+body:has(.auth-page) {
+  background: var(--paper, #fafaf8);
+}
+
+/* Texte */
+.pro-app h1 {
+  font-size: var(--t-title);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+.pro-app h2 {
+  font-size: var(--t-section);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.pro-app h3 {
+  font-size: var(--t-name);
+  font-weight: 500;
+}
+.pro-app strong,
+.pro-app b {
+  font-weight: 500;
+}
+.pro-app a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: 3px;
+}
+.pro-app a:hover {
+  text-decoration-color: currentColor;
+}
+/* Liens-blocs (cartes, onglets, pastilles) : pas de soulignement */
+.pro-app a[class] {
+  text-decoration: none;
+}
+.pro-app small,
+.pro-app .muted {
+  color: var(--ink-2);
+}
+
+/* Boutons : un seul bouton plein par écran (.primary) */
+.pro-app button,
+.auth-page button {
+  min-height: var(--control);
+  padding: 0 16px;
+  border: 1px solid var(--field);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 500;
+  box-shadow: none;
+}
+.pro-app button:hover,
+.auth-page button:hover {
+  background: var(--ground);
+}
+.pro-app button.primary,
+.auth-page button.primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
+  box-shadow: none;
+}
+.pro-app button.primary:hover,
+.auth-page button.primary:hover {
+  background: #000;
+}
+.pro-app .text-button {
+  min-height: 32px;
+  padding: 0 2px;
+  border: 0;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--field);
+  text-underline-offset: 3px;
+}
+
+/* Champs */
+.pro-app label,
+.auth-page label {
+  font-size: var(--t-small);
+  color: var(--ink-2);
+}
+.pro-app input:not([type="checkbox"]):not([type="radio"]),
+.pro-app select,
+.pro-app textarea,
+.auth-page input:not([type="checkbox"]):not([type="radio"]) {
+  min-height: var(--control);
+  border: 1px solid var(--field);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 8px 12px;
+}
+.pro-app input::placeholder,
+.pro-app textarea::placeholder {
+  color: var(--ink-3);
+}
+.pro-app select {
+  appearance: none;
+  padding-right: 34px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%),
+    linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
+  background-position:
+    calc(100% - 17px) 50%,
+    calc(100% - 12px) 50%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+}
+.pro-app input[type="checkbox"],
+.pro-app input[type="radio"] {
+  accent-color: var(--ink);
+  width: 18px;
+  height: 18px;
+}
+.pro-app :is(button, input, select, textarea, a, summary):focus-visible,
+.auth-page :is(button, input, a):focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+
+/* Surfaces : des filets, pas des cartes ombrées */
+.pro-app .panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: none;
+  background: var(--surface);
+}
+.pro-app .workspace {
+  max-width: 1440px;
+  padding: 28px var(--gutter) 64px;
+}
+.pro-app .demo-ribbon {
+  display: inline-block;
+  font-size: var(--t-small);
+  color: var(--ink-2);
+  border: 1px dashed var(--field);
+  border-radius: var(--radius-pill);
+  padding: 2px 10px;
+  margin: 0 0 16px;
+}
+.pro-app .error {
+  color: var(--error);
+}
+.pro-app .empty-symbol {
+  display: none;
+}
+
+/* Barre de navigation */
+.pro-app .pro-nav {
+  background: var(--surface);
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+  min-height: 56px;
+  padding: 8px var(--gutter);
+  gap: 4px;
+}
+.pro-app .pro-nav a {
+  color: var(--ink-2);
+  font-weight: 400;
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+}
+.pro-app .pro-nav a:hover {
+  color: var(--ink);
+  background: var(--ground);
+}
+.pro-app .pro-nav a.active {
+  color: var(--ink);
+  background: var(--ground);
+  font-weight: 500;
+}
+.pro-app .pro-nav .pro-brand,
+.pro-app .pro-nav .pro-brand:hover,
+.pro-app .pro-nav .pro-brand.active {
+  color: var(--ink);
+  background: none;
+  font-weight: 600;
+  font-size: var(--t-name);
+  padding-left: 0;
+  margin-right: 16px;
+}
+.pro-app .pro-nav .pro-new-quote .primary {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--ink);
+  padding: 0 14px;
+  font-weight: 500;
+}
+.pro-app .pro-nav .pro-new-quote .primary:hover {
+  background: var(--ground);
+}
+.pro-app .pro-nav .pro-user {
+  color: var(--ink-2);
+  font-size: var(--t-small);
+  margin-left: 8px;
+}
+.pro-app .pro-nav form .text-button {
+  color: var(--ink-2);
+  font-size: var(--t-small);
+}
+
+/* Pages de connexion */
+.auth-page {
+  background: var(--paper);
+}
+.auth-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.auth-card h1 {
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.auth-brand {
+  font-weight: 600;
+}
