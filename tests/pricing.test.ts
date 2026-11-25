@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   emptyQuote,
   setDeliveryFee,
+  clientNames,
+  withClientNames,
   newQuote,
   costBreakdown,
   paymentSchedule,
@@ -751,19 +753,36 @@ test("livraison à 3 % : remise, recalcul, TVA, activation unique et retrait", (
   assert.equal(s.extras.length, 1);
 });
 
-test("livraison + montage : 5 % par défaut sur un nouveau devis, taux modifiable", () => {
+test("livraison + montage : 4 % par défaut sur un nouveau devis, taux modifiable", () => {
   let s = newQuote();
   const fee = () => s.extras.find((e) => e.deliveryFee);
-  assert.equal(fee()?.chargePercent, 5);
+  assert.equal(fee()?.chargePercent, 4);
   assert.equal(fee()?.price, 0);
   s.groups = fixture().groups;
   s.groups[0].syncQty = false;
   s = repriceExtras(s);
   const base = costBreakdown(s).products;
-  assert.equal(fee()?.price, Math.round(base * 0.05));
-  s = setDeliveryFee(s, true, fee()!.id, 4);
   assert.equal(fee()?.price, Math.round(base * 0.04));
+  s = setDeliveryFee(s, true, fee()!.id, 5);
+  assert.equal(fee()?.price, Math.round(base * 0.05));
   assert.equal(s.extras.filter((e) => e.deliveryFee).length, 1);
   s = setDeliveryFee(s, false, "x");
   assert.equal(fee(), undefined);
+});
+
+test("fiche client : prénom, nom, société facultative", () => {
+  const s = emptyQuote();
+  const named = withClientNames({ ...s, firstName: " Anne ", lastName: "Dupont", company: "" });
+  assert.equal(named.client, "Anne Dupont");
+  assert.equal(named.contact, "Anne Dupont");
+  assert.equal(named.shipping.lastName, "Dupont");
+  const firm = withClientNames({ ...s, firstName: "Anne", lastName: "Dupont", company: "Studio A" });
+  assert.equal(firm.client, "Studio A");
+  assert.equal(firm.billing.company, "Studio A");
+  // Devis plus ancien : noms retrouvés depuis client et contact.
+  assert.deepEqual(clientNames({ ...s, client: "Studio A", contact: "Anne Dupont" }), {
+    firstName: "Anne",
+    lastName: "Dupont",
+    company: "Studio A",
+  });
 });

@@ -21,6 +21,8 @@ import {
   fiscalTotals,
   paymentText,
   type QuoteState,
+  clientNames,
+  withClientNames,
   type Line,
 } from "../domain/quote";
 import type { getQuote } from "../services/quotes.server";
@@ -47,6 +49,30 @@ type Target = {
   sectionTitle?: string;
   extra?: boolean;
 };
+/** Brouillon de la fiche client : noms retrouvés, facturation pré-remplie. */
+function draftFrom(s: QuoteState): QuoteState {
+  return {
+    ...s,
+    ...clientNames(s),
+    billing:
+      s.billingSame || !s.billing.address1 ? { ...s.shipping } : s.billing,
+  };
+}
+function fromCustomer(d: QuoteState, c: Customer): QuoteState {
+  const [first, ...rest] = c.name.trim().split(/\s+/);
+  return {
+    ...d,
+    firstName: c.address.firstName || (rest.length ? first : ""),
+    lastName: c.address.lastName || (rest.length ? rest.join(" ") : first || ""),
+    company: c.address.company,
+    email: c.email,
+    customerId: c.id,
+    billing: c.address,
+    shipping: c.address,
+    billingSame: true,
+  };
+}
+
 export default function Editor({
   q,
   demo,
@@ -171,14 +197,7 @@ export default function Editor({
   function add(items: (Line | Customer)[], target: Target) {
     if (target.kind === "customers") {
       const c = items[0] as Customer;
-      setClientDraft({
-        ...s,
-        client: c.address.company || c.name,
-        contact: c.name,
-        email: c.email,
-        customerId: c.id,
-        shipping: c.address,
-      });
+      setClientDraft(fromCustomer(draftFrom(s), c));
       setModal("client");
       setPicker(null);
       return;
@@ -1005,7 +1024,7 @@ export default function Editor({
               state={s}
               disabled={locked || busy}
               onEdit={() => {
-                setClientDraft(s);
+                setClientDraft(draftFrom(s));
                 setModal("client");
               }}
               onSearch={() => {
@@ -1110,16 +1129,27 @@ export default function Editor({
           <form
             onSubmit={(e) => {
               e.preventDefault();
+              // La facturation se saisit d'abord ; « même adresse » copie la
+              // facturation vers la livraison (adresse de la commande Shopify).
+              const d = withClientNames({
+                ...clientDraft,
+                shipping: clientDraft.billingSame
+                  ? clientDraft.billing
+                  : clientDraft.shipping,
+              });
               change({
                 ...s,
-                client: clientDraft.client.trim(),
-                contact: clientDraft.contact,
-                email: clientDraft.email,
-                customerId: clientDraft.customerId,
-                customerVat: clientDraft.customerVat,
-                shipping: clientDraft.shipping,
-                billing: clientDraft.billing,
-                billingSame: clientDraft.billingSame,
+                firstName: d.firstName,
+                lastName: d.lastName,
+                company: d.company,
+                client: d.client,
+                contact: d.contact,
+                email: d.email,
+                customerId: d.customerId,
+                customerVat: d.customerVat,
+                shipping: d.shipping,
+                billing: d.billingSame ? d.shipping : d.billing,
+                billingSame: d.billingSame,
               });
               setModal(null);
             }}
@@ -1128,17 +1158,18 @@ export default function Editor({
               <div className="fields">
                 {(
                   [
-                    ["client", "Entreprise / client"],
-                    ["contact", "Contact"],
+                    ["firstName", "Prénom", "given-name", false],
+                    ["lastName", "Nom", "family-name", true],
+                    ["company", "Société (facultatif)", "organization", false],
                   ] as const
-                ).map(([k, label]) => (
+                ).map(([k, label, auto, required]) => (
                   <label key={k}>
                     {label}
                     <input
                       type="text"
                       name={k}
-                      autoComplete={k === "client" ? "organization" : "name"}
-                      required={k === "client"}
+                      autoComplete={auto}
+                      required={required}
                       maxLength={150}
                       value={clientDraft[k]}
                       onChange={(e) =>
@@ -1161,14 +1192,7 @@ export default function Editor({
                     })
                   }
                   onSelect={(customer) =>
-                    setClientDraft({
-                      ...clientDraft,
-                      client: customer.address.company || customer.name,
-                      contact: customer.name,
-                      email: customer.email,
-                      customerId: customer.id,
-                      shipping: customer.address,
-                    })
+                    setClientDraft(fromCustomer(clientDraft, customer))
                   }
                 />
                 <label>
@@ -1188,18 +1212,14 @@ export default function Editor({
                   />
                 </label>
               </div>
-              <h3>Adresse de livraison</h3>
-              <p className="muted">
-                Facultative pour le PDF. Vous pourrez la compléter avant de
-                créer la commande.
-              </p>
+              <h3>Adresse de facturation</h3>
               <AddressFields
-                value={clientDraft.shipping}
-                onChange={(shipping) =>
-                  setClientDraft({ ...clientDraft, shipping })
+                value={clientDraft.billing}
+                onChange={(billing) =>
+                  setClientDraft({ ...clientDraft, billing })
                 }
               />
-              <h3>Facturation</h3>
+              <h3>Adresse de livraison</h3>
               <label className="check">
                 <input
                   type="checkbox"
@@ -1208,16 +1228,21 @@ export default function Editor({
                     setClientDraft({
                       ...clientDraft,
                       billingSame: e.target.checked,
+                      shipping: e.target.checked
+                        ? clientDraft.shipping
+                        : clientDraft.shipping.address1
+                          ? clientDraft.shipping
+                          : clientDraft.billing,
                     })
                   }
                 />
-                Identique à la livraison
+                Livrer à l’adresse de facturation
               </label>
               {!clientDraft.billingSame && (
                 <AddressFields
-                  value={clientDraft.billing}
-                  onChange={(billing) =>
-                    setClientDraft({ ...clientDraft, billing })
+                  value={clientDraft.shipping}
+                  onChange={(shipping) =>
+                    setClientDraft({ ...clientDraft, shipping })
                   }
                 />
               )}

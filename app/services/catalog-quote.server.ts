@@ -13,26 +13,90 @@ import type { CatalogProduct } from "./catalog.server";
 import { productsByIds, shopInfo, type Admin } from "./shopify-api.server";
 import { createQuote, getQuote, saveQuote } from "./quotes.server";
 
-/** Ajoute une variante du catalogue à un devis, comme une nouvelle ligne retenue. */
-export function addLineToState(state: QuoteState, line: Line, qty: number) {
+/** Où placer une variante du catalogue dans un devis. */
+export type Placement =
+  | { kind: "end" }
+  | { kind: "section"; id: string }
+  | { kind: "newSection"; title: string }
+  | { kind: "alternative"; group: string }
+  | { kind: "option" };
+
+export function parsePlacement(raw: string): Placement {
+  const [kind, ...rest] = raw.split(":"),
+    value = rest.join(":").slice(0, 150);
+  if (kind === "section" && value) return { kind, id: value };
+  if (kind === "newSection" && value.trim()) return { kind, title: value.trim() };
+  if (kind === "alternative" && value) return { kind, group: value };
+  if (kind === "option") return { kind };
+  return { kind: "end" };
+}
+
+/** Ajoute une variante du catalogue à un devis : dans une pièce, en alternative ou en option. */
+export function addLineToState(
+  state: QuoteState,
+  line: Line,
+  qty: number,
+  placement: Placement = { kind: "end" },
+) {
   const s = state.schemaVersion === 1 ? upgradeQuote(state) : state;
-  const last = quoteSections(s).at(-1);
   const item = { ...line, id: crypto.randomUUID(), qty };
+  if (placement.kind === "option")
+    return repriceExtras(
+      quoteSchema.parse({
+        ...s,
+        extras: [...s.extras, { ...item, selected: false }],
+      }),
+    );
+  if (placement.kind === "alternative") {
+    const group = s.groups.find((g) => g.id === placement.group);
+    if (!group) throw Error("Ce produit n'est plus dans le devis. Rechargez la page.");
+    return repriceExtras(
+      quoteSchema.parse({
+        ...s,
+        groups: s.groups.map((g) =>
+          g.id === group.id
+            ? {
+                ...g,
+                items: [
+                  ...g.items,
+                  { ...item, qty: g.syncQty ? g.items[0].qty : qty },
+                ],
+              }
+            : g,
+        ),
+      }),
+    );
+  }
+  const sections = quoteSections(s),
+    chosen =
+      placement.kind === "section"
+        ? sections.find((x) => x.id === placement.id)
+        : placement.kind === "end"
+          ? sections.at(-1)
+          : undefined;
+  if (placement.kind === "section" && !chosen)
+    throw Error("Cette pièce n'est plus dans le devis. Rechargez la page.");
+  const title =
+    placement.kind === "newSection" ? placement.title : chosen?.title || "Produits";
+  const sectionId =
+    chosen && !chosen.id.startsWith("legacy:") ? chosen.id : chosen ? "" : crypto.randomUUID();
   // repriceExtras : la livraison au pourcentage suit les produits ajoutés.
-  return repriceExtras(quoteSchema.parse({
-    ...s,
-    groups: [
-      ...s.groups,
-      {
-        id: crypto.randomUUID(),
-        sectionId: last?.id.startsWith("legacy:") ? "" : last?.id || crypto.randomUUID(),
-        section: last?.title || "Produits",
-        selected: item.id,
-        syncQty: true,
-        items: [item],
-      },
-    ],
-  }));
+  return repriceExtras(
+    quoteSchema.parse({
+      ...s,
+      groups: [
+        ...s.groups,
+        {
+          id: crypto.randomUUID(),
+          sectionId,
+          section: title,
+          selected: item.id,
+          syncQty: true,
+          items: [item],
+        },
+      ],
+    }),
+  );
 }
 
 async function lineFor(
@@ -72,6 +136,7 @@ export async function addToQuote(opts: {
   variantId: string;
   qty: number;
   quoteId: number | "new";
+  placement?: Placement;
 }) {
   if (!Number.isInteger(opts.qty) || opts.qty < 1 || opts.qty > 10000)
     throw Error("Quantité invalide.");
@@ -96,6 +161,7 @@ export async function addToQuote(opts: {
     quoteSchema.parse(JSON.parse(q.state)),
     line,
     opts.qty,
+    opts.placement,
   );
   await saveQuote(opts.shop, q.id, q.version, state);
   return q.id;

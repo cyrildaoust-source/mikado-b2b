@@ -62,6 +62,10 @@ export const quoteSchema = z
       .regex(/^gid:\/\/shopify\/Customer\/\d+$/)
       .nullable(),
     customerVat: z.string().max(100).default(""),
+    // Fiche client : prénom, nom, société facultative (client et contact en découlent).
+    firstName: z.string().max(150).default(""),
+    lastName: z.string().max(150).default(""),
+    company: z.string().max(150).default(""),
     shipping: addressSchema,
     billing: addressSchema,
     billingSame: z.boolean(),
@@ -391,6 +395,48 @@ export function emptyQuote(_taxesIncluded = false): QuoteState {
   });
 }
 
+type ClientFields = Pick<
+  QuoteState,
+  "firstName" | "lastName" | "company" | "client" | "contact" | "shipping" | "billing"
+>;
+
+/** Prénom, nom, société d'un devis, retrouvés aussi sur un devis plus ancien. */
+export function clientNames(s: ClientFields) {
+  if (s.firstName || s.lastName || s.company)
+    return { firstName: s.firstName, lastName: s.lastName, company: s.company };
+  const person = s.contact || (s.client && !s.shipping.company ? s.client : "");
+  const [first, ...rest] = person.trim().split(/\s+/);
+  return {
+    firstName: rest.length ? first : "",
+    lastName: rest.length ? rest.join(" ") : first || "",
+    company: s.client && s.client !== person ? s.client : s.shipping.company,
+  };
+}
+
+/** Recalcule client et contact, et complète les noms des adresses restés vides. */
+export function withClientNames<T extends ClientFields>(s: T): T {
+  const firstName = s.firstName.trim(),
+    lastName = s.lastName.trim(),
+    company = s.company.trim(),
+    person = [firstName, lastName].filter(Boolean).join(" ");
+  const fill = (a: T["shipping"]) => ({
+    ...a,
+    firstName: a.firstName || firstName,
+    lastName: a.lastName || lastName,
+    company: a.company || company,
+  });
+  return {
+    ...s,
+    firstName,
+    lastName,
+    company,
+    client: company || person,
+    contact: person,
+    shipping: fill(s.shipping),
+    billing: fill(s.billing),
+  };
+}
+
 /** Nouveau devis : livraison + montage déjà ajoutée au taux par défaut, à retirer au besoin. */
 export function newQuote(taxesIncluded = false): QuoteState {
   return setDeliveryFee(emptyQuote(taxesIncluded), true, crypto.randomUUID());
@@ -513,7 +559,7 @@ export function quoteSections(s: QuoteState) {
 }
 
 /** Taux par défaut de la ligne « Livraison + montage » (décision de Cyril, 25/11/2026). */
-export const DELIVERY_PERCENT = 5;
+export const DELIVERY_PERCENT = 4;
 
 export function setDeliveryFee(
   s: QuoteState,

@@ -1,4 +1,5 @@
 import {
+  data,
   redirect,
   useLoaderData,
   useActionData,
@@ -40,11 +41,14 @@ import {
 import { billingKinds, type BillingKind } from "../domain/billing";
 import { fiscalTotals } from "../domain/quote";
 import Editor from "../components/Editor";
+import { rememberQuote } from "../services/current-quote.server";
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const c = await context(request);
   await assertQuoteAccess(c.shop, Number(params.id), ownerScope(c));
   const q = await getQuote(c.shop, Number(params.id));
-  return {
+  // Ce devis devient le « devis ouvert » affiché à côté des fiches du catalogue.
+  const headers = { "Set-Cookie": await rememberQuote(q.id) };
+  return data({
     q,
     demo: c.demo,
     embedded: c.embedded,
@@ -52,7 +56,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     actor: c.actor,
     billingMode: billingMode(c.shop),
     odooUrl: c.demo ? null : odooPublicUrl(),
-  };
+  }, { headers });
 }
 export async function action({ request, params }: ActionFunctionArgs) {
   const c = await context(request),

@@ -131,6 +131,83 @@
   gap: 36px;
   align-items: start;
 }
+.product-layout.with-quote {
+  grid-template-columns: minmax(0, 1.1fr) minmax(260px, 1fr) 300px;
+  gap: 28px;
+}
+.quote-panel {
+  position: sticky;
+  top: 16px;
+  border: 1px solid #e3e0db;
+  border-radius: 14px;
+  background: #fff;
+  padding: 16px;
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+}
+.quote-panel header {
+  display: grid;
+  gap: 2px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 10px;
+}
+.quote-panel header small {
+  color: #777;
+}
+.quote-panel h3 {
+  font-size: 14px;
+  margin: 0;
+}
+.quote-panel-room {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 12px 0 6px;
+}
+.quote-panel ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.quote-panel li {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  padding: 4px;
+  border-radius: 8px;
+}
+.quote-panel li.active {
+  background: #f4f2ef;
+  outline: 1px solid #303030;
+}
+.quote-panel li img,
+.quote-panel li .thumb {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  background: #f4f2ef;
+  border-radius: 6px;
+  display: block;
+}
+.quote-panel li small {
+  color: #777;
+}
+.quote-panel footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid #eee;
+}
+.quote-panel footer form {
+  margin: 0;
+}
 .product-photo {
   border-radius: 14px;
   overflow: hidden;
@@ -261,6 +338,17 @@ label.inline {
   letter-spacing: 0.02em;
 }
 
+@media (max-width: 1100px) {
+  .product-layout.with-quote {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 1fr);
+  }
+  .product-layout.with-quote .quote-panel {
+    grid-column: 1 / -1;
+    position: static;
+    max-height: none;
+  }
+}
+
 @media (max-width: 760px) {
   .catalogue-filters {
     grid-template-columns: 1fr 1fr;
@@ -272,9 +360,14 @@ label.inline {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
   }
-  .product-layout {
+  .product-layout,
+  .product-layout.with-quote {
     grid-template-columns: 1fr;
     gap: 20px;
+  }
+  .quote-panel {
+    position: static;
+    max-height: none;
   }
   .pro-nav .pro-user {
     margin-left: 0;
