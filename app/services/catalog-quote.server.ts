@@ -101,7 +101,7 @@ export function addLineToState(
   );
 }
 
-async function lineFor(
+export async function lineFor(
   admin: Admin | null,
   product: CatalogProduct,
   variantId: string,

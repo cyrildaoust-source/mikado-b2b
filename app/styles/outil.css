@@ -2452,49 +2452,6 @@ dialog > p {
   .quote-panel {
     padding: 14px;
   }
-  /* Devis : la colonne de droite passe dessous, en deux colonnes */
-  .editor-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .editor-sidebar {
-    position: static;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
-  }
-  /* Ligne de produit en deux rangs : le nom, puis les chiffres */
-  .line-head {
-    display: none;
-  }
-  .product-row {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) 44px;
-    row-gap: 10px;
-  }
-  .product-heading,
-  .product-details {
-    grid-column: 1 / -1;
-  }
-  .product-row > label > .field-label,
-  .product-row > .line-amount > span {
-    position: static;
-    width: auto;
-    height: auto;
-    overflow: visible;
-    clip: auto;
-    display: block;
-    margin-bottom: 4px;
-    font-size: var(--t-small);
-    color: var(--ink-3);
-  }
-  .product-row > button.icon-button {
-    grid-row: 1;
-    grid-column: 5;
-    align-self: start;
-  }
-  .product-row > .product-heading {
-    grid-column: 1 / 5;
-    grid-row: 1;
-  }
 }
 @media (min-width: 701px) and (max-width: 1100px) and (orientation: portrait), (min-width: 701px) and (max-width: 899px) {
   /* iPad vertical : la fiche passe sur une colonne, le devis dessous */
@@ -2635,46 +2592,15 @@ dialog > p {
   .header-actions {
     justify-content: flex-start;
   }
-  .editor-sidebar {
-    grid-template-columns: minmax(0, 1fr);
-  }
   s-section {
     padding: 16px;
     margin-inline: calc(-1 * var(--gutter) / 2);
   }
-  .lot-heading {
-    padding: 8px 12px;
-  }
   .lot-heading input:not([type="checkbox"]) {
     min-width: 0;
   }
-  .product-row {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) 44px;
-    padding: 12px 12px 8px 18px;
-  }
-  .product-row > .product-heading {
-    grid-column: 1 / 4;
-  }
-  .product-row > button.icon-button {
-    grid-column: 4;
-  }
-  .product-row > .line-amount {
-    grid-column: 1 / -1;
-    flex-direction: row;
-    align-items: baseline;
-    justify-content: space-between;
-  }
-  .product-row > .line-amount > strong {
-    min-height: 0;
-  }
   .product-row > label input:not([type="checkbox"]):not([type="radio"]) {
     font-size: 16px;
-  }
-  .group-footer {
-    padding: 0 12px 12px 18px;
-  }
-  .lot-footer {
-    padding: 8px 12px 12px;
   }
   .fields {
     grid-template-columns: minmax(0, 1fr);
@@ -2730,6 +2656,426 @@ dialog > p {
   }
   .preview-scroll {
     padding: 0;
+  }
+}
+
+/* ================================================================== */
+/* Lignes du devis en deux rangs quand le devis est étroit             */
+/* (iPad, ou catalogue ouvert à côté) : le nom, puis les chiffres.     */
+/* ================================================================== */
+@container devis (max-width: 760px) {
+  .line-head {
+    display: none;
+  }
+  .product-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) 44px;
+    row-gap: 10px;
+  }
+  .product-row > .product-heading {
+    grid-column: 1 / 5;
+    grid-row: 1;
+  }
+  .product-details {
+    grid-column: 1 / -1;
+  }
+  .product-row > label > .field-label,
+  .product-row > .line-amount > span {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    display: block;
+    margin-bottom: 4px;
+    font-size: var(--t-small);
+    color: var(--ink-3);
+  }
+  .product-row > button.icon-button {
+    grid-row: 1;
+    grid-column: 5;
+    align-self: start;
+  }
+}
+@container devis (max-width: 520px) {
+  .product-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 44px;
+    padding: 12px 12px 8px 18px;
+  }
+  .product-row > .product-heading {
+    grid-column: 1 / 4;
+  }
+  .product-row > button.icon-button {
+    grid-column: 4;
+  }
+  .product-row > .line-amount {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .product-row > .line-amount > strong {
+    min-height: 0;
+  }
+  .group-footer {
+    padding: 0 12px 12px 18px;
+  }
+  .lot-footer {
+    padding: 4px 12px 12px 18px;
+  }
+  .lot-heading {
+    padding: 8px 12px;
+  }
+}
+
+/* ================================================================== */
+/* Espace devis : catalogue à gauche, devis à droite                   */
+/* Les deux volets défilent séparément ; on glisse de gauche à droite. */
+/* ================================================================== */
+.quote-editor .editor-main {
+  container: devis / inline-size;
+}
+html:has(.quote-workspace) {
+  scrollbar-gutter: auto;
+}
+.quote-workspace {
+  display: grid;
+  grid-template-columns: clamp(340px, 33vw, 500px) minmax(0, 1fr);
+  height: calc(100dvh - 57px);
+}
+.catalogue-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+}
+.pane-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  padding: 16px 20px 10px;
+}
+.pane-head small {
+  flex-basis: 100%;
+  order: 3;
+  color: var(--ink-3);
+}
+.pane-head .pane-close {
+  display: none;
+  margin-left: auto;
+}
+.catalogue-pane .catalogue-filters {
+  padding: 0 20px 12px;
+  border-top: 0;
+  border-bottom: 1px solid var(--line);
+}
+.catalogue-pane .catalogue-filters input[type="search"] {
+  flex-basis: 100%;
+  max-width: none;
+}
+.catalogue-pane .brand-picker {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.catalogue-pane .brand-picker > summary {
+  width: 100%;
+}
+.catalogue-pane .brand-picker + .brand-picker .brand-picker-list {
+  left: auto;
+  right: 0;
+}
+.pane-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 20px 24px;
+}
+.catalogue-pane .catalogue-grid {
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 20px 12px;
+  padding-top: 16px;
+}
+.catalogue-pane .catalogue-item {
+  cursor: grab;
+}
+.catalogue-pane .catalogue-item:active {
+  cursor: grabbing;
+}
+.catalogue-pane .catalogue-photo {
+  aspect-ratio: 1 / 1;
+}
+.catalogue-pane .catalogue-meta strong {
+  font-size: var(--t-body);
+}
+.catalogue-pane .catalogue-row {
+  font-size: var(--t-small);
+}
+.catalogue-pane button.catalogue-add {
+  top: 6px;
+  right: 6px;
+  width: 36px;
+  min-height: 36px;
+  font-size: 18px;
+}
+.catalogue-pane .catalogue-more {
+  margin-top: 24px;
+}
+.catalogue-pane .empty-state {
+  padding: 40px 0;
+  border: 0;
+}
+.quote-pane {
+  position: relative;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.quote-pane .quote-editor {
+  max-width: none;
+  padding: 20px 28px 32px;
+}
+.quote-pane .save-strip {
+  top: 0;
+}
+.catalogue-toggle {
+  display: none;
+}
+/* Pendant le glisser d'une carte : les pièces se signalent */
+.is-dragging-card .quote-lot {
+  outline: 1px dashed var(--line-hover);
+  outline-offset: 2px;
+}
+.is-dragging-card .quote-lot.drop-over {
+  outline: 2px dashed var(--brass);
+}
+.empty-state.drop-over {
+  outline: 2px dashed var(--brass);
+  outline-offset: -8px;
+  background: var(--brass-bg);
+}
+
+/* Devis de l'outil pro : une colonne, client et conditions en bandeau */
+.quote-editor .editor-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+.quote-editor .editor-grid.is-pinned {
+  grid-template-columns: minmax(0, 1fr) 300px;
+}
+.quote-pane .editor-sidebar {
+  top: 0;
+}
+.editor-sidebar .fields {
+  grid-template-columns: minmax(0, 1fr);
+}
+.sidebar-head {
+  padding: 4px 4px 0;
+}
+.coords-band {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.coords-band > summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: var(--radius);
+}
+.coords-band > summary::before {
+  content: "";
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.12s;
+}
+.coords-band[open] > summary::before {
+  transform: rotate(45deg);
+}
+.coords-band > summary:hover {
+  background: var(--paper);
+}
+.coords-title {
+  flex: none;
+  font-weight: 500;
+}
+.coords-line {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+.coords-band[open] .coords-line {
+  visibility: hidden;
+}
+.coords-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 16px;
+  padding: 0 16px 16px;
+}
+.coords-body > s-section,
+.coords-body > fieldset > s-section {
+  padding: 16px;
+  border-color: var(--line);
+}
+.coords-body > fieldset {
+  min-width: 0;
+}
+.coords-pin {
+  display: none;
+  grid-column: 1 / -1;
+  justify-self: end;
+}
+@media (min-width: 1600px) {
+  .coords-pin {
+    display: inline-flex;
+  }
+}
+@container devis (max-width: 640px) {
+  .coords-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (pointer: coarse) {
+  .catalogue-pane button.catalogue-add {
+    width: var(--touch);
+    min-height: var(--touch);
+  }
+}
+/* Total toujours visible en bas du devis */
+.total-bar {
+  min-height: var(--touch);
+  align-items: center;
+  position: sticky;
+  bottom: 16px;
+  z-index: 5;
+  grid-column: 1 / -1;
+  justify-self: end;
+  display: inline-flex;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 0 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  box-shadow: var(--shadow-float);
+  color: var(--ink-2);
+  font-size: var(--t-small);
+}
+.total-bar strong {
+  font-size: var(--t-name);
+  color: var(--ink);
+}
+.total-bar:hover {
+  border-color: var(--line-hover);
+}
+/* Messages de l'éditeur : en bas de l'écran, visibles où qu'on soit */
+.quote-editor > .undo-notice,
+.quote-editor > .error[role="alert"] {
+  position: fixed;
+  z-index: 60;
+  left: 50%;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  margin: 0;
+  box-shadow: var(--shadow-float);
+}
+.quote-editor > .undo-notice {
+  background: var(--ink);
+  color: #fff;
+}
+.quote-editor > .undo-notice .text-button {
+  color: #fff;
+}
+.quote-editor > .undo-notice .text-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+.quote-editor > .error[role="alert"] {
+  bottom: max(76px, env(safe-area-inset-bottom));
+  border: 1px solid var(--error);
+}
+
+/* iPad vertical et téléphone : le catalogue s'ouvre en volet */
+@media (max-width: 1000px) {
+  .quote-workspace {
+    display: block;
+    height: auto;
+  }
+  .quote-pane {
+    overflow: visible;
+  }
+  .catalogue-pane {
+    position: fixed;
+    z-index: 45;
+    top: 57px;
+    bottom: 0;
+    left: 0;
+    width: min(400px, 88vw);
+    box-shadow: var(--shadow-float);
+    transform: translateX(-102%);
+    visibility: hidden;
+    transition:
+      transform 0.2s ease,
+      visibility 0s 0.2s;
+  }
+  .catalogue-open .catalogue-pane {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.2s ease;
+  }
+  .pane-head .pane-close {
+    display: inline-flex;
+  }
+
+  .catalogue-toggle {
+    position: fixed;
+    z-index: 46;
+    left: 16px;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    display: inline-flex;
+    min-height: var(--touch);
+    border-radius: var(--radius-pill);
+    background: var(--ink);
+    border-color: var(--ink);
+    color: #fff;
+    box-shadow: var(--shadow-float);
+  }
+  .catalogue-toggle:hover:not(:disabled) {
+    background: var(--ink-hover);
+    border-color: var(--ink-hover);
+  }
+  .catalogue-open .catalogue-toggle {
+    display: none;
+  }
+  .quote-pane .quote-editor {
+    padding: 20px var(--gutter) 96px;
+  }
+}
+@media (max-width: 700px) {
+  .catalogue-pane {
+    width: 100vw;
+  }
+  .quote-pane .quote-editor {
+    padding-top: 20px;
+  }
+  /* Une seule bande en bas : le bouton Catalogue, puis le total */
+  .total-bar {
+    justify-self: stretch;
+    justify-content: space-between;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    margin-left: 112px;
+  }
+  .total-bar-gross {
+    display: none;
   }
 }
 

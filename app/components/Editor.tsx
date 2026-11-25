@@ -29,6 +29,11 @@ import {
 import type { getQuote } from "../services/quotes.server";
 import { QuoteDocument } from "./QuoteDocument";
 import { dropOnQuote, type DragSource, type DropTarget } from "../domain/move";
+import {
+  CATALOGUE_ADD,
+  catalogueDrag,
+  type CatalogueCard,
+} from "./quote/CatalogueBrowser";
 import { Modal } from "./quote/Modal";
 import { useDraft } from "./quote/useDraft";
 import { ProductRow } from "./quote/ProductRow";
@@ -133,7 +138,28 @@ export default function Editor({
     [showHistory, setShowHistory] = useState(false),
     // Glisser-déposer : produit (avec ses alternatives) ou alternative seule.
     [dragging, setDragging] = useState<DragSource | null>(null),
-    [dropAt, setDropAt] = useState<string | null>(null);
+    [dropAt, setDropAt] = useState<string | null>(null),
+    // Outil pro : coordonnées en bandeau, ou épinglées à droite sur grand écran.
+    [coordsOpen, setCoordsOpen] = useState(!s.client),
+    [pinPref, setPinPref] = useState(false),
+    [wide, setWide] = useState(false);
+  const pinned = !embedded && pinPref && wide;
+  function setPinned(value: boolean) {
+    setPinPref(value);
+    try {
+      localStorage.setItem("mikado-coordonnees", value ? "epinglees" : "");
+    } catch {}
+  }
+  useEffect(() => {
+    try {
+      setPinPref(localStorage.getItem("mikado-coordonnees") === "epinglees");
+    } catch {}
+    const mq = window.matchMedia("(min-width: 1600px)");
+    const update = () => setWide(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
   const busy = navigation.state !== "idle" || working,
     legacy = s.schemaVersion === 1,
     locked =
@@ -243,7 +269,11 @@ export default function Editor({
   function remove(id: string) {
     change((current) => removeLine(current, id), true);
   }
-  function add(items: (Line | Customer)[], target: Target) {
+  function add(
+    items: (Line | Customer)[],
+    target: Target,
+    reversible = false,
+  ) {
     if (target.kind === "customers") {
       const c = items[0] as Customer;
       setClientDraft(fromCustomer(draftFrom(s), c));
@@ -312,9 +342,39 @@ export default function Editor({
         ...previous,
         groups,
       };
-    });
+    }, reversible);
     setPicker(null);
   }
+  // Catalogue à gauche du devis : une carte glissée ou ajoutée par +.
+  async function addCard(card: CatalogueCard, target: Target) {
+    if (locked) return;
+    setError("");
+    try {
+      const url = new URL("/app/catalog", location.origin);
+      url.searchParams.set("kind", "line");
+      url.searchParams.set("produit", card.numericId);
+      url.searchParams.set("variante", card.id);
+      const r = await fetch(url);
+      const d = await r.json();
+      if (!r.ok || !d.items?.length) throw Error(d.error || "");
+      add(d.items, target, true);
+    } catch (e) {
+      setError(
+        (e instanceof Error && e.message) ||
+          "Ce produit n’a pas pu être ajouté. Réessayez.",
+      );
+    }
+  }
+  const addCardRef = useRef(addCard);
+  addCardRef.current = addCard;
+  useEffect(() => {
+    const onAdd = (e: Event) =>
+      addCardRef.current((e as CustomEvent<CatalogueCard>).detail, {
+        kind: "products",
+      });
+    window.addEventListener(CATALOGUE_ADD, onAdd);
+    return () => window.removeEventListener(CATALOGUE_ADD, onAdd);
+  }, []);
   async function pick(target: Target) {
     if (!embedded || target.kind === "customers") {
       setPicker(target);
@@ -367,16 +427,32 @@ export default function Editor({
     if (locked) return {};
     return {
       onDragOver: (e: React.DragEvent) => {
-        if (!dragRef.current) return;
+        if (!dragRef.current && !catalogueDrag.current) return;
         e.preventDefault();
         e.stopPropagation();
-        e.dataTransfer.dropEffect = "move";
+        e.dataTransfer.dropEffect = dragRef.current ? "move" : "copy";
         if (dropAt !== key) setDropAt(key);
       },
       onDragLeave: (e: React.DragEvent) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropAt(null);
       },
       onDrop: (e: React.DragEvent) => {
+        const card = catalogueDrag.current;
+        if (card && !dragRef.current) {
+          e.preventDefault();
+          e.stopPropagation();
+          catalogueDrag.current = null;
+          setDropAt(null);
+          void addCard(
+            card,
+            target.kind === "group"
+              ? { kind: "products", group: target.groupId }
+              : target.sectionId
+                ? { kind: "products", section: target.sectionId }
+                : { kind: "products" },
+          );
+          return;
+        }
         const source = dragRef.current;
         if (!source) return;
         e.preventDefault();
@@ -422,8 +498,595 @@ export default function Editor({
     }
     setModal("pdf");
   }
+  // Les blocs du devis, assemblés différemment selon l'écran : colonne
+  // de droite dans l'admin Shopify, espace de travail dans l'outil pro.
+  const productsSection = (
+            <s-section>
+              <div className="section-toolbar">
+                <span className="muted">Prix unitaires HTVA</span>
+                <div>
+                  <button onClick={() => setNewLot(true)}>
+                    Ajouter une pièce
+                  </button>
+                  <button onClick={() => pick({ kind: "products" })}>
+                    Ajouter des produits
+                  </button>
+                </div>
+              </div>
+              {!s.groups.length && (
+                <div
+                  className={`empty-state${dropAt === "vide" ? " drop-over" : ""}`}
+                  {...dropProps("vide", {
+                    kind: "section",
+                    sectionId: "",
+                    title: "",
+                  })}
+                >
+                  <span className="empty-symbol">◇</span>
+                  <h3>Composez votre proposition</h3>
+                  <p>
+                    Créez une pièce par espace du projet, ajoutez-y vos
+                    produits, puis proposez des alternatives si nécessaire.
+                  </p>
+                  <button
+                    className="primary"
+                    onClick={() => pick({ kind: "products" })}
+                  >
+                    Choisir des produits
+                  </button>
+                </div>
+              )}
+              {sections.map((section) => (
+                <div
+                  className={`quote-lot${dropAt === `s:${section.id}` ? " drop-over" : ""}`}
+                  id={`lot-${section.id}`}
+                  key={section.id}
+                  {...dropProps(`s:${section.id}`, {
+                    kind: "section",
+                    sectionId: section.id,
+                    title: section.title,
+                  })}
+                >
+                  <div className="lot-heading">
+                    <input
+                      aria-label={`Nom de la pièce ${section.title}`}
+                      value={section.title}
+                      maxLength={150}
+                      onChange={(e) =>
+                        change({
+                          ...s,
+                          groups: s.groups.map((g) =>
+                            section.groups.some((x) => x.id === g.id)
+                              ? {
+                                  ...g,
+                                  sectionId: section.id,
+                                  section: e.target.value,
+                                }
+                              : g,
+                          ),
+                        })
+                      }
+                    />
+                    <span>
+                      {money(
+                        section.groups.reduce(
+                          (n, g) =>
+                            n +
+                            lineTotal(
+                              g.items.find((i) => i.id === g.selected)!,
+                            ),
+                          0,
+                        ),
+                      )}{" "}
+                      HTVA
+                    </span>
+                  </div>
+                  {section.groups.length > 0 && (
+                    <div className="line-head" aria-hidden="true">
+                      <span>Produit</span>
+                      <span>Qté</span>
+                      <span>Prix HTVA</span>
+                      <span>Remise %</span>
+                      <span>Total HTVA</span>
+                    </div>
+                  )}
+                  {section.groups.map((g) => (
+                    <div
+                      className={`alternative-group${dropAt === `g:${g.id}` ? " drop-over" : ""}${
+                        dragging?.kind === "group" && dragging.groupId === g.id
+                          ? " is-dragging"
+                          : ""
+                      }`}
+                      key={g.id}
+                      {...dropProps(`g:${g.id}`, {
+                        kind: "group",
+                        groupId: g.id,
+                      })}
+                    >
+                      {g.items.map((i, n) => (
+                        <div className="drag-row" key={i.id}>
+                          {dragHandle(
+                            n
+                              ? { kind: "line", lineId: i.id }
+                              : { kind: "group", groupId: g.id },
+                            i.name,
+                          )}
+                          <ProductRow
+                            line={i}
+                            base={n ? g.items[0] : undefined}
+                            selected={g.selected === i.id}
+                            onSelect={
+                              g.items.length > 1
+                                ? () =>
+                                    change({
+                                      ...s,
+                                      groups: s.groups.map((x) =>
+                                        x.id === g.id
+                                          ? { ...x, selected: i.id }
+                                          : x,
+                                      ),
+                                    })
+                                : undefined
+                            }
+                            onChange={(p) => patch(i.id, p)}
+                            onRemove={() => remove(i.id)}
+                          />
+                        </div>
+                      ))}
+                      <div className="group-footer">
+                        <button
+                          className="add-action"
+                          onClick={() =>
+                            pick({ kind: "products", group: g.id })
+                          }
+                        >
+                          Ajouter une alternative
+                        </button>
+                        <details>
+                          <summary>Organiser</summary>
+                          <div className="group-settings">
+                            {g.items.length > 1 && (
+                              <label className="check">
+                                <input
+                                  type="checkbox"
+                                  checked={!g.syncQty}
+                                  onChange={(e) =>
+                                    change({
+                                      ...s,
+                                      groups: s.groups.map((x) =>
+                                        x.id === g.id
+                                          ? {
+                                              ...x,
+                                              syncQty: !e.target.checked,
+                                              items: e.target.checked
+                                                ? x.items
+                                                : x.items.map((i) => ({
+                                                    ...i,
+                                                    qty: x.items[0].qty,
+                                                  })),
+                                            }
+                                          : x,
+                                      ),
+                                    })
+                                  }
+                                />
+                                Utiliser des quantités différentes
+                              </label>
+                            )}
+                            <label>
+                              Déplacer vers la pièce
+                              <select
+                                value={section.id}
+                                onChange={(e) => {
+                                  const target = sections.find(
+                                    (x) => x.id === e.target.value,
+                                  )!;
+                                  change({
+                                    ...s,
+                                    groups: s.groups.map((x) =>
+                                      x.id === g.id
+                                        ? {
+                                            ...x,
+                                            sectionId: target.id,
+                                            section: target.title,
+                                          }
+                                        : x,
+                                    ),
+                                  });
+                                }}
+                              >
+                                {sections.map((x) => (
+                                  <option key={x.id} value={x.id}>
+                                    {x.title}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <div className="button-row">
+                              <button
+                                disabled={s.groups[0].id === g.id}
+                                onClick={() => move(g.id, -1)}
+                              >
+                                Monter
+                              </button>
+                              <button
+                                disabled={s.groups.at(-1)!.id === g.id}
+                                onClick={() => move(g.id, 1)}
+                              >
+                                Descendre
+                              </button>
+                            </div>
+                          </div>
+                        </details>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="lot-footer">
+                    <button
+                      className="add-action"
+                      onClick={() =>
+                        pick({ kind: "products", section: section.id })
+                      }
+                    >
+                      Ajouter un produit
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <button
+                className="add-action"
+                onClick={() => setCustom({ kind: "products" })}
+              >
+                Ajouter une ligne personnalisée
+              </button>
+            </s-section>
+  );
+  const optionsSection = (
+            <s-section heading="Options et prestations">
+              <div className="section-toolbar">
+                <p className="muted">
+                  Seules les options cochées sont comprises dans le total.
+                </p>
+                <div>
+                  <button
+                    onClick={() => pick({ kind: "products", extra: true })}
+                  >
+                    Option du catalogue
+                  </button>
+                  <button
+                    onClick={() => setCustom({ kind: "products", extra: true })}
+                  >
+                    Prestation libre
+                  </button>
+                </div>
+              </div>
+              {!s.extras.some((e) => !e.deliveryFee) && (
+                <p className="muted">
+                  Installation, livraison, mobilier supplémentaire…
+                </p>
+              )}
+              {s.extras
+                .filter((e) => !e.deliveryFee)
+                .map((e) => (
+                  <div
+                    className={`optional-row ${e.selected ? "" : "not-included"}`}
+                    key={e.id}
+                  >
+                    <div className="card-title">
+                      <label className="check">
+                        <input
+                          type="checkbox"
+                          aria-label={`Inclure ${e.name}`}
+                          checked={e.selected}
+                          onChange={(ev) =>
+                            change({
+                              ...s,
+                              extras: s.extras.map((x) =>
+                                x.id === e.id
+                                  ? { ...x, selected: ev.target.checked }
+                                  : x,
+                              ),
+                            })
+                          }
+                        />
+                        <strong>{e.name}</strong>
+                      </label>
+                      <span>{e.selected ? "Incluse" : "Non comprise"}</span>
+                      <button
+                        className="icon-button"
+                        aria-label={`Retirer ${e.name}`}
+                        onClick={() => remove(e.id)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div className="option-fields">
+                      {!e.variantId && (
+                        <label>
+                          Mode de calcul
+                          <select
+                            value={
+                              e.chargePercent === null ? "fixed" : "percent"
+                            }
+                            onChange={(ev) =>
+                              patch(e.id, {
+                                chargePercent:
+                                  ev.target.value === "percent" ? 5 : null,
+                              })
+                            }
+                          >
+                            <option value="fixed">Montant fixe</option>
+                            <option value="percent">
+                              Pourcentage des produits
+                            </option>
+                          </select>
+                        </label>
+                      )}
+                      {e.chargePercent === null ? (
+                        <>
+                          <label>
+                            Quantité
+                            <NumberField
+                              aria-label={`Quantité ${e.name}`}
+                              type="number"
+                              min={1}
+                              max={10000}
+                              value={e.qty}
+                              onChange={(ev) =>
+                                patch(e.id, { qty: Number(ev.target.value) })
+                              }
+                            />
+                          </label>
+                          <label>
+                            Prix HTVA
+                            <NumberField
+                              aria-label={`Prix ${e.name}`}
+                              type="number"
+                              min={0}
+                              step=".01"
+                              value={e.price / 100}
+                              onChange={(ev) =>
+                                patch(e.id, {
+                                  price: Math.round(
+                                    Number(ev.target.value) * 100,
+                                  ),
+                                  priceConfirmed: true,
+                                })
+                              }
+                            />
+                          </label>
+                        </>
+                      ) : (
+                        <label>
+                          Pourcentage
+                          <NumberField
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={1}
+                            value={e.chargePercent}
+                            onChange={(ev) =>
+                              patch(e.id, {
+                                chargePercent: Number(ev.target.value),
+                              })
+                            }
+                          />
+                        </label>
+                      )}
+                      {e.chargePercent === null && (
+                        <label>
+                          Remise (%)
+                          <NumberField
+                            aria-label={`Remise ${e.name}`}
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={1}
+                            value={e.discount}
+                            onChange={(ev) =>
+                              patch(e.id, { discount: Number(ev.target.value) })
+                            }
+                          />
+                        </label>
+                      )}
+                      <strong>{money(lineTotal(e))} HTVA</strong>
+                    </div>
+                    <details>
+                      <summary>Description</summary>
+                      {e.variantId ? (
+                        <p className="preline">
+                          {e.detail || "Aucune description dans Shopify."}
+                        </p>
+                      ) : (
+                        <label>
+                          Description
+                          <textarea
+                            value={e.detail}
+                            maxLength={4000}
+                            onChange={(ev) =>
+                              patch(e.id, { detail: ev.target.value })
+                            }
+                          />
+                        </label>
+                      )}
+                    </details>
+                  </div>
+                ))}
+            </s-section>
+  );
+  const paymentSection = (
+            <s-section heading="Paiement et livraison">
+              <PaymentTerms state={s} onChange={change} />
+              <details className="notes-details">
+                <summary>Note visible sur le devis</summary>
+                <textarea
+                  aria-label="Note visible sur le devis"
+                  value={s.note}
+                  maxLength={4000}
+                  onChange={(e) => field("note", e.target.value)}
+                />
+              </details>
+            </s-section>
+  );
+  const historySection = showHistory && (
+            <s-section heading="Historique">
+              <div className="timeline">
+                {q.revisions
+                  .filter((r) => r.publishedNumber)
+                  .map((r) => (
+                    <div className="timeline-row" key={r.version}>
+                      <div>
+                        <strong>Révision {r.publishedNumber}</strong>
+                        <small>
+                          {r.issuedAt
+                            ? new Date(r.issuedAt).toLocaleDateString("fr-BE")
+                            : ""}
+                          {r.sentAt ? " · Envoi déclaré" : ""}
+                        </small>
+                      </div>
+                      {r.pdfGeneratedAt ? (
+                        <button
+                          disabled={busy}
+                          onClick={() => download(r.version)}
+                        >
+                          PDF R{r.publishedNumber}
+                        </button>
+                      ) : (
+                        <button
+                          disabled={busy}
+                          onClick={() => download(r.version)}
+                        >
+                          Préparer le fichier
+                        </button>
+                      )}
+                      {!r.sentAt && r.pdfGeneratedAt && (
+                        <button
+                          disabled={busy || dirty}
+                          onClick={() =>
+                            send("sent", { version: String(r.version) })
+                          }
+                        >
+                          Marquer comme envoyé
+                        </button>
+                      )}
+                      {!locked && (
+                        <button
+                          disabled={busy || dirty}
+                          onClick={() =>
+                            send("restore", {
+                              sourceVersion: String(r.version),
+                            })
+                          }
+                        >
+                          Reprendre cette version
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                {!q.revisions.some((r) => r.publishedNumber) && (
+                  <p className="muted">Les versions PDF apparaîtront ici.</p>
+                )}
+                <details>
+                  <summary>Sauvegardes de travail</summary>
+                  {q.revisions.slice(0, 20).map((r) => (
+                    <button
+                      key={r.version}
+                      disabled={busy || dirty || locked}
+                      onClick={() =>
+                        send("restore", { sourceVersion: String(r.version) })
+                      }
+                    >
+                      Reprendre la sauvegarde du{" "}
+                      {new Date(r.createdAt).toLocaleString("fr-BE")}
+                    </button>
+                  ))}
+                </details>
+              </div>
+            </s-section>
+  );
+  const clientSection = (
+          <s-section>
+            <CustomerCard
+              state={s}
+              disabled={locked || busy}
+              onEdit={() => {
+                setClientDraft(draftFrom(s));
+                setModal("client");
+              }}
+              onSearch={() => {
+                if (!locked) pick({ kind: "customers" });
+              }}
+            />
+          </s-section>
+  );
+  const summarySection = (
+          <s-section heading="Récapitulatif">
+            <QuoteSummary state={s} />
+            <p className="muted summary-footnote">
+              {ready && !dirty
+                ? "Version conservée dans l’historique."
+                : "Vérifiez l’aperçu avant de créer la version à transmettre."}
+            </p>
+          </s-section>
+  );
+  const shopifySection = admin && (
+            <s-section heading="Shopify">
+              {q.conversion?.status === "uncertain" && (
+                <p role="alert" className="error">
+                  {q.conversion.error ||
+                    "Vérification requise avant toute nouvelle action."}
+                </p>
+              )}
+              {q.conversion?.draftId ? (
+                <>
+                  <p>Commande {q.conversion.draftName}</p>
+                  <a
+                    href={`https://${shop}/admin/draft_orders/${q.conversion.draftId.split("/").at(-1)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Ouvrir dans Shopify
+                  </a>
+                </>
+              ) : (
+                <p className="muted">
+                  Quand votre client a choisi, créez la commande provisoire avec
+                  les produits retenus.
+                </p>
+              )}
+              {["creating", "uncertain"].includes(
+                q.conversion?.status || "",
+              ) ? (
+                <button disabled={busy} onClick={() => send("reconcile")}>
+                  Vérifier dans Shopify
+                </button>
+              ) : (
+                !q.conversion?.draftId && (
+                  <button
+                    disabled={demo || busy || dirty || !ready || locked}
+                    onClick={() => setModal("convert")}
+                  >
+                    Créer la commande provisoire
+                  </button>
+                )
+              )}
+              {demo && (
+                <small className="muted">
+                  Disponible après connexion à la boutique.
+                </small>
+              )}
+            </s-section>
+  );
+  const coordinates = (
+    <>
+      {clientSection}
+      <fieldset disabled={busy || locked} className="unframed">
+        {paymentSection}
+      </fieldset>
+    </>
+  );
   return (
-    <main className="workspace">
+    <main className={embedded ? "workspace" : "workspace quote-editor"}>
       <Link
         to="/app"
         className="back-link"
@@ -661,575 +1324,93 @@ export default function Editor({
           </div>
         </nav>
       )}
-      <div className="editor-grid">
-        <div className="editor-main">
-          <fieldset disabled={busy || locked} className="unframed">
-            <s-section>
-              <div className="section-toolbar">
-                <span className="muted">Prix unitaires HTVA</span>
-                <div>
-                  <button onClick={() => setNewLot(true)}>
-                    Ajouter une pièce
-                  </button>
-                  <button onClick={() => pick({ kind: "products" })}>
-                    Ajouter des produits
-                  </button>
-                </div>
-              </div>
-              {!s.groups.length && (
-                <div className="empty-state">
-                  <span className="empty-symbol">◇</span>
-                  <h3>Composez votre proposition</h3>
-                  <p>
-                    Créez une pièce par espace du projet, ajoutez-y vos
-                    produits, puis proposez des alternatives si nécessaire.
-                  </p>
-                  <button
-                    className="primary"
-                    onClick={() => pick({ kind: "products" })}
-                  >
-                    Choisir des produits
-                  </button>
-                </div>
-              )}
-              {sections.map((section) => (
-                <div
-                  className={`quote-lot${dropAt === `s:${section.id}` ? " drop-over" : ""}`}
-                  id={`lot-${section.id}`}
-                  key={section.id}
-                  {...dropProps(`s:${section.id}`, {
-                    kind: "section",
-                    sectionId: section.id,
-                    title: section.title,
-                  })}
-                >
-                  <div className="lot-heading">
-                    <input
-                      aria-label={`Nom de la pièce ${section.title}`}
-                      value={section.title}
-                      maxLength={150}
-                      onChange={(e) =>
-                        change({
-                          ...s,
-                          groups: s.groups.map((g) =>
-                            section.groups.some((x) => x.id === g.id)
-                              ? {
-                                  ...g,
-                                  sectionId: section.id,
-                                  section: e.target.value,
-                                }
-                              : g,
-                          ),
-                        })
-                      }
-                    />
-                    <span>
-                      {money(
-                        section.groups.reduce(
-                          (n, g) =>
-                            n +
-                            lineTotal(
-                              g.items.find((i) => i.id === g.selected)!,
-                            ),
-                          0,
-                        ),
-                      )}{" "}
-                      HTVA
-                    </span>
-                  </div>
-                  {section.groups.length > 0 && (
-                    <div className="line-head" aria-hidden="true">
-                      <span>Produit</span>
-                      <span>Qté</span>
-                      <span>Prix HTVA</span>
-                      <span>Remise %</span>
-                      <span>Total HTVA</span>
-                    </div>
-                  )}
-                  {section.groups.map((g) => (
-                    <div
-                      className={`alternative-group${dropAt === `g:${g.id}` ? " drop-over" : ""}${
-                        dragging?.kind === "group" && dragging.groupId === g.id
-                          ? " is-dragging"
-                          : ""
-                      }`}
-                      key={g.id}
-                      {...dropProps(`g:${g.id}`, {
-                        kind: "group",
-                        groupId: g.id,
-                      })}
-                    >
-                      {g.items.map((i, n) => (
-                        <div className="drag-row" key={i.id}>
-                          {dragHandle(
-                            n
-                              ? { kind: "line", lineId: i.id }
-                              : { kind: "group", groupId: g.id },
-                            i.name,
-                          )}
-                          <ProductRow
-                            line={i}
-                            base={n ? g.items[0] : undefined}
-                            selected={g.selected === i.id}
-                            onSelect={
-                              g.items.length > 1
-                                ? () =>
-                                    change({
-                                      ...s,
-                                      groups: s.groups.map((x) =>
-                                        x.id === g.id
-                                          ? { ...x, selected: i.id }
-                                          : x,
-                                      ),
-                                    })
-                                : undefined
-                            }
-                            onChange={(p) => patch(i.id, p)}
-                            onRemove={() => remove(i.id)}
-                          />
-                        </div>
-                      ))}
-                      <div className="group-footer">
-                        <button
-                          className="add-action"
-                          onClick={() =>
-                            pick({ kind: "products", group: g.id })
-                          }
-                        >
-                          Ajouter une alternative
-                        </button>
-                        <details>
-                          <summary>Organiser</summary>
-                          <div className="group-settings">
-                            {g.items.length > 1 && (
-                              <label className="check">
-                                <input
-                                  type="checkbox"
-                                  checked={!g.syncQty}
-                                  onChange={(e) =>
-                                    change({
-                                      ...s,
-                                      groups: s.groups.map((x) =>
-                                        x.id === g.id
-                                          ? {
-                                              ...x,
-                                              syncQty: !e.target.checked,
-                                              items: e.target.checked
-                                                ? x.items
-                                                : x.items.map((i) => ({
-                                                    ...i,
-                                                    qty: x.items[0].qty,
-                                                  })),
-                                            }
-                                          : x,
-                                      ),
-                                    })
-                                  }
-                                />
-                                Utiliser des quantités différentes
-                              </label>
-                            )}
-                            <label>
-                              Déplacer vers la pièce
-                              <select
-                                value={section.id}
-                                onChange={(e) => {
-                                  const target = sections.find(
-                                    (x) => x.id === e.target.value,
-                                  )!;
-                                  change({
-                                    ...s,
-                                    groups: s.groups.map((x) =>
-                                      x.id === g.id
-                                        ? {
-                                            ...x,
-                                            sectionId: target.id,
-                                            section: target.title,
-                                          }
-                                        : x,
-                                    ),
-                                  });
-                                }}
-                              >
-                                {sections.map((x) => (
-                                  <option key={x.id} value={x.id}>
-                                    {x.title}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                            <div className="button-row">
-                              <button
-                                disabled={s.groups[0].id === g.id}
-                                onClick={() => move(g.id, -1)}
-                              >
-                                Monter
-                              </button>
-                              <button
-                                disabled={s.groups.at(-1)!.id === g.id}
-                                onClick={() => move(g.id, 1)}
-                              >
-                                Descendre
-                              </button>
-                            </div>
-                          </div>
-                        </details>
-                      </div>
-                    </div>
-                  ))}
-                  <div className="lot-footer">
-                    <button
-                      className="add-action"
-                      onClick={() =>
-                        pick({ kind: "products", section: section.id })
-                      }
-                    >
-                      Ajouter un produit
-                    </button>
-                  </div>
-                </div>
-              ))}
-              <button
-                className="add-action"
-                onClick={() => setCustom({ kind: "products" })}
-              >
-                Ajouter une ligne personnalisée
-              </button>
-            </s-section>
-            <s-section heading="Options et prestations">
-              <div className="section-toolbar">
-                <p className="muted">
-                  Seules les options cochées sont comprises dans le total.
-                </p>
-                <div>
-                  <button
-                    onClick={() => pick({ kind: "products", extra: true })}
-                  >
-                    Option du catalogue
-                  </button>
-                  <button
-                    onClick={() => setCustom({ kind: "products", extra: true })}
-                  >
-                    Prestation libre
-                  </button>
-                </div>
-              </div>
-              {!s.extras.some((e) => !e.deliveryFee) && (
-                <p className="muted">
-                  Installation, livraison, mobilier supplémentaire…
-                </p>
-              )}
-              {s.extras
-                .filter((e) => !e.deliveryFee)
-                .map((e) => (
-                  <div
-                    className={`optional-row ${e.selected ? "" : "not-included"}`}
-                    key={e.id}
-                  >
-                    <div className="card-title">
-                      <label className="check">
-                        <input
-                          type="checkbox"
-                          aria-label={`Inclure ${e.name}`}
-                          checked={e.selected}
-                          onChange={(ev) =>
-                            change({
-                              ...s,
-                              extras: s.extras.map((x) =>
-                                x.id === e.id
-                                  ? { ...x, selected: ev.target.checked }
-                                  : x,
-                              ),
-                            })
-                          }
-                        />
-                        <strong>{e.name}</strong>
-                      </label>
-                      <span>{e.selected ? "Incluse" : "Non comprise"}</span>
-                      <button
-                        className="icon-button"
-                        aria-label={`Retirer ${e.name}`}
-                        onClick={() => remove(e.id)}
-                      >
-                        ×
-                      </button>
-                    </div>
-                    <div className="option-fields">
-                      {!e.variantId && (
-                        <label>
-                          Mode de calcul
-                          <select
-                            value={
-                              e.chargePercent === null ? "fixed" : "percent"
-                            }
-                            onChange={(ev) =>
-                              patch(e.id, {
-                                chargePercent:
-                                  ev.target.value === "percent" ? 5 : null,
-                              })
-                            }
-                          >
-                            <option value="fixed">Montant fixe</option>
-                            <option value="percent">
-                              Pourcentage des produits
-                            </option>
-                          </select>
-                        </label>
-                      )}
-                      {e.chargePercent === null ? (
-                        <>
-                          <label>
-                            Quantité
-                            <NumberField
-                              aria-label={`Quantité ${e.name}`}
-                              type="number"
-                              min={1}
-                              max={10000}
-                              value={e.qty}
-                              onChange={(ev) =>
-                                patch(e.id, { qty: Number(ev.target.value) })
-                              }
-                            />
-                          </label>
-                          <label>
-                            Prix HTVA
-                            <NumberField
-                              aria-label={`Prix ${e.name}`}
-                              type="number"
-                              min={0}
-                              step=".01"
-                              value={e.price / 100}
-                              onChange={(ev) =>
-                                patch(e.id, {
-                                  price: Math.round(
-                                    Number(ev.target.value) * 100,
-                                  ),
-                                  priceConfirmed: true,
-                                })
-                              }
-                            />
-                          </label>
-                        </>
-                      ) : (
-                        <label>
-                          Pourcentage
-                          <NumberField
-                            type="number"
-                            min={0}
-                            max={100}
-                            step={1}
-                            value={e.chargePercent}
-                            onChange={(ev) =>
-                              patch(e.id, {
-                                chargePercent: Number(ev.target.value),
-                              })
-                            }
-                          />
-                        </label>
-                      )}
-                      {e.chargePercent === null && (
-                        <label>
-                          Remise (%)
-                          <NumberField
-                            aria-label={`Remise ${e.name}`}
-                            type="number"
-                            min={0}
-                            max={100}
-                            step={1}
-                            value={e.discount}
-                            onChange={(ev) =>
-                              patch(e.id, { discount: Number(ev.target.value) })
-                            }
-                          />
-                        </label>
-                      )}
-                      <strong>{money(lineTotal(e))} HTVA</strong>
-                    </div>
-                    <details>
-                      <summary>Description</summary>
-                      {e.variantId ? (
-                        <p className="preline">
-                          {e.detail || "Aucune description dans Shopify."}
-                        </p>
-                      ) : (
-                        <label>
-                          Description
-                          <textarea
-                            value={e.detail}
-                            maxLength={4000}
-                            onChange={(ev) =>
-                              patch(e.id, { detail: ev.target.value })
-                            }
-                          />
-                        </label>
-                      )}
-                    </details>
-                  </div>
-                ))}
-            </s-section>
-            <s-section heading="Paiement et livraison">
-              <PaymentTerms state={s} onChange={change} />
-              <details className="notes-details">
-                <summary>Note visible sur le devis</summary>
-                <textarea
-                  aria-label="Note visible sur le devis"
-                  value={s.note}
-                  maxLength={4000}
-                  onChange={(e) => field("note", e.target.value)}
-                />
-              </details>
-            </s-section>
-          </fieldset>
-          {showHistory && (
-            <s-section heading="Historique">
-              <div className="timeline">
-                {q.revisions
-                  .filter((r) => r.publishedNumber)
-                  .map((r) => (
-                    <div className="timeline-row" key={r.version}>
-                      <div>
-                        <strong>Révision {r.publishedNumber}</strong>
-                        <small>
-                          {r.issuedAt
-                            ? new Date(r.issuedAt).toLocaleDateString("fr-BE")
-                            : ""}
-                          {r.sentAt ? " · Envoi déclaré" : ""}
-                        </small>
-                      </div>
-                      {r.pdfGeneratedAt ? (
-                        <button
-                          disabled={busy}
-                          onClick={() => download(r.version)}
-                        >
-                          PDF R{r.publishedNumber}
-                        </button>
-                      ) : (
-                        <button
-                          disabled={busy}
-                          onClick={() => download(r.version)}
-                        >
-                          Préparer le fichier
-                        </button>
-                      )}
-                      {!r.sentAt && r.pdfGeneratedAt && (
-                        <button
-                          disabled={busy || dirty}
-                          onClick={() =>
-                            send("sent", { version: String(r.version) })
-                          }
-                        >
-                          Marquer comme envoyé
-                        </button>
-                      )}
-                      {!locked && (
-                        <button
-                          disabled={busy || dirty}
-                          onClick={() =>
-                            send("restore", {
-                              sourceVersion: String(r.version),
-                            })
-                          }
-                        >
-                          Reprendre cette version
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                {!q.revisions.some((r) => r.publishedNumber) && (
-                  <p className="muted">Les versions PDF apparaîtront ici.</p>
-                )}
-                <details>
-                  <summary>Sauvegardes de travail</summary>
-                  {q.revisions.slice(0, 20).map((r) => (
-                    <button
-                      key={r.version}
-                      disabled={busy || dirty || locked}
-                      onClick={() =>
-                        send("restore", { sourceVersion: String(r.version) })
-                      }
-                    >
-                      Reprendre la sauvegarde du{" "}
-                      {new Date(r.createdAt).toLocaleString("fr-BE")}
-                    </button>
-                  ))}
-                </details>
-              </div>
-            </s-section>
-          )}
+      {embedded ? (
+        <div className="editor-grid">
+          <div className="editor-main">
+            <fieldset disabled={busy || locked} className="unframed">
+              {productsSection}
+              {optionsSection}
+              {paymentSection}
+            </fieldset>
+            {historySection}
+          </div>
+          <aside className="editor-sidebar">
+            {clientSection}
+            {summarySection}
+            {shopifySection}
+            {/* Facturation Odoo : écartée de l'outil pour l'instant (Cyril). */}
+          </aside>
         </div>
-        <aside className="editor-sidebar">
-          <s-section>
-            <CustomerCard
-              state={s}
-              disabled={locked || busy}
-              onEdit={() => {
-                setClientDraft(draftFrom(s));
-                setModal("client");
-              }}
-              onSearch={() => {
-                if (!locked) pick({ kind: "customers" });
-              }}
-            />
-          </s-section>
-          <s-section heading="Récapitulatif">
-            <QuoteSummary state={s} />
-            <p className="muted summary-footnote">
-              {ready && !dirty
-                ? "Version conservée dans l’historique."
-                : "Vérifiez l’aperçu avant de créer la version à transmettre."}
-            </p>
-          </s-section>
-          {admin && (
-            <s-section heading="Shopify">
-              {q.conversion?.status === "uncertain" && (
-                <p role="alert" className="error">
-                  {q.conversion.error ||
-                    "Vérification requise avant toute nouvelle action."}
-                </p>
-              )}
-              {q.conversion?.draftId ? (
-                <>
-                  <p>Commande {q.conversion.draftName}</p>
-                  <a
-                    href={`https://${shop}/admin/draft_orders/${q.conversion.draftId.split("/").at(-1)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Ouvrir dans Shopify
-                  </a>
-                </>
-              ) : (
-                <p className="muted">
-                  Quand votre client a choisi, créez la commande provisoire avec
-                  les produits retenus.
-                </p>
-              )}
-              {["creating", "uncertain"].includes(
-                q.conversion?.status || "",
-              ) ? (
-                <button disabled={busy} onClick={() => send("reconcile")}>
-                  Vérifier dans Shopify
-                </button>
-              ) : (
-                !q.conversion?.draftId && (
+      ) : (
+        <div className={`editor-grid${pinned ? " is-pinned" : ""}`}>
+          <div className="editor-main">
+            {!pinned && (
+              <details
+                className="coords-band"
+                open={coordsOpen}
+                onToggle={(e) => setCoordsOpen(e.currentTarget.open)}
+              >
+                <summary>
+                  <span className="coords-title">Client et conditions</span>
+                  <span className="coords-line">
+                    {[
+                      s.client || "Client à compléter",
+                      s.terms,
+                      s.validity &&
+                        `valable jusqu’au ${new Date(s.validity).toLocaleDateString("fr-BE")}`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </summary>
+                <div className="coords-body">
+                  {coordinates}
                   <button
-                    disabled={demo || busy || dirty || !ready || locked}
-                    onClick={() => setModal("convert")}
+                    type="button"
+                    className="text-button coords-pin"
+                    onClick={() => setPinned(true)}
                   >
-                    Créer la commande provisoire
+                    Garder ouvert à droite
                   </button>
-                )
-              )}
-              {demo && (
-                <small className="muted">
-                  Disponible après connexion à la boutique.
-                </small>
-              )}
-            </s-section>
+                </div>
+              </details>
+            )}
+            <fieldset disabled={busy || locked} className="unframed">
+              {productsSection}
+              {optionsSection}
+            </fieldset>
+            {historySection}
+            {!pinned && (
+              <div className="recap" id="recapitulatif">
+                {summarySection}
+                {shopifySection}
+              </div>
+            )}
+          </div>
+          {pinned && (
+            <aside className="editor-sidebar" id="recapitulatif">
+              <div className="card-title sidebar-head">
+                <span className="muted">Client et conditions</span>
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => setPinned(false)}
+                >
+                  Replier dans le devis
+                </button>
+              </div>
+              {coordinates}
+              {summarySection}
+              {shopifySection}
+            </aside>
           )}
-          {/* Facturation Odoo : écartée de l'outil pour l'instant (Cyril). */}
-        </aside>
-      </div>
+          <a className="total-bar" href="#recapitulatif">
+            <span>Total HTVA</span>
+            <strong>{money(fiscal.net)}</strong>
+            <span className="total-bar-gross">TVAC {money(fiscal.gross)}</span>
+          </a>
+        </div>
+      )}
       {picker && (
         <ProductPicker
           kind={picker.kind}
