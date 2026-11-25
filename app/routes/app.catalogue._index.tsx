@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Form,
   Link,
   useFetcher,
   useLoaderData,
+  useLocation,
   useNavigation,
   useSubmit,
   type LoaderFunctionArgs,
@@ -26,7 +27,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
         .map((v) => v.slice(0, 150))
         .filter(Boolean)
         .slice(0, 30),
-      type: (u.searchParams.get("famille") || "").slice(0, 150),
+      type: "",
+      types: [...new Set(u.searchParams.getAll("famille"))]
+        .map((t) => t.slice(0, 150))
+        .filter(Boolean)
+        .slice(0, 30),
       q: (u.searchParams.get("q") || "").slice(0, 150),
       after: u.searchParams.get("apres") || undefined,
     };
@@ -90,44 +95,75 @@ export default function Catalogue() {
   const submit = useSubmit(),
     timer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => () => clearTimeout(timer.current), []);
-  const picker = useRef<HTMLDetailsElement>(null);
-  useEffect(() => {
-    const close = (e: MouseEvent) => {
-      if (picker.current && !picker.current.contains(e.target as Node))
-        picker.current.open = false;
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, []);
   const apply = (form: HTMLFormElement, delay = 0) => {
     clearTimeout(timer.current);
     timer.current = setTimeout(() => submit(form, { replace: true }), delay);
   };
-  const link = (over: { famille?: string; apres?: string }) => {
+  const query = (apres?: string) => {
     const p = new URLSearchParams();
     if (filters.q) p.set("q", filters.q);
     filters.vendors.forEach((v) => p.append("marque", v));
-    const famille = over.famille ?? filters.type;
-    if (famille) p.set("famille", famille);
-    if (over.apres) p.set("apres", over.apres);
+    filters.types.forEach((t) => p.append("famille", t));
+    if (apres) p.set("apres", apres);
     return `?${p}`;
   };
   const busy = useNavigation().state === "loading";
-  // Les familles des marques choisies, sinon toutes ; repliées au-delà de huit.
+  const filtered = !!(filters.q || filters.vendors.length || filters.types.length);
+  // Familles des marques choisies (avec leur nombre), sinon toutes.
   const familyList = families.length
     ? families
     : facets.types.map((type) => ({ type, count: 0 }));
-  const [allFamilies, setAllFamilies] = useState(false);
-  const selected = familyList.filter((f) => f.type === filters.type);
-  const shownFamilies = allFamilies
-    ? familyList
-    : [...familyList.slice(0, 8), ...selected.filter((f) => familyList.indexOf(f) >= 8)];
-  const hiddenFamilies = familyList.length - shownFamilies.length;
-  const brandLabel = filters.vendors.length
-    ? filters.vendors.length === 1
-      ? filters.vendors[0]
-      : `${filters.vendors.length} marques`
-    : "Toutes les marques";
+
+  // Défilement continu : la page suivante se charge en approchant du bas.
+  const search = useLocation().search;
+  const more = useFetcher<typeof loader>();
+  const [extra, setExtra] = useState<{ items: typeof items; next: string | null }>({
+    items: [],
+    next: null,
+  });
+  useEffect(() => setExtra({ items: [], next: null }), [search]);
+  useEffect(() => {
+    const d = more.data;
+    if (!d || more.state !== "idle") return;
+    setExtra((e) => ({ items: [...e.items, ...d.items], next: d.next }));
+  }, [more.data, more.state]);
+  const cursor = extra.items.length ? extra.next : next;
+  const loadMore = () => {
+    if (cursor && more.state === "idle")
+      more.load(`/app/catalogue${query(cursor)}`);
+  };
+  const sentinel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || !cursor) return;
+    const io = new IntersectionObserver(
+      (entries) => entries.some((e) => e.isIntersecting) && loadMore(),
+      { rootMargin: "1200px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  });
+  // Rangées complètes : tant qu'il reste des produits, la dernière rangée
+  // incomplète attend la page suivante.
+  const grid = useRef<HTMLUListElement>(null);
+  const [cols, setCols] = useState(1);
+  useEffect(() => {
+    const el = grid.current;
+    if (!el) return;
+    const measure = () =>
+      setCols(
+        getComputedStyle(el).gridTemplateColumns.split(" ").filter(Boolean).length || 1,
+      );
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [items.length > 0]);
+  const shown = useMemo(() => {
+    const all = [...items, ...extra.items];
+    if (!cursor || all.length < cols) return all;
+    return all.slice(0, all.length - (all.length % cols));
+  }, [items, extra.items, cursor, cols]);
   return (
     <main className="workspace catalogue">
       <header className="catalogue-head">
@@ -151,68 +187,44 @@ export default function Catalogue() {
           defaultValue={filters.q}
           onChange={(e) => apply(e.currentTarget.form!, 400)}
         />
-        <details className="brand-picker" ref={picker}>
-          <summary>{brandLabel}</summary>
-          <div className="brand-picker-list">
-            {facets.vendors.map((v) => (
-              <label key={v}>
-                <input
-                  type="checkbox"
-                  name="marque"
-                  value={v}
-                  defaultChecked={filters.vendors.includes(v)}
-                  onChange={(e) => {
-                    const form = e.currentTarget.form!;
-                    (form.elements.namedItem("famille") as HTMLInputElement).value = "";
-                    apply(form);
-                  }}
-                />
-                {v}
-              </label>
-            ))}
-          </div>
-        </details>
-        <input type="hidden" name="famille" defaultValue={filters.type} key={filters.vendors.join("|") + filters.type} />
-        {(filters.q || filters.vendors.length > 0 || filters.type) && (
+        <Picker
+          name="marque"
+          all="Toutes les marques"
+          plural="marques"
+          options={facets.vendors.map((v) => ({ value: v, count: 0 }))}
+          selected={filters.vendors}
+          onChange={(form) => {
+            // Les familles dépendent des marques : on repart de toutes.
+            form
+              .querySelectorAll<HTMLInputElement>('input[name="famille"]')
+              .forEach((c) => (c.checked = false));
+            apply(form);
+          }}
+        />
+        {familyList.length > 1 && (
+          <Picker
+            name="famille"
+            all="Toutes les familles"
+            plural="familles"
+            options={familyList.map((f) => ({ value: f.type, count: f.count }))}
+            selected={filters.types}
+            onChange={(form) => apply(form)}
+          />
+        )}
+        {filtered && (
           <Link to="/app/catalogue" reloadDocument className="catalogue-reset">
             Tout effacer
           </Link>
         )}
       </Form>
-      {familyList.length > 1 && (
-        <nav className="family-chips" aria-label="Familles">
-          <Link
-            to={link({ famille: "" })}
-            className={filters.type ? "" : "active"}
-            aria-current={filters.type ? undefined : "true"}
-          >
-            Toutes les familles
-          </Link>
-          {shownFamilies.map((f) => (
-            <Link
-              key={f.type}
-              to={link({ famille: f.type })}
-              className={filters.type === f.type ? "active" : ""}
-              aria-current={filters.type === f.type ? "true" : undefined}
-            >
-              {f.type} {f.count > 0 && <span>{f.count}</span>}
-            </Link>
-          ))}
-          {hiddenFamilies > 0 && (
-            <button type="button" className="chip-more" onClick={() => setAllFamilies(true)}>
-              + {hiddenFamilies} familles
-            </button>
-          )}
-        </nav>
-      )}
       {error && (
         <p role="alert" className="error">
           {error}
         </p>
       )}
       {items.length ? (
-        <ul className="catalogue-grid" aria-busy={busy}>
-          {items.map((p) => (
+        <ul className="catalogue-grid" aria-busy={busy} ref={grid}>
+          {shown.map((p) => (
             <li key={p.id} className="catalogue-item">
               {openQuote && (
                 <button
@@ -261,7 +273,7 @@ export default function Catalogue() {
           <div className="empty-state">
             <h2>Aucun produit trouvé</h2>
             <p>Retirez un filtre ou cherchez un autre mot.</p>
-            {(filters.q || filters.vendors.length > 0 || filters.type) && (
+            {filtered && (
               <Link to="/app/catalogue" reloadDocument>
                 Voir tout le catalogue
               </Link>
@@ -300,11 +312,114 @@ export default function Catalogue() {
           </button>
         </div>
       )}
-      {next && (
-        <p className="catalogue-more">
-          <Link to={link({ apres: next })} className="catalogue-next">Voir les produits suivants</Link>
-        </p>
+      {cursor && (
+        <div className="catalogue-more" ref={sentinel}>
+          <button type="button" onClick={loadMore} disabled={more.state !== "idle"}>
+            {more.state !== "idle" ? "Chargement…" : "Afficher plus de produits"}
+          </button>
+        </div>
       )}
     </main>
+  );
+}
+
+/** Menu déroulant à choix multiples, avec recherche au-delà de huit choix.
+ * Chaque case s'applique tout de suite ; le menu se ferme au clic dehors,
+ * avec Échap ou avec « Terminé ». */
+function Picker({
+  name,
+  all,
+  plural,
+  options,
+  selected,
+  onChange,
+}: {
+  name: string;
+  all: string;
+  plural: string;
+  options: { value: string; count: number }[];
+  selected: string[];
+  onChange: (form: HTMLFormElement) => void;
+}) {
+  const ref = useRef<HTMLDetailsElement>(null);
+  const [find, setFind] = useState("");
+  useEffect(() => {
+    const close = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node))
+        ref.current.open = false;
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && ref.current?.open) {
+        ref.current.open = false;
+        ref.current.querySelector("summary")?.focus();
+      }
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", esc);
+    };
+  }, []);
+  const label = selected.length
+    ? selected.length === 1
+      ? selected[0]
+      : `${selected.length} ${plural}`
+    : all;
+  const f = find.trim().toLowerCase();
+  return (
+    <details className="brand-picker" ref={ref}>
+      <summary>{label}</summary>
+      <div className="brand-picker-list">
+        {options.length > 8 && (
+          <input
+            type="search"
+            className="picker-search"
+            aria-label={`Chercher dans les ${plural}`}
+            placeholder="Chercher…"
+            value={find}
+            onChange={(e) => setFind(e.target.value)}
+            form=""
+          />
+        )}
+        {options.map((o) => (
+          <label key={o.value} hidden={!!f && !o.value.toLowerCase().includes(f)}>
+            <input
+              type="checkbox"
+              name={name}
+              value={o.value}
+              defaultChecked={selected.includes(o.value)}
+              onChange={(e) => onChange(e.currentTarget.form!)}
+            />
+            <span>{o.value}</span>
+            {o.count > 0 && <small>{o.count}</small>}
+          </label>
+        ))}
+        <div className="picker-foot">
+          {selected.length > 0 && (
+            <button
+              type="button"
+              className="text-button"
+              onClick={(e) => {
+                const form = (e.currentTarget as HTMLButtonElement).closest("form")!;
+                ref.current
+                  ?.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`)
+                  .forEach((c) => (c.checked = false));
+                onChange(form);
+              }}
+            >
+              Tout désélectionner
+            </button>
+          )}
+          <button
+            type="button"
+            className="picker-done"
+            onClick={() => ref.current && (ref.current.open = false)}
+          >
+            Terminé
+          </button>
+        </div>
+      </div>
+    </details>
   );
 }

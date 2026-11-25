@@ -59,6 +59,11 @@ test("les filtres s'ajoutent à la visibilité sans pouvoir l'élargir", () => {
   assert.doesNotMatch(q, /status:archived/);
 });
 
+test("plusieurs familles se combinent en OU", () => {
+  const q = catalogQuery([], { types: ["Chaises", "Tables"] });
+  assert.match(q, /\(product_type:"Chaises" OR product_type:"Tables"\)/);
+});
+
 test("prix public HTVA depuis un catalogue TVAC", () => {
   assert.equal(netPrice("121.00", true), 10000);
   assert.equal(netPrice("100.00", false), 10000);

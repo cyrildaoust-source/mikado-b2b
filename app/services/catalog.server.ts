@@ -52,16 +52,31 @@ export function visibilityQuery(rules: BrandRule[], status = "status") {
   return `((${[`(${status}:active OR ${status}:draft)`, ...hidden.map((v) => `-vendor:${quoted(v)}`)].join(" AND ")}))`;
 }
 
+/** Familles choisies : `types` (plusieurs) et l'ancien `type` (une seule). */
+export function chosenTypes(filters: { type?: string; types?: string[] }) {
+  return [
+    ...new Set([...(filters.types || []), filters.type || ""].filter(Boolean)),
+  ];
+}
+
+/** Cartes par page : multiple de 2, 3, 4, 5 et 6 colonnes. */
+export const CATALOG_PAGE = Math.min(
+  Math.max(Number(process.env.CATALOG_PAGE_SIZE) || 60, 1),
+  100,
+);
+
 export function catalogQuery(
   rules: BrandRule[],
-  filters: { vendors?: string[]; type?: string; q?: string },
+  filters: { vendors?: string[]; type?: string; types?: string[]; q?: string },
   status = "status",
 ) {
   const parts = [visibilityQuery(rules, status)];
   const vendors = (filters.vendors || []).filter(Boolean);
   if (vendors.length)
     parts.push(`(${vendors.map((v) => `vendor:${quoted(v)}`).join(" OR ")})`);
-  if (filters.type) parts.push(`product_type:${quoted(filters.type)}`);
+  const types = chosenTypes(filters);
+  if (types.length)
+    parts.push(`(${types.map((t) => `product_type:${quoted(t)}`).join(" OR ")})`);
   if (filters.q?.trim()) parts.push(`(${searchPrefix(filters.q)})`);
   return parts.join(" AND ");
 }
@@ -136,7 +151,13 @@ type RawVariant = {
 /** Catalogue pro : une carte par variante, sans rien changer dans Shopify. */
 export async function listCatalog(
   admin: Admin | null,
-  filters: { vendors?: string[]; type?: string; q?: string; after?: string },
+  filters: {
+    vendors?: string[];
+    type?: string;
+    types?: string[];
+    q?: string;
+    after?: string;
+  },
 ) {
   const rules = await brandRules();
   if (!admin) return demoList(filters, rules);
@@ -148,8 +169,8 @@ export async function listCatalog(
     };
   }>(
     admin,
-    `query Catalog($query: String!, $after: String, $sort: ProductVariantSortKeys!) {
-      productVariants(first: 24, after: $after, query: $query, sortKey: $sort) {
+    `query Catalog($query: String!, $after: String, $sort: ProductVariantSortKeys!, $first: Int!) {
+      productVariants(first: $first, after: $after, query: $query, sortKey: $sort) {
         nodes {
           id title price
           media(first: 1) { nodes { preview { image { url altText } } } }
@@ -161,6 +182,7 @@ export async function listCatalog(
     {
       query: catalogQuery(rules, filters, "product_status"),
       after: filters.after || null,
+      first: CATALOG_PAGE,
       sort: filters.q?.trim() ? "RELEVANCE" : "FULL_TITLE",
     },
   );
@@ -390,15 +412,15 @@ export const demoProducts: CatalogProduct[] = [
 ];
 
 function demoList(
-  filters: { vendors?: string[]; type?: string; q?: string },
+  filters: { vendors?: string[]; type?: string; types?: string[]; q?: string; after?: string },
   rules: BrandRule[],
 ) {
   const q = (filters.q || "").toLowerCase().trim();
-  return {
-    items: demoProducts
+  const types = chosenTypes(filters);
+  const all = demoProducts
       .filter((p) => isVisible(p, rules))
       .filter((p) => !filters.vendors?.length || filters.vendors.includes(p.vendor))
-      .filter((p) => !filters.type || p.productType === filters.type)
+      .filter((p) => !types.length || types.includes(p.productType))
       .flatMap(({ description: _d, images: _i, options: _o, productVariants, ...c }) =>
         productVariants.map(
           (v): CatalogVariantCard => ({
@@ -412,7 +434,11 @@ function demoList(
           }),
         ),
       )
-      .filter((p) => !q || `${p.title} ${p.variantTitle} ${p.vendor} ${p.productType}`.toLowerCase().includes(q)),
-    next: null as string | null,
+      .filter((p) => !q || `${p.title} ${p.variantTitle} ${p.vendor} ${p.productType}`.toLowerCase().includes(q));
+  const start = Number(filters.after) || 0,
+    end = start + CATALOG_PAGE;
+  return {
+    items: all.slice(start, end),
+    next: end < all.length ? String(end) : (null as string | null),
   };
 }
