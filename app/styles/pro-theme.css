@@ -2249,3 +2249,48 @@ html:has(.pro-app) {
   background: transparent;
   align-self: center;
 }
+
+/* Menu Autres actions : de vraies lignes de menu */
+.pro-app .action-menu[open] > div {
+  right: 0;
+  left: auto;
+  min-width: 100%;
+  width: max-content;
+  padding: 4px;
+  display: grid;
+}
+.pro-app .action-menu > div button,
+.pro-app .action-menu > div button:hover:not(:disabled) {
+  min-height: 36px;
+  padding: 0 12px;
+  margin: 0;
+  border: 0;
+  border-radius: 4px;
+  box-shadow: none;
+  white-space: nowrap;
+  text-align: left;
+}
+.pro-app .action-menu > div button:hover:not(:disabled) {
+  background: var(--ground);
+}
+.pro-app .action-menu > div button.danger {
+  color: var(--error);
+  position: relative;
+  margin-top: 9px;
+}
+.pro-app .action-menu > div button.danger::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  top: -5px;
+  border-top: 1px solid var(--line);
+}
+.pro-app .action-menu > div button.danger:hover:not(:disabled) {
+  background: var(--error-bg);
+}
+@media (pointer: coarse) {
+  .pro-app .action-menu > div button {
+    min-height: var(--touch);
+  }
+}

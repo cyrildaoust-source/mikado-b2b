@@ -522,6 +522,7 @@ export default function Editor({
                   q.conversion?.status || "",
                 ) && (
                   <button
+                    className="danger"
                     disabled={busy || dirty}
                     onClick={() => setModal("trash")}
                   >
