@@ -1,13 +1,15 @@
 import {
+  data,
   redirect,
   useLoaderData,
   useActionData,
   type LoaderFunctionArgs,
   type ActionFunctionArgs,
 } from "react-router";
-import { context } from "../services/context.server";
+import { context, ownerScope, requireAdmin } from "../services/context.server";
 import {
   getQuote,
+  assertQuoteAccess,
   saveQuote,
   createQuote,
   archiveQuote,
@@ -39,26 +41,39 @@ import {
 import { billingKinds, type BillingKind } from "../domain/billing";
 import { fiscalTotals } from "../domain/quote";
 import Editor from "../components/Editor";
+import { rememberQuote } from "../services/current-quote.server";
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const c = await context(request);
+  await assertQuoteAccess(c.shop, Number(params.id), ownerScope(c));
   const q = await getQuote(c.shop, Number(params.id));
-  return {
+  // Ce devis devient le « devis ouvert » affiché à côté des fiches du catalogue.
+  const headers = { "Set-Cookie": await rememberQuote(q.id) };
+  return data({
     q,
     demo: c.demo,
+    embedded: c.embedded,
+    // Commande Shopify : réservée à l'administration de Mikado.
+    admin: c.embedded || c.user?.role === "admin",
     shop: c.shop,
     actor: c.actor,
     billingMode: billingMode(c.shop),
     odooUrl: c.demo ? null : odooPublicUrl(),
-  };
+  }, { headers });
 }
 export async function action({ request, params }: ActionFunctionArgs) {
   const c = await context(request),
     id = Number(params.id);
+  await assertQuoteAccess(c.shop, id, ownerScope(c));
   if (Number(request.headers.get("content-length")) > 1000000)
     return { error: "Devis trop volumineux." };
   const form = await readForm(request),
     intent = String(form.get("intent")),
     version = Number(form.get("version"));
+  // Commande Shopify et facturation : réservées à Mikado Deco, même par requête directe.
+  if (
+    ["accept-order", "billing-request", "billing-retry", "billing-simulate", "preview", "convert", "reconcile"].includes(intent)
+  )
+    requireAdmin(c);
   try {
     if (intent === "accept-order") {
       await preflightBilling(c.shop, id);
@@ -150,6 +165,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       const q2 = await createQuote(
         c.shop,
         state.schemaVersion === 1 ? upgradeQuote(state) : state,
+        c.user?.id || null,
       );
       return redirect(`/app/quotes/${q2.id}`);
     }

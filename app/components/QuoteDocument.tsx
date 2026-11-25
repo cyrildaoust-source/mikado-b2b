@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import {
   quoteSections,
+  clientView,
   lineTotal,
   money,
   costBreakdown,
@@ -16,7 +17,7 @@ export { safeImage } from "./LegacyQuoteDocument";
 import { safeImage } from "./LegacyQuoteDocument";
 import { SALES_TERMS_NOTICE, SALES_TERMS_URL } from "../domain/legal";
 export function QuoteDocument({
-  state: s,
+  state: raw,
   number,
   version,
   demo = false,
@@ -37,6 +38,9 @@ export function QuoteDocument({
   issuedAt?: string | Date | null;
   calculation?: Calculation | null;
 }) {
+  const s = raw.schemaVersion === 1 ? raw : clientView(raw),
+    showDiscount = !s.hideDiscounts,
+    cols = showDiscount ? 6 : 5;
   if (s.schemaVersion === 1)
     return (
       <LegacyQuoteDocument
@@ -92,7 +96,7 @@ export function QuoteDocument({
       </td>
       <td>{i.qty}</td>
       <td>{i.priceConfirmed ? money(i.price) : "À vérifier"}</td>
-      <td>{i.discount ? `${i.discount} %` : "—"}</td>
+      {showDiscount && <td>{i.discount ? `${i.discount} %` : "—"}</td>}
       <td>
         {selected && i.priceConfirmed ? (
           money(lineTotal(i))
@@ -128,19 +132,17 @@ export function QuoteDocument({
       <div className="doc-addresses">
         <div>
           <h3>CLIENT</h3>
-          {s.client}
-          <br />
-          {s.contact}
-          <br />
-          {s.email}
-        </div>
-        <div>
-          <h3>LIVRAISON</h3>
-          <div className="preline">
-            {s.shipping.address1.trim()
-              ? addr(s.shipping)
-              : "Adresse à confirmer"}
-          </div>
+          {s.client || s.contact || s.email ? (
+            <>
+              {s.client}
+              <br />
+              {s.contact}
+              <br />
+              {s.email}
+            </>
+          ) : (
+            "À compléter"
+          )}
         </div>
         <div>
           <h3>FACTURATION</h3>
@@ -151,6 +153,14 @@ export function QuoteDocument({
           </div>
           {s.customerVat && <p>N° TVA client : {s.customerVat}</p>}
         </div>
+        <div>
+          <h3>LIVRAISON</h3>
+          <div className="preline">
+            {s.shipping.address1.trim()
+              ? addr(s.shipping)
+              : "Adresse à confirmer"}
+          </div>
+        </div>
       </div>
       <div className="doc-project">
         <strong>{s.project}</strong>
@@ -159,13 +169,13 @@ export function QuoteDocument({
         </span>
       </div>
       <p className="doc-tax-note">
-        Devis B2B : tous les prix sont exprimés hors TVA, sauf le total TVAC et
+        {showDiscount ? "Devis B2B : tous" : "Tous"} les prix sont exprimés hors TVA, sauf le total TVAC et
         les échéances de paiement. Seuls les produits et options retenus entrent
         dans le total.
       </p>
-      {sections.length > 0 && (
-        <nav className="doc-lot-summary" aria-label="Sommaire des lots">
-          <strong>Sommaire des lots</strong>
+      {sections.length > 1 && (
+        <nav className="doc-lot-summary" aria-label="Sommaire des pièces">
+          <strong>Sommaire des pièces</strong>
           {sections.map((section, index) => (
             <a key={section.id} href={`#doc-lot-${index + 1}`}>
               <span>
@@ -194,7 +204,7 @@ export function QuoteDocument({
             <th>PRODUIT / DESCRIPTION</th>
             <th>QTÉ</th>
             <th>PRIX UNITAIRE</th>
-            <th>REMISE</th>
+            {showDiscount && <th>REMISE</th>}
             <th>MONTANT</th>
           </tr>
         </thead>
@@ -203,7 +213,7 @@ export function QuoteDocument({
             <Fragment key={section.id}>
               <tr className="section-row">
                 <td
-                  colSpan={6}
+                  colSpan={cols}
                   className="doc-section"
                   id={`doc-lot-${sectionIndex + 1}`}
                 >
@@ -225,7 +235,7 @@ export function QuoteDocument({
                 </Fragment>
               ))}
               <tr className="section-total">
-                <td colSpan={5}>Sous-total {section.title}</td>
+                <td colSpan={cols - 1}>Sous-total {section.title}</td>
                 <td>
                   {money(
                     section.groups.reduce(
@@ -241,7 +251,7 @@ export function QuoteDocument({
           ))}
           {s.extras.length > 0 && (
             <tr>
-              <td colSpan={6} className="doc-section">
+              <td colSpan={cols} className="doc-section">
                 Options et prestations
               </td>
             </tr>
@@ -253,7 +263,7 @@ export function QuoteDocument({
               e.selected,
               e.chargePercent === null
                 ? "Option supplémentaire"
-                : `Frais ${e.chargePercent} % sur les produits retenus après remises`,
+                : `Frais ${e.chargePercent} % sur les produits retenus${showDiscount ? " après remises" : ""}`,
             ),
           )}
         </tbody>

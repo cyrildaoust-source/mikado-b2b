@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 import {
   emptyQuote,
   setDeliveryFee,
+  clientNames,
+  withClientNames,
+  clientView,
+  newQuote,
   costBreakdown,
   paymentSchedule,
   quoteSchema,
@@ -713,7 +717,7 @@ test("livraison à 3 % : remise, recalcul, TVA, activation unique et retrait", (
   s.groups[0].items[1].qty = 2;
   s.groups[0].items[1].discount = 15;
   const before = totals(s).total;
-  s = setDeliveryFee(s, true, "delivery");
+  s = setDeliveryFee(s, true, "delivery", 3);
   assert.equal(
     s.extras.find((e) => e.deliveryFee)?.name,
     "Livraison + montage",
@@ -748,4 +752,52 @@ test("livraison à 3 % : remise, recalcul, TVA, activation unique et retrait", (
     false,
   );
   assert.equal(s.extras.length, 1);
+});
+
+test("livraison + montage : 4 % par défaut sur un nouveau devis, taux modifiable", () => {
+  let s = newQuote();
+  const fee = () => s.extras.find((e) => e.deliveryFee);
+  assert.equal(fee()?.chargePercent, 4);
+  assert.equal(fee()?.price, 0);
+  s.groups = fixture().groups;
+  s.groups[0].syncQty = false;
+  s = repriceExtras(s);
+  const base = costBreakdown(s).products;
+  assert.equal(fee()?.price, Math.round(base * 0.04));
+  s = setDeliveryFee(s, true, fee()!.id, 5);
+  assert.equal(fee()?.price, Math.round(base * 0.05));
+  assert.equal(s.extras.filter((e) => e.deliveryFee).length, 1);
+  s = setDeliveryFee(s, false, "x");
+  assert.equal(fee(), undefined);
+});
+
+test("fiche client : prénom, nom, société facultative", () => {
+  const s = emptyQuote();
+  const named = withClientNames({ ...s, firstName: " Anne ", lastName: "Dupont", company: "" });
+  assert.equal(named.client, "Anne Dupont");
+  assert.equal(named.contact, "Anne Dupont");
+  assert.equal(named.shipping.lastName, "Dupont");
+  const firm = withClientNames({ ...s, firstName: "Anne", lastName: "Dupont", company: "Studio A" });
+  assert.equal(firm.client, "Studio A");
+  assert.equal(firm.billing.company, "Studio A");
+  // Devis plus ancien : noms retrouvés depuis client et contact.
+  assert.deepEqual(clientNames({ ...s, client: "Studio A", contact: "Anne Dupont" }), {
+    firstName: "Anne",
+    lastName: "Dupont",
+    company: "Studio A",
+  });
+});
+
+test("version client : sans les remises de l'architecte, au choix", () => {
+  let s = repriceExtras({ ...newQuote(), groups: fixture().groups });
+  s.groups[0].items = s.groups[0].items.map((i) => ({ ...i, discount: 20 }));
+  s = repriceExtras(s);
+  assert.equal(clientView(s), s);
+  const shown = clientView({ ...s, hideDiscounts: true });
+  assert.ok(shown.groups.every((g) => g.items.every((i) => i.discount === 0)));
+  assert.ok(costBreakdown(shown).products > costBreakdown(s).products);
+  const fee = (x: typeof s) => x.extras.find((e) => e.deliveryFee)!.price;
+  assert.equal(fee(shown), Math.round(costBreakdown(shown).products * 0.04));
+  // Le devis lui-même garde les remises.
+  assert.equal(s.groups[0].items[0].discount, 20);
 });

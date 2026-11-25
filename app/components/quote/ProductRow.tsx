@@ -56,7 +56,7 @@ export function ProductRow({
         </div>
       </div>
       <label>
-        Quantité
+        <span className="field-label">Quantité</span>
         <NumberField
           aria-label={`Quantité ${i.name}`}
           type="number"
@@ -67,7 +67,7 @@ export function ProductRow({
         />
       </label>
       <label>
-        Prix HTVA
+        <span className="field-label">Prix HTVA</span>
         <NumberField
           aria-label={`Prix ${i.name}`}
           type="number"
@@ -84,7 +84,7 @@ export function ProductRow({
         />
       </label>
       <label>
-        Remise (%)
+        <span className="field-label">Remise %</span>
         <NumberField
           aria-label={`Remise ${i.name}`}
           type="number"

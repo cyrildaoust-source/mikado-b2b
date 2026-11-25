@@ -1,7 +1,8 @@
 import { NumberField } from "./quote/NumberField";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Link,
+  useFetcher,
   useNavigation,
   useSubmit,
   useNavigate,
@@ -21,11 +22,13 @@ import {
   fiscalTotals,
   paymentText,
   type QuoteState,
+  clientNames,
+  withClientNames,
   type Line,
 } from "../domain/quote";
 import type { getQuote } from "../services/quotes.server";
 import { QuoteDocument } from "./QuoteDocument";
-import { BillingPanel } from "./quote/BillingPanelV2";
+import { dropOnQuote, type DragSource, type DropTarget } from "../domain/move";
 import { Modal } from "./quote/Modal";
 import { useDraft } from "./quote/useDraft";
 import { ProductRow } from "./quote/ProductRow";
@@ -47,9 +50,36 @@ type Target = {
   sectionTitle?: string;
   extra?: boolean;
 };
+/** Brouillon de la fiche client : noms retrouvés, facturation pré-remplie. */
+function draftFrom(s: QuoteState): QuoteState {
+  return {
+    ...s,
+    ...clientNames(s),
+    billing:
+      s.billingSame || !s.billing.address1 ? { ...s.shipping } : s.billing,
+  };
+}
+function fromCustomer(d: QuoteState, c: Customer): QuoteState {
+  const [first, ...rest] = c.name.trim().split(/\s+/);
+  return {
+    ...d,
+    firstName: c.address.firstName || (rest.length ? first : ""),
+    lastName:
+      c.address.lastName || (rest.length ? rest.join(" ") : first || ""),
+    company: c.address.company,
+    email: c.email,
+    customerId: c.id,
+    billing: c.address,
+    shipping: c.address,
+    billingSame: true,
+  };
+}
+
 export default function Editor({
   q,
   demo,
+  embedded = !demo,
+  admin = true,
   shop,
   actor,
   result,
@@ -60,6 +90,8 @@ export default function Editor({
   billingMode: "disabled" | "simulation" | "live";
   odooUrl: string | null;
   demo: boolean;
+  embedded?: boolean;
+  admin?: boolean;
   shop: string;
   actor: string | null;
   result?: { ok?: string; error?: string };
@@ -98,7 +130,10 @@ export default function Editor({
     [policy, setPolicy] = useState<QuoteState | null>(null),
     [newLot, setNewLot] = useState(false),
     [clientDraft, setClientDraft] = useState(s),
-    [showHistory, setShowHistory] = useState(false);
+    [showHistory, setShowHistory] = useState(false),
+    // Glisser-déposer : produit (avec ses alternatives) ou alternative seule.
+    [dragging, setDragging] = useState<DragSource | null>(null),
+    [dropAt, setDropAt] = useState<string | null>(null);
   const busy = navigation.state !== "idle" || working,
     legacy = s.schemaVersion === 1,
     locked =
@@ -123,6 +158,44 @@ export default function Editor({
       setModal(null);
     }
   }, [result]);
+  // Hors Shopify, chaque modification s'enregistre seule, sans bouton.
+  const autosave = useFetcher<{ ok?: string; error?: string }>(),
+    autoSaving = autosave.state !== "idle",
+    autoSent = useRef<QuoteState | null>(null),
+    autoFailed = useRef<QuoteState | null>(null),
+    auto = !embedded && !locked;
+  useEffect(() => {
+    if (!auto || !dirty || autoSaving || busy || autoFailed.current === s)
+      return;
+    const t = setTimeout(() => {
+      const parsed = quoteSchema.safeParse(s);
+      if (!parsed.success) {
+        autoFailed.current = s;
+        setError(parsed.error.issues.map((e) => e.message).join(" "));
+        return;
+      }
+      autoSent.current = s;
+      autosave.submit(
+        {
+          intent: "save",
+          version: q.version,
+          state: JSON.stringify(parsed.data),
+        },
+        { method: "post" },
+      );
+    }, 700);
+    return () => clearTimeout(t);
+  }, [auto, dirty, autoSaving, busy, s, q.version]);
+  useEffect(() => {
+    if (autosave.state !== "idle" || !autosave.data) return;
+    if (autosave.data.error) {
+      autoFailed.current = autoSent.current;
+      setError(autosave.data.error);
+    } else if (autoSent.current === s) {
+      draft.saved();
+      setError("");
+    }
+  }, [autosave.state, autosave.data]);
   function field<K extends keyof QuoteState>(key: K, value: QuoteState[K]) {
     change({ ...s, [key]: value });
     setError("");
@@ -143,7 +216,11 @@ export default function Editor({
   }
   function send(intent: string, extra: Record<string, string> = {}) {
     if (dirty && !["save", "prepare"].includes(intent)) {
-      setError("Enregistrez vos modifications avant cette action.");
+      setError(
+        auto
+          ? "Enregistrement en cours, réessayez dans un instant."
+          : "Enregistrez vos modifications avant cette action.",
+      );
       return;
     }
     if (["save", "prepare"].includes(intent)) {
@@ -169,14 +246,7 @@ export default function Editor({
   function add(items: (Line | Customer)[], target: Target) {
     if (target.kind === "customers") {
       const c = items[0] as Customer;
-      setClientDraft({
-        ...s,
-        client: c.address.company || c.name,
-        contact: c.name,
-        email: c.email,
-        customerId: c.id,
-        shipping: c.address,
-      });
+      setClientDraft(fromCustomer(draftFrom(s), c));
       setModal("client");
       setPicker(null);
       return;
@@ -246,7 +316,7 @@ export default function Editor({
     setPicker(null);
   }
   async function pick(target: Target) {
-    if (demo || target.kind === "customers") {
+    if (!embedded || target.kind === "customers") {
       setPicker(target);
       return;
     }
@@ -291,6 +361,59 @@ export default function Editor({
     [groups[i], groups[j]] = [groups[j], groups[i]];
     change({ ...s, groups });
   }
+  // Ref en plus de l'état : le navigateur peut envoyer dragover avant le rendu.
+  const dragRef = useRef<DragSource | null>(null);
+  function dropProps(key: string, target: DropTarget) {
+    if (locked) return {};
+    return {
+      onDragOver: (e: React.DragEvent) => {
+        if (!dragRef.current) return;
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = "move";
+        if (dropAt !== key) setDropAt(key);
+      },
+      onDragLeave: (e: React.DragEvent) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropAt(null);
+      },
+      onDrop: (e: React.DragEvent) => {
+        const source = dragRef.current;
+        if (!source) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const next = dropOnQuote(s, source, target);
+        if (next !== s)
+          change((current) => dropOnQuote(current, source, target), true);
+        dragRef.current = null;
+        setDragging(null);
+        setDropAt(null);
+      },
+    };
+  }
+  function dragHandle(source: DragSource, name: string) {
+    if (locked) return null;
+    return (
+      <span
+        className="drag-handle"
+        draggable
+        title={`Glisser ${name} vers une pièce ou sur un autre produit`}
+        aria-hidden="true"
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", name);
+          const row = e.currentTarget.parentElement;
+          if (row) e.dataTransfer.setDragImage(row, 24, 24);
+          dragRef.current = source;
+          setDragging(source);
+        }}
+        onDragEnd={() => {
+          dragRef.current = null;
+          setDragging(null);
+          setDropAt(null);
+        }}
+      />
+    );
+  }
   function prepare() {
     const valid = quoteSchema.safeParse(s);
     if (!valid.success) {
@@ -316,10 +439,22 @@ export default function Editor({
       <header className="quote-header">
         <div>
           <div className="eyebrow">{q.number}</div>
-          <h1>{s.project}</h1>
+          <h1 className="quote-title">
+            <input
+              aria-label="Nom du projet"
+              value={s.project}
+              maxLength={150}
+              disabled={busy || locked}
+              onChange={(e) => field("project", e.target.value)}
+            />
+          </h1>
           <div className="status-line">
             <s-badge tone={ready && !dirty ? "success" : "info"}>
-              {dirty ? "Modifications non enregistrées" : commercialStatus(q)}
+              {dirty
+                ? auto
+                  ? "Enregistrement…"
+                  : "Modifications non enregistrées"
+                : commercialStatus(q)}
             </s-badge>
             {lastReady && lastReady.version !== q.version && (
               <button
@@ -388,6 +523,7 @@ export default function Editor({
                   q.conversion?.status || "",
                 ) && (
                   <button
+                    className="danger"
                     disabled={busy || dirty}
                     onClick={() => setModal("trash")}
                   >
@@ -469,7 +605,7 @@ export default function Editor({
           </button>
         </div>
       )}
-      {!demo && !locked && (
+      {embedded && !locked && (
         <SaveBar open={dirty}>
           <button
             variant="primary"
@@ -479,7 +615,7 @@ export default function Editor({
           <button disabled={busy} onClick={draft.discard}></button>
         </SaveBar>
       )}
-      {demo && dirty && !locked && (
+      {auto && dirty && autoFailed.current === s && (
         <div className="save-strip">
           <span>Modifications non enregistrées</span>
           <div>
@@ -496,9 +632,9 @@ export default function Editor({
           </div>
         </div>
       )}
-      {sections.length > 0 && (
-        <nav className="lot-summary" aria-label="Sommaire des lots">
-          <strong>Vos lots</strong>
+      {sections.length > 1 && (
+        <nav className="lot-summary" aria-label="Sommaire des pièces">
+          <strong>Vos pièces</strong>
           <div>
             {sections.map((section, index) => (
               <a key={section.id} href={`#lot-${section.id}`}>
@@ -528,22 +664,12 @@ export default function Editor({
       <div className="editor-grid">
         <div className="editor-main">
           <fieldset disabled={busy || locked} className="unframed">
-            <s-section heading="Le projet">
-              <label>
-                Nom du projet
-                <input
-                  value={s.project}
-                  maxLength={150}
-                  onChange={(e) => field("project", e.target.value)}
-                />
-              </label>
-            </s-section>
-            <s-section heading="Produits">
+            <s-section>
               <div className="section-toolbar">
                 <span className="muted">Prix unitaires HTVA</span>
                 <div>
                   <button onClick={() => setNewLot(true)}>
-                    Ajouter un lot
+                    Ajouter une pièce
                   </button>
                   <button onClick={() => pick({ kind: "products" })}>
                     Ajouter des produits
@@ -555,8 +681,8 @@ export default function Editor({
                   <span className="empty-symbol">◇</span>
                   <h3>Composez votre proposition</h3>
                   <p>
-                    Ajoutez vos produits Shopify, puis proposez des alternatives
-                    si nécessaire.
+                    Créez une pièce par espace du projet, ajoutez-y vos
+                    produits, puis proposez des alternatives si nécessaire.
                   </p>
                   <button
                     className="primary"
@@ -568,13 +694,18 @@ export default function Editor({
               )}
               {sections.map((section) => (
                 <div
-                  className="quote-lot"
+                  className={`quote-lot${dropAt === `s:${section.id}` ? " drop-over" : ""}`}
                   id={`lot-${section.id}`}
                   key={section.id}
+                  {...dropProps(`s:${section.id}`, {
+                    kind: "section",
+                    sectionId: section.id,
+                    title: section.title,
+                  })}
                 >
                   <div className="lot-heading">
                     <input
-                      aria-label={`Nom du lot ${section.title}`}
+                      aria-label={`Nom de la pièce ${section.title}`}
                       value={section.title}
                       maxLength={150}
                       onChange={(e) =>
@@ -606,34 +737,61 @@ export default function Editor({
                       HTVA
                     </span>
                   </div>
+                  {section.groups.length > 0 && (
+                    <div className="line-head" aria-hidden="true">
+                      <span>Produit</span>
+                      <span>Qté</span>
+                      <span>Prix HTVA</span>
+                      <span>Remise %</span>
+                      <span>Total HTVA</span>
+                    </div>
+                  )}
                   {section.groups.map((g) => (
-                    <div className="alternative-group" key={g.id}>
+                    <div
+                      className={`alternative-group${dropAt === `g:${g.id}` ? " drop-over" : ""}${
+                        dragging?.kind === "group" && dragging.groupId === g.id
+                          ? " is-dragging"
+                          : ""
+                      }`}
+                      key={g.id}
+                      {...dropProps(`g:${g.id}`, {
+                        kind: "group",
+                        groupId: g.id,
+                      })}
+                    >
                       {g.items.map((i, n) => (
-                        <ProductRow
-                          key={i.id}
-                          line={i}
-                          base={n ? g.items[0] : undefined}
-                          selected={g.selected === i.id}
-                          onSelect={
-                            g.items.length > 1
-                              ? () =>
-                                  change({
-                                    ...s,
-                                    groups: s.groups.map((x) =>
-                                      x.id === g.id
-                                        ? { ...x, selected: i.id }
-                                        : x,
-                                    ),
-                                  })
-                              : undefined
-                          }
-                          onChange={(p) => patch(i.id, p)}
-                          onRemove={() => remove(i.id)}
-                        />
+                        <div className="drag-row" key={i.id}>
+                          {dragHandle(
+                            n
+                              ? { kind: "line", lineId: i.id }
+                              : { kind: "group", groupId: g.id },
+                            i.name,
+                          )}
+                          <ProductRow
+                            line={i}
+                            base={n ? g.items[0] : undefined}
+                            selected={g.selected === i.id}
+                            onSelect={
+                              g.items.length > 1
+                                ? () =>
+                                    change({
+                                      ...s,
+                                      groups: s.groups.map((x) =>
+                                        x.id === g.id
+                                          ? { ...x, selected: i.id }
+                                          : x,
+                                      ),
+                                    })
+                                : undefined
+                            }
+                            onChange={(p) => patch(i.id, p)}
+                            onRemove={() => remove(i.id)}
+                          />
+                        </div>
                       ))}
                       <div className="group-footer">
                         <button
-                          className="text-button"
+                          className="add-action"
                           onClick={() =>
                             pick({ kind: "products", group: g.id })
                           }
@@ -672,7 +830,7 @@ export default function Editor({
                               </label>
                             )}
                             <label>
-                              Déplacer vers le lot
+                              Déplacer vers la pièce
                               <select
                                 value={section.id}
                                 onChange={(e) => {
@@ -719,18 +877,20 @@ export default function Editor({
                       </div>
                     </div>
                   ))}
-                  <button
-                    className="text-button lot-add"
-                    onClick={() =>
-                      pick({ kind: "products", section: section.id })
-                    }
-                  >
-                    Ajouter un produit à ce lot
-                  </button>
+                  <div className="lot-footer">
+                    <button
+                      className="add-action"
+                      onClick={() =>
+                        pick({ kind: "products", section: section.id })
+                      }
+                    >
+                      Ajouter un produit
+                    </button>
+                  </div>
                 </div>
               ))}
               <button
-                className="text-button"
+                className="add-action"
                 onClick={() => setCustom({ kind: "products" })}
               >
                 Ajouter une ligne personnalisée
@@ -1003,7 +1163,7 @@ export default function Editor({
               state={s}
               disabled={locked || busy}
               onEdit={() => {
-                setClientDraft(s);
+                setClientDraft(draftFrom(s));
                 setModal("client");
               }}
               onSearch={() => {
@@ -1013,71 +1173,61 @@ export default function Editor({
           </s-section>
           <s-section heading="Récapitulatif">
             <QuoteSummary state={s} />
-            <button
-              className="primary full-button"
-              disabled={busy || (!ready && (locked || !fiscal.complete))}
-              onClick={ready && !dirty ? () => download(q.version) : prepare}
-            >
-              {ready && !dirty ? "Télécharger le PDF" : "Préparer le PDF"}
-            </button>
             <p className="muted summary-footnote">
               {ready && !dirty
                 ? "Version conservée dans l’historique."
                 : "Vérifiez l’aperçu avant de créer la version à transmettre."}
             </p>
           </s-section>
-          <s-section heading="Shopify">
-            {q.conversion?.status === "uncertain" && (
-              <p role="alert" className="error">
-                {q.conversion.error ||
-                  "Vérification requise avant toute nouvelle action."}
-              </p>
-            )}
-            {q.conversion?.draftId ? (
-              <>
-                <p>Commande {q.conversion.draftName}</p>
-                <a
-                  href={`https://${shop}/admin/draft_orders/${q.conversion.draftId.split("/").at(-1)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Ouvrir dans Shopify
-                </a>
-              </>
-            ) : (
-              <p className="muted">
-                Quand votre client a choisi, créez la commande provisoire avec
-                les produits retenus.
-              </p>
-            )}
-            {["creating", "uncertain"].includes(q.conversion?.status || "") ? (
-              <button disabled={busy} onClick={() => send("reconcile")}>
-                Vérifier dans Shopify
-              </button>
-            ) : (
-              !q.conversion?.draftId && (
-                <button
-                  disabled={demo || busy || dirty || !ready || locked}
-                  onClick={() => setModal("convert")}
-                >
-                  Créer la commande provisoire
+          {admin && (
+            <s-section heading="Shopify">
+              {q.conversion?.status === "uncertain" && (
+                <p role="alert" className="error">
+                  {q.conversion.error ||
+                    "Vérification requise avant toute nouvelle action."}
+                </p>
+              )}
+              {q.conversion?.draftId ? (
+                <>
+                  <p>Commande {q.conversion.draftName}</p>
+                  <a
+                    href={`https://${shop}/admin/draft_orders/${q.conversion.draftId.split("/").at(-1)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Ouvrir dans Shopify
+                  </a>
+                </>
+              ) : (
+                <p className="muted">
+                  Quand votre client a choisi, créez la commande provisoire avec
+                  les produits retenus.
+                </p>
+              )}
+              {["creating", "uncertain"].includes(
+                q.conversion?.status || "",
+              ) ? (
+                <button disabled={busy} onClick={() => send("reconcile")}>
+                  Vérifier dans Shopify
                 </button>
-              )
-            )}
-            {demo && (
-              <small className="muted">
-                Disponible après connexion à la boutique.
-              </small>
-            )}
-          </s-section>
-          <BillingPanel
-            q={q}
-            mode={billingMode}
-            odooUrl={odooUrl}
-            busy={busy}
-            dirty={dirty}
-            onAction={(intent, extra) => send(intent, extra)}
-          />
+              ) : (
+                !q.conversion?.draftId && (
+                  <button
+                    disabled={demo || busy || dirty || !ready || locked}
+                    onClick={() => setModal("convert")}
+                  >
+                    Créer la commande provisoire
+                  </button>
+                )
+              )}
+              {demo && (
+                <small className="muted">
+                  Disponible après connexion à la boutique.
+                </small>
+              )}
+            </s-section>
+          )}
+          {/* Facturation Odoo : écartée de l'outil pour l'instant (Cyril). */}
         </aside>
       </div>
       {picker && (
@@ -1108,16 +1258,27 @@ export default function Editor({
           <form
             onSubmit={(e) => {
               e.preventDefault();
+              // La facturation se saisit d'abord ; « même adresse » copie la
+              // facturation vers la livraison (adresse de la commande Shopify).
+              const d = withClientNames({
+                ...clientDraft,
+                shipping: clientDraft.billingSame
+                  ? clientDraft.billing
+                  : clientDraft.shipping,
+              });
               change({
                 ...s,
-                client: clientDraft.client.trim(),
-                contact: clientDraft.contact,
-                email: clientDraft.email,
-                customerId: clientDraft.customerId,
-                customerVat: clientDraft.customerVat,
-                shipping: clientDraft.shipping,
-                billing: clientDraft.billing,
-                billingSame: clientDraft.billingSame,
+                firstName: d.firstName,
+                lastName: d.lastName,
+                company: d.company,
+                client: d.client,
+                contact: d.contact,
+                email: d.email,
+                customerId: d.customerId,
+                customerVat: d.customerVat,
+                shipping: d.shipping,
+                billing: d.billingSame ? d.shipping : d.billing,
+                billingSame: d.billingSame,
               });
               setModal(null);
             }}
@@ -1126,17 +1287,18 @@ export default function Editor({
               <div className="fields">
                 {(
                   [
-                    ["client", "Entreprise / client"],
-                    ["contact", "Contact"],
+                    ["firstName", "Prénom", "given-name", false],
+                    ["lastName", "Nom", "family-name", true],
+                    ["company", "Société (facultatif)", "organization", false],
                   ] as const
-                ).map(([k, label]) => (
+                ).map(([k, label, auto, required]) => (
                   <label key={k}>
                     {label}
                     <input
                       type="text"
                       name={k}
-                      autoComplete={k === "client" ? "organization" : "name"}
-                      required={k === "client"}
+                      autoComplete={auto}
+                      required={required}
                       maxLength={150}
                       value={clientDraft[k]}
                       onChange={(e) =>
@@ -1159,14 +1321,7 @@ export default function Editor({
                     })
                   }
                   onSelect={(customer) =>
-                    setClientDraft({
-                      ...clientDraft,
-                      client: customer.address.company || customer.name,
-                      contact: customer.name,
-                      email: customer.email,
-                      customerId: customer.id,
-                      shipping: customer.address,
-                    })
+                    setClientDraft(fromCustomer(clientDraft, customer))
                   }
                 />
                 <label>
@@ -1186,18 +1341,14 @@ export default function Editor({
                   />
                 </label>
               </div>
-              <h3>Adresse de livraison</h3>
-              <p className="muted">
-                Facultative pour le PDF. Vous pourrez la compléter avant de
-                créer la commande.
-              </p>
+              <h3>Adresse de facturation</h3>
               <AddressFields
-                value={clientDraft.shipping}
-                onChange={(shipping) =>
-                  setClientDraft({ ...clientDraft, shipping })
+                value={clientDraft.billing}
+                onChange={(billing) =>
+                  setClientDraft({ ...clientDraft, billing })
                 }
               />
-              <h3>Facturation</h3>
+              <h3>Adresse de livraison</h3>
               <label className="check">
                 <input
                   type="checkbox"
@@ -1206,16 +1357,21 @@ export default function Editor({
                     setClientDraft({
                       ...clientDraft,
                       billingSame: e.target.checked,
+                      shipping: e.target.checked
+                        ? clientDraft.shipping
+                        : clientDraft.shipping.address1
+                          ? clientDraft.shipping
+                          : clientDraft.billing,
                     })
                   }
                 />
-                Identique à la livraison
+                Livrer à l’adresse de facturation
               </label>
               {!clientDraft.billingSame && (
                 <AddressFields
-                  value={clientDraft.billing}
-                  onChange={(billing) =>
-                    setClientDraft({ ...clientDraft, billing })
+                  value={clientDraft.shipping}
+                  onChange={(shipping) =>
+                    setClientDraft({ ...clientDraft, shipping })
                   }
                 />
               )}
@@ -1290,7 +1446,7 @@ export default function Editor({
         </Modal>
       )}
       {newLot && (
-        <Modal title="Ajouter un lot" onClose={() => setNewLot(false)}>
+        <Modal title="Ajouter une pièce" onClose={() => setNewLot(false)}>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -1302,10 +1458,11 @@ export default function Editor({
             }}
           >
             <p className="muted">
-              Nommez le lot, puis choisissez ses produits.
+              Nommez la pièce (salon, cuisine, chambre…), puis choisissez ses
+              produits.
             </p>
             <label>
-              Nom du lot
+              Nom de la pièce
               <input
                 name="title"
                 required
@@ -1325,6 +1482,21 @@ export default function Editor({
             Vérifiez le client, les produits retenus et les conditions. Une
             nouvelle version sera conservée après validation des montants.
           </p>
+          <label className="check-row">
+            <input
+              type="checkbox"
+              disabled={locked}
+              checked={!s.hideDiscounts}
+              onChange={(e) => field("hideDiscounts", !e.target.checked)}
+            />
+            Montrer les remises au client
+          </label>
+          {s.hideDiscounts && (
+            <p className="muted">
+              Version client : prix publics sans remise, totaux recalculés. Le
+              devis garde vos remises pour la commande.
+            </p>
+          )}
           {(error || result?.error) && (
             <p role="alert" className="error">
               {error || result?.error}

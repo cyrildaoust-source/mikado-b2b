@@ -51,6 +51,11 @@ export function AddressFields({
     </div>
   );
 }
+const line = (a: QuoteState["shipping"]) =>
+  [a.address1, a.address2, [a.zip, a.city].filter(Boolean).join(" ")]
+    .filter(Boolean)
+    .join(", ") || "Adresse à compléter";
+
 export function CustomerCard({
   state: s,
   onEdit,
@@ -82,21 +87,12 @@ export function CustomerCard({
           {s.email && <p className="muted">{s.email}</p>}
           {s.customerVat && <p className="muted">N° TVA : {s.customerVat}</p>}
           <div className="address-summary">
+            <h3>Facturation</h3>
+            <p>{line(s.billingSame ? s.shipping : s.billing)}</p>
             <h3>Livraison</h3>
             <p>
-              {[
-                s.shipping.address1,
-                s.shipping.address2,
-                [s.shipping.zip, s.shipping.city].filter(Boolean).join(" "),
-              ]
-                .filter(Boolean)
-                .join(", ") || "Adresse à compléter"}
+              {s.billingSame ? "À l’adresse de facturation" : line(s.shipping)}
             </p>
-            <span className="muted">
-              {s.billingSame
-                ? "Facturation à la même adresse"
-                : "Adresse de facturation distincte"}
-            </span>
           </div>
         </>
       ) : (

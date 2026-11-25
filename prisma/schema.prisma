@@ -9,8 +9,10 @@ generator client {
 // enough when changing adapters.
 // See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider = "postgresql"
+  url       = env("DATABASE_URL")
+  // Neon : connexion directe pour les migrations (nom fourni par l'intégration Vercel).
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 model Session {
@@ -47,7 +49,10 @@ model Quote {
   revisions   Revision[]
   conversion  Conversion?
   billingRequests BillingRequest[]
+  ownerId     Int?
+  owner       User?     @relation(fields: [ownerId], references: [id], onDelete: Restrict)
   @@index([shop, updatedAt])
+  @@index([ownerId])
 }
 
 model Revision {
@@ -117,4 +122,35 @@ model BillingRequest {
   createdAt DateTime @default(now())
   @@unique([quoteId, kind])
   @@index([status, updatedAt])
+}
+
+// Accès autonome (outil pro hors admin Shopify).
+model User {
+  id           Int       @id @default(autoincrement())
+  email        String    @unique
+  name         String
+  role         String    @default("architect")
+  passwordHash String?
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  lastLoginAt  DateTime?
+  quotes       Quote[]
+  invites      Invite[]
+}
+
+model Invite {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+// Réglage par marque du catalogue pro, tenu par Cyril.
+model BrandSetting {
+  vendor    String   @id
+  visible   Boolean  @default(true)
+  updatedAt DateTime @updatedAt
 }

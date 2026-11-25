@@ -62,9 +62,15 @@ export const quoteSchema = z
       .regex(/^gid:\/\/shopify\/Customer\/\d+$/)
       .nullable(),
     customerVat: z.string().max(100).default(""),
+    // Fiche client : prénom, nom, société facultative (client et contact en découlent).
+    firstName: z.string().max(150).default(""),
+    lastName: z.string().max(150).default(""),
+    company: z.string().max(150).default(""),
     shipping: addressSchema,
     billing: addressSchema,
     billingSame: z.boolean(),
+    // Version client : le PDF montre les prix publics, sans les remises de l'architecte.
+    hideDiscounts: z.boolean().default(false),
     validity: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     terms: text,
     depositPercent: z.number().min(0).max(100).nullable().default(null),
@@ -391,6 +397,53 @@ export function emptyQuote(_taxesIncluded = false): QuoteState {
   });
 }
 
+type ClientFields = Pick<
+  QuoteState,
+  "firstName" | "lastName" | "company" | "client" | "contact" | "shipping" | "billing"
+>;
+
+/** Prénom, nom, société d'un devis, retrouvés aussi sur un devis plus ancien. */
+export function clientNames(s: ClientFields) {
+  if (s.firstName || s.lastName || s.company)
+    return { firstName: s.firstName, lastName: s.lastName, company: s.company };
+  const person = s.contact || (s.client && !s.shipping.company ? s.client : "");
+  const [first, ...rest] = person.trim().split(/\s+/);
+  return {
+    firstName: rest.length ? first : "",
+    lastName: rest.length ? rest.join(" ") : first || "",
+    company: s.client && s.client !== person ? s.client : s.shipping.company,
+  };
+}
+
+/** Recalcule client et contact, et complète les noms des adresses restés vides. */
+export function withClientNames<T extends ClientFields>(s: T): T {
+  const firstName = s.firstName.trim(),
+    lastName = s.lastName.trim(),
+    company = s.company.trim(),
+    person = [firstName, lastName].filter(Boolean).join(" ");
+  const fill = (a: T["shipping"]) => ({
+    ...a,
+    firstName: a.firstName || firstName,
+    lastName: a.lastName || lastName,
+    company: a.company || company,
+  });
+  return {
+    ...s,
+    firstName,
+    lastName,
+    company,
+    client: company || person,
+    contact: person,
+    shipping: fill(s.shipping),
+    billing: fill(s.billing),
+  };
+}
+
+/** Nouveau devis : livraison + montage déjà ajoutée au taux par défaut, à retirer au besoin. */
+export function newQuote(taxesIncluded = false): QuoteState {
+  return setDeliveryFee(emptyQuote(taxesIncluded), true, crypto.randomUUID());
+}
+
 export function repriceExtras(s: QuoteState): QuoteState {
   const base = s.groups.reduce(
     (n, g) => n + lineTotal(g.items.find((i) => i.id === g.selected)!),
@@ -411,6 +464,17 @@ export function repriceExtras(s: QuoteState): QuoteState {
           },
     ),
   };
+}
+
+/** Ce que voit le client final : sans remises si l'architecte les masque. */
+export function clientView(s: QuoteState): QuoteState {
+  if (!s.hideDiscounts) return s;
+  const plain = <T extends { discount: number }>(l: T) => ({ ...l, discount: 0 });
+  return repriceExtras({
+    ...s,
+    groups: s.groups.map((g) => ({ ...g, items: g.items.map(plain) })),
+    extras: s.extras.map(plain),
+  });
 }
 
 export function paymentText(mode: string, percent: number | null, custom = "") {
@@ -507,12 +571,20 @@ export function quoteSections(s: QuoteState) {
   return [...map.values()];
 }
 
+/** Taux par défaut de la ligne « Livraison + montage » (décision de Cyril, 25/11/2026). */
+export const DELIVERY_PERCENT = 4;
+
 export function setDeliveryFee(
   s: QuoteState,
   enabled: boolean,
   id: string,
+  percent?: number,
 ): QuoteState {
   const existing = s.extras.find((e) => e.deliveryFee);
+  const rate = Math.min(
+    100,
+    Math.max(0, percent ?? existing?.chargePercent ?? DELIVERY_PERCENT),
+  );
   const extras = s.extras.filter((e) => !e.deliveryFee);
   if (enabled)
     extras.push({
@@ -522,7 +594,7 @@ export function setDeliveryFee(
         qty: 1,
         price: 0,
         discount: 0,
-        chargePercent: 3,
+        chargePercent: rate,
         deliveryFee: true,
         taxable: true,
         vatRate: 21,

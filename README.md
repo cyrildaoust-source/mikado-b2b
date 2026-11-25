@@ -2,6 +2,8 @@
 
 Application privée de devis pour Mikado Deco, intégrable à Shopify : React Router, SDK Shopify officiel, Prisma/SQLite et PDF Chromium. Le projet actif est conservé hors iCloud dans `/Users/cyrildaoust/Developer/mikado-devis`. L’archive livrée contient le code, sans données clients, secrets ni dépendances installées.
 
+Depuis novembre 2026, ce dépôt porte aussi l’outil pro autonome pour les architectes : catalogue visuel, comptes personnels, réglage des marques. Voir [docs/outil-pro.md](docs/outil-pro.md).
+
 ## Fonctionnement
 
 - Projets avec lots, descriptions, produits, variantes et alternatives exclusives ; options du catalogue ou prestations libres.
