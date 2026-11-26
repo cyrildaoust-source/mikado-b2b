@@ -194,16 +194,37 @@ l'ancien, « Retirer le lien » le ferme. La base ne garde que l'empreinte SHA-2
 du jeton, d'où un lien affiché une seule fois. La page n'est pas indexée et ne
 transmet pas son adresse aux sites tiers. Elle est faite pour le téléphone : le
 client compare les alternatives, coche les options et voit le total suivre
-(livraison recalculée sur la marchandise retenue), puis télécharge le PDF. Ses
-choix restent sur son appareil tant que la validation en ligne n'existe pas. Le devis d'un architecte ne peut être
+(livraison recalculée sur la marchandise retenue), puis télécharge le PDF. Sur un
+écran large, la page passe sur deux colonnes, le total restant visible à droite. Le devis d'un architecte ne peut être
 figé que si « Mon cabinet » porte le nom, l'adresse et la TVA ; il n'affiche alors
 ni les coordonnées ni les conditions générales de Mikado Deco.
+
+### Acceptation, contresignature et facturation
+
+Le client accepte en ligne : prénom, nom, case d'engagement, puis « Accepter le
+devis avec obligation de paiement ». Le serveur recalcule les totaux à partir de
+ses choix, enregistre l'heure, l'adresse IP et le navigateur, et passe le devis à
+« Accepté par le client ». La première acceptation l'emporte ; la page devient
+ensuite une simple lecture. L'architecte (ou Mikado Deco sur ses propres devis)
+contresigne dans les 48 heures depuis le devis : nom, case de confirmation,
+« Contresigner ». Les montants à facturer à l'architecte sont alors figés (prix
+public, remise de classe, prix pro, livraison). « Rouvrir pour réviser » remet le
+devis en brouillon et ferme le lien. Sans contresignature après 48 heures, rien
+n'est facturé : un rappel part une seule fois à l'architecte et une alerte à
+Mikado Deco. La page « À facturer » (Mikado Deco seul) liste les devis
+contresignés, ceux en attente et ceux facturés depuis 30 jours ; « Facturé »
+enregistre l'échéance. La commande Shopify et le brouillon Odoo viendront après
+un essai validé par Cyril.
 
 ## Configuration
 
 Variables en plus de celles de Mikado Devis (voir `.env.production.example`) :
 
 - `APP_MODE=standalone`
+- `RESEND_API_KEY` : envoi des courriels (sans elle, ils sont seulement journalisés)
+- `MAIL_FROM` : expéditeur, par défaut `Mikado Deco Pro <noreply@mikadodeco.be>`
+- `MIKADO_ALERT_EMAIL` : destinataire des alertes, par défaut `shop@mikadodeco.be`
+- `CRON_SECRET` : jeton du rappel quotidien `/internal/decisions` (Vercel Cron)
 - `SHOPIFY_SHOP` : domaine `*.myshopify.com` de la boutique
 - `SESSION_SECRET` : au moins 32 caractères aléatoires
 - `SHOPIFY_API_KEY` et `SHOPIFY_API_SECRET` : ceux de l'app du Dev Dashboard. Le jeton

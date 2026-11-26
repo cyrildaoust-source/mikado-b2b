@@ -123,6 +123,7 @@ export default function Quotes() {
             <option value="ready">Prêts à envoyer · non envoyés</option>
             <option value="sent">Envoyés</option>
             <option value="relance">À relancer · {FOLLOW_UP_DAYS} jours sans réponse</option>
+            <option value="accepted">Acceptés par le client</option>
             <option value="ordered">Commandes créées</option>
             <option value="archived">Archives</option>
             <option value="deleted">Corbeille</option>

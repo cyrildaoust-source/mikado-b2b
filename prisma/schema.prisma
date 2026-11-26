@@ -54,6 +54,7 @@ model Quote {
   moodBoard   MoodBoard?
   moodImages  MoodImage[]
   shares      QuoteShare[]
+  decisions   QuoteDecision[]
   @@index([shop, updatedAt])
   @@index([ownerId])
 }
@@ -73,6 +74,7 @@ model Revision {
   documentMeta String?
   pdfGeneratedAt DateTime?
   shares QuoteShare[]
+  decisions QuoteDecision[]
   @@unique([quoteId, version])
   @@unique([quoteId, publishedNumber])
 }
@@ -248,4 +250,44 @@ model QuoteShare {
   lastViewedAt  DateTime?
   views         Int       @default(0)
   @@index([quoteId])
+}
+
+/// Acceptation du client sur la proposition en ligne, puis contresignature de
+/// l'architecte et suivi de facturation par Mikado Deco. La première décision
+/// l'emporte : elle fait passer le devis de draft à accepted en une écriture
+/// conditionnelle. Une décision rouverte reste en historique.
+model QuoteDecision {
+  id                Int       @id @default(autoincrement())
+  quoteId           Int
+  quote             Quote     @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  revisionId        Int
+  revision          Revision  @relation(fields: [revisionId], references: [id], onDelete: Restrict)
+  shareId           Int?
+  /// accepted : le client a signé ; signed : l'architecte a contresigné, à
+  /// facturer ; invoiced : facturé par Mikado ; reopened : l'architecte révise.
+  status            String    @default("accepted")
+  choices           String
+  remark            String    @default("")
+  clientFirstName   String
+  clientLastName    String
+  acceptedAt        DateTime  @default(now())
+  acceptedIp        String    @default("")
+  acceptedAgent     String    @default("")
+  /// Montants du client, recalculés côté serveur sur la révision figée (centimes).
+  net               Int
+  tax               Int
+  gross             Int
+  deadline          DateTime
+  architectName     String?
+  architectUserId   Int?
+  architectSignedAt DateTime?
+  /// Montant facturé par Mikado à l'architecte, figé à la contresignature (JSON).
+  billing           String?
+  remindedAt        DateTime?
+  dueDate           DateTime?
+  invoicedAt        DateTime?
+  invoicedById      Int?
+  reopenedAt        DateTime?
+  @@index([quoteId])
+  @@index([status])
 }

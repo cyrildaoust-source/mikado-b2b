@@ -14,6 +14,7 @@ export async function listQuotes(
     archived: Prisma.sql`q.status = 'archived'`,
     deleted: Prisma.sql`q.status = 'deleted'`,
     ordered: Prisma.sql`q.status = 'converted'`,
+    accepted: Prisma.sql`q.status = 'accepted'`,
     draft: Prisma.sql`q.status = 'draft' AND NOT EXISTS(SELECT 1 FROM "Revision" r WHERE r."quoteId"=q.id AND r.version=q.version AND r."pdfGeneratedAt" IS NOT NULL)`,
     ready: Prisma.sql`q.status = 'draft' AND EXISTS(SELECT 1 FROM "Revision" r WHERE r."quoteId"=q.id AND r.version=q.version AND r."pdfGeneratedAt" IS NOT NULL AND r."sentAt" IS NULL)`,
     sent: Prisma.sql`q.status = 'draft' AND EXISTS(SELECT 1 FROM "Revision" r WHERE r."quoteId"=q.id AND r.version=q.version AND r."pdfGeneratedAt" IS NOT NULL AND r."sentAt" IS NOT NULL)`,

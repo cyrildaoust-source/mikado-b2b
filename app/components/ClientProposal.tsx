@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Form, useNavigation } from "react-router";
 import {
   fiscalTotals,
   lineTotal,
@@ -57,7 +58,16 @@ export function ClientProposal({
   issuedAt,
   expiresAt,
   pdfHref,
+  decision = null,
+  error,
 }: {
+  /** Décision déjà enregistrée : la page passe en lecture seule. */
+  decision?: {
+    name: string;
+    acceptedAt: string;
+    choices: Choices;
+  } | null;
+  error?: string;
   state: QuoteState;
   seller: Seller | null;
   number: string;
@@ -66,12 +76,21 @@ export function ClientProposal({
   expiresAt: string;
   pdfHref: string;
 }) {
-  const [choices, setChoices] = useState<Choices>(() => initialChoices(state));
+  const [picked, setChoices] = useState<Choices>(() => initialChoices(state));
+  const choices = decision?.choices ?? picked;
+  const locked = Boolean(decision);
+  const busy = useNavigation().state !== "idle";
+  // Sur grand écran, le récapitulatif est une colonne ouverte à droite.
+  const summary = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (window.matchMedia("(min-width: 1024px)").matches && summary.current)
+      summary.current.open = true;
+  }, []);
   const s = useMemo(() => applyChoices(state, choices), [state, choices]);
   const f = fiscalTotals(s);
   const schedule = paymentSchedule(s, f.gross);
   const changed =
-    JSON.stringify(choices) !== JSON.stringify(initialChoices(state));
+    !locked && JSON.stringify(choices) !== JSON.stringify(initialChoices(state));
   const from = seller?.name || "Mikado Deco";
   const lines = sellerLines(seller);
   const logo = safeLogo(seller?.logo);
@@ -80,6 +99,17 @@ export function ClientProposal({
   const who = [s.firstName, s.lastName].filter(Boolean).join(" ") || s.client;
   return (
     <div className="cp">
+      {decision && (
+        <p className="cp-accepted" role="status">
+          Proposition acceptée par {decision.name} le{" "}
+          {new Date(decision.acceptedAt).toLocaleString("fr-BE", {
+            dateStyle: "long",
+            timeStyle: "short",
+            timeZone: "Europe/Brussels",
+          })}
+          . {from} revient vers vous pour la suite.
+        </p>
+      )}
       <header className="cp-head">
         {logo && <img className="cp-logo" src={logo} alt={`Logo de ${from}`} />}
         <p className="cp-from">{from}</p>
@@ -119,6 +149,7 @@ export function ClientProposal({
                             type="radio"
                             name={`g-${g.id}`}
                             checked={item.id === g.selected}
+                            disabled={locked}
                             onChange={() =>
                               setChoices((c) => ({
                                 ...c,
@@ -163,6 +194,7 @@ export function ClientProposal({
                     <input
                       type="checkbox"
                       checked={o.selected}
+                      disabled={locked}
                       onChange={(e) =>
                         setChoices((c) => ({
                           ...c,
@@ -230,6 +262,49 @@ export function ClientProposal({
         </a>
       </section>
 
+      {!locked && (
+        <section className="cp-section cp-accept" id="accepter">
+          <h2>Accepter la proposition</h2>
+          <p className="cp-note">
+            Vous acceptez la proposition telle que composée ci-dessus, pour{" "}
+            <strong>{money(f.gross)} TVAC</strong>. {from} confirme ensuite la
+            commande.
+          </p>
+          <Form method="post" className="cp-form">
+            <input type="hidden" name="choices" value={JSON.stringify(choices)} />
+            <div className="cp-names">
+              <label>
+                Prénom
+                <input name="firstName" autoComplete="given-name" required maxLength={80} />
+              </label>
+              <label>
+                Nom
+                <input name="lastName" autoComplete="family-name" required maxLength={80} />
+              </label>
+            </div>
+            <label>
+              Remarque pour {from} (facultatif)
+              <textarea name="remark" rows={3} maxLength={2000} />
+            </label>
+            <label className="cp-agree">
+              <input type="checkbox" name="agree" required />
+              <span>
+                J'accepte cette proposition et je m'engage à la payer selon les
+                conditions indiquées.
+              </span>
+            </label>
+            {error && (
+              <p role="alert" className="error">
+                {error}
+              </p>
+            )}
+            <button className="primary" name="intent" value="accept" disabled={busy}>
+              {busy ? "Envoi…" : "Accepter le devis avec obligation de paiement"}
+            </button>
+          </Form>
+        </section>
+      )}
+
       <footer className="cp-foot">
         <strong>{from}</strong>
         {lines.address && <span className="preline">{lines.address}</span>}
@@ -238,7 +313,7 @@ export function ClientProposal({
       </footer>
 
       <aside className="cp-total" aria-live="polite">
-        <details>
+        <details ref={summary}>
           <summary>
             <span>
               Total TVAC
@@ -263,11 +338,10 @@ export function ClientProposal({
                 <span>{money(st.amount)}</span>
               </div>
             ))}
-            {changed && (
-              <p>
-                Vos choix restent sur cet appareil. Pour les confirmer,
-                répondez à {from}.
-              </p>
+            {!locked && (
+              <a className="cp-to-accept" href="#accepter">
+                Accepter la proposition
+              </a>
             )}
           </div>
         </details>

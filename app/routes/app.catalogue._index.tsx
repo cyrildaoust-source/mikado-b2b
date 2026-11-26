@@ -482,7 +482,12 @@ export default function Catalogue() {
             </span>
           )}
           <span className="dock-status" role="status">
-            {added ? (
+            {dragCard && openQuote ? (
+              <span className="dock-hint">
+                Déposez <b>{dragCard.title}</b> dans une pièce, en alternative
+                ou en option, dans le panneau à droite.
+              </span>
+            ) : added ? (
               adder.state !== "idle" ? (
                 <>Ajout de {added.title}…</>
               ) : adder.data?.error ? (

@@ -31,6 +31,7 @@ try {
       "tests/integration/persistence.test.ts",
       "tests/integration/pro-access.test.ts",
       "tests/integration/share.test.ts",
+      "tests/integration/decision.test.ts",
     ],
   ]) {
     const status = run(args);

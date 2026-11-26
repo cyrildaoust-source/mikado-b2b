@@ -581,6 +581,7 @@ export function commercialStatus(q: {
   if (q.conversion && ["creating", "uncertain"].includes(q.conversion.status))
     return "À vérifier";
   if (q.status === "converted") return "Commande créée";
+  if (q.status === "accepted") return "Accepté par le client";
   const ready = q.revisions?.find((r) => r.publishedNumber && r.pdfGeneratedAt);
   if (!ready)
     return q.revisions?.some((r) => r.publishedNumber)

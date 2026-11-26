@@ -1,11 +1,15 @@
 import {
   data,
+  useActionData,
   useLoaderData,
+  type ActionFunctionArgs,
   type HeadersFunction,
   type LoaderFunctionArgs,
 } from "react-router";
 import { ClientProposal } from "../components/ClientProposal";
 import { resolveShare } from "../services/share.server";
+import { acceptProposal, decisionForShare } from "../services/decision.server";
+import { ZodError } from "zod";
 
 /**
  * Proposition en ligne, ouverte par le lien secret que l'architecte envoie à
@@ -52,13 +56,37 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       seller: share.seller,
       state: share.state,
       pdfHref: `/d/${String(params.token)}/pdf`,
+      decision: await decisionForShare(share.shareId),
     },
     { headers: PRIVATE },
   );
 }
 
+export async function action({ request, params }: ActionFunctionArgs) {
+  const form = Object.fromEntries(await request.formData());
+  try {
+    await acceptProposal(String(params.token), form, {
+      ip:
+        request.headers.get("x-real-ip") ||
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        "",
+      agent: request.headers.get("user-agent") || "",
+    });
+    return data({ ok: true as const }, { headers: PRIVATE });
+  } catch (e) {
+    const error =
+      e instanceof ZodError
+        ? e.issues[0]?.message || "Vérifiez le formulaire."
+        : e instanceof Error
+          ? e.message
+          : "Acceptation impossible.";
+    return data({ ok: false as const, error }, { status: 400, headers: PRIVATE });
+  }
+}
+
 export default function SharedQuote() {
   const d = useLoaderData<typeof loader>();
+  const result = useActionData<typeof action>();
   if (d.status !== "open")
     return (
       <main className="shared-closed">
@@ -85,6 +113,8 @@ export default function SharedQuote() {
         issuedAt={d.issuedAt}
         expiresAt={d.expiresAt}
         pdfHref={d.pdfHref}
+        decision={d.decision}
+        error={result && !result.ok ? result.error : undefined}
       />
     </main>
   );

@@ -124,6 +124,7 @@ function ProNav({
           <>
             <NavLink to="/app/marques">Marques</NavLink>
             <NavLink to="/app/matieres">Matières</NavLink>
+            <NavLink to="/app/a-facturer">À facturer</NavLink>
             <NavLink to="/app/utilisateurs">Accès</NavLink>
           </>
         )}

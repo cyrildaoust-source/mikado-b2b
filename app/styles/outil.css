@@ -1185,9 +1185,9 @@ button.catalogue-add:hover:not(:disabled) {
     border-color 0.12s,
     background-color 0.12s;
 }
-/* Pendant un glisser, le panneau de dépôt prend le relais. */
+/* Pendant un glisser, la barre reste et indique le panneau de dépôt. */
 .catalogue-dock.dragging {
-  visibility: hidden;
+  border-color: var(--brass);
 }
 .dock-total {
   display: grid;
@@ -1289,7 +1289,8 @@ button.catalogue-add:hover:not(:disabled) {
   cursor: grab;
 }
 .catalogue:has(.catalogue-dock) .drop-panel {
-  bottom: 16px;
+  /* Au-dessus de la barre du devis, qui reste visible pendant le glisser. */
+  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 84px);
 }
 
 /* ================================================================== */
@@ -4641,5 +4642,212 @@ label.cp-line {
   .cp-photo {
     width: 44px;
     height: 44px;
+  }
+}
+.cp-accepted {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+.cp-accept .cp-note {
+  margin: 0 0 12px;
+  color: var(--ink-2);
+}
+.cp-form {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.cp-form label {
+  display: grid;
+  gap: 6px;
+}
+.cp-names {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.cp-form input:not([type="checkbox"]),
+.cp-form textarea {
+  min-height: var(--touch);
+  font-size: 16px;
+}
+.cp-form label.cp-agree {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.cp-agree input {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--brass);
+}
+.cp-form button {
+  min-height: var(--touch);
+}
+.cp-form .error {
+  margin: 0;
+}
+.cp-to-accept {
+  justify-self: start;
+  margin-top: 6px;
+  color: var(--brass);
+  font-weight: 600;
+}
+@media (max-width: 420px) {
+  .cp-names {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Réponse du client dans le devis */
+.decision-panel {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--ok);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.decision-panel.is-late {
+  border-color: var(--warn);
+}
+.decision-head {
+  display: grid;
+  gap: 2px;
+}
+.decision-remark {
+  margin: 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--line-strong);
+  color: var(--ink-2);
+  white-space: pre-line;
+}
+.decision-panel p {
+  margin: 0;
+}
+.decision-sign {
+  display: grid;
+  gap: 10px;
+}
+.decision-sign label {
+  display: grid;
+  gap: 6px;
+  max-width: 420px;
+}
+.decision-sign label.decision-confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: none;
+}
+.decision-confirm input {
+  flex: none;
+  margin-top: 2px;
+}
+.decision-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+/* À facturer */
+.invoice-group + .invoice-group {
+  margin-top: 20px;
+}
+.invoice-group-head {
+  padding: 16px 20px 8px;
+}
+.invoice-group-head h2,
+.invoice-group-head p {
+  margin: 0 0 4px;
+}
+.invoice-empty {
+  padding: 0 20px 16px;
+}
+.invoice-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.invoice-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) auto;
+  gap: 12px 20px;
+  align-items: center;
+  padding: 14px 20px;
+  border-top: 1px solid var(--line);
+}
+.invoice-what,
+.invoice-amount {
+  display: grid;
+  gap: 4px;
+}
+.invoice-what .notice {
+  justify-self: start;
+  margin: 0;
+  padding: 2px 8px;
+}
+.invoice-amount small {
+  color: var(--ink-3);
+}
+.invoice-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.invoice-form label {
+  display: grid;
+  gap: 4px;
+  font-size: var(--t-small);
+}
+@media (max-width: 760px) {
+  .invoice-list li {
+    grid-template-columns: 1fr;
+  }
+}
+/* Grand écran : la proposition à gauche, le récapitulatif en colonne à droite */
+@media (min-width: 1024px) {
+  .cp {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    column-gap: 40px;
+    align-items: start;
+    max-width: 1120px;
+    padding: 40px 32px 64px;
+  }
+  .cp > * {
+    grid-column: 1;
+  }
+  .cp > .cp-total {
+    grid-column: 2;
+    grid-row: 1 / span 40;
+    position: sticky;
+    top: 24px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: none;
+  }
+  .cp-total details {
+    padding: 0 20px;
+  }
+  .cp-total summary {
+    pointer-events: none;
+  }
+  .cp-head h1 {
+    font-size: 32px;
+  }
+  .cp-photo {
+    width: 72px;
+    height: 72px;
   }
 }

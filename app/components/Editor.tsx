@@ -1,4 +1,6 @@
 import { SharePanel } from "./quote/SharePanel";
+import { DecisionPanel } from "./quote/DecisionPanel";
+import type { CurrentDecision } from "../services/decision.server";
 import type { ActiveShare } from "../services/share.server";
 import { ProPrice } from "./ProPrice";
 import { publicMerchandise } from "../domain/pro";
@@ -104,7 +106,13 @@ export default function Editor({
   billingMode,
   odooUrl,
   share = null,
+  decision = null,
+  signerName = "",
+  canSign = false,
 }: {
+  decision?: CurrentDecision | null;
+  signerName?: string;
+  canSign?: boolean;
   q: RecordQuote;
   /** Lien en ligne actif du devis, sans son jeton. */
   share?: ActiveShare | null;
@@ -1411,6 +1419,13 @@ export default function Editor({
             ? `Envoi déclaré le ${new Date(current.sentAt).toLocaleDateString("fr-BE")}.`
             : "PDF prêt, pas encore déclaré envoyé. Après votre envoi par e-mail ou WhatsApp, cliquez sur « Marquer comme envoyé »."}
         </p>
+      )}
+      {decision && (
+        <DecisionPanel
+          decision={decision}
+          signerName={signerName}
+          canSign={canSign}
+        />
       )}
       {!embedded && q.status === "draft" && ready && !dirty && (
         <SharePanel

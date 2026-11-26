@@ -1,3 +1,4 @@
+import db from "../db.server";
 import { lockPrices } from "../domain/pro";
 import {
   data,
@@ -50,6 +51,11 @@ import { useRef, useState } from "react";
 import { useFetchers } from "react-router";
 import { rememberQuote } from "../services/current-quote.server";
 import {
+  currentDecision,
+  reopenDecision,
+  signDecision,
+} from "../services/decision.server";
+import {
   activeShare,
   createShare,
   revokeShares,
@@ -84,8 +90,29 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     billingMode: billingMode(c.shop),
     odooUrl: c.demo ? null : odooPublicUrl(),
     share: await activeShare(q.id),
+    decision: await currentDecision(q.id),
+    signerName: c.user?.name ?? "",
+    canSign: await canSignQuote(q.ownerId, c),
   }, { headers });
 }
+/** Qui signe : l'utilisateur connecté, ou l'admin Shopify / la démo (null). */
+const signer = (c: Awaited<ReturnType<typeof context>>) =>
+  c.user ? { id: c.user.id, role: c.user.role, name: c.user.name } : null;
+
+/** L'architecte signe ses devis ; Mikado Deco signe seulement les siens. */
+async function canSignQuote(
+  ownerId: number | null,
+  c: Awaited<ReturnType<typeof context>>,
+) {
+  if (!ownerId) return !c.user || c.user.role === "admin";
+  const owner = await db.user.findUnique({
+    where: { id: ownerId },
+    select: { role: true },
+  });
+  if (owner?.role === "architect") return c.user?.id === ownerId;
+  return !c.user || c.user.role === "admin";
+}
+
 export async function action({ request, params }: ActionFunctionArgs) {
   const c = await context(request),
     id = Number(params.id);
@@ -208,6 +235,17 @@ export async function action({ request, params }: ActionFunctionArgs) {
         ok: "Lien créé. Copiez-le maintenant : il ne sera plus affiché.",
         shareUrl: `${new URL(request.url).origin}/d/${token}`,
       };
+    }
+    if (intent === "sign") {
+      await signDecision(c.shop, id, signer(c), {
+        name: form.get("name") ?? "",
+        confirm: form.get("confirm") ?? "",
+      });
+      return { ok: "Contresigné. Mikado Deco a reçu la commande pour facturation." };
+    }
+    if (intent === "reopen") {
+      await reopenDecision(c.shop, id, signer(c));
+      return { ok: "Devis rouvert. Le lien est retiré ; préparez une nouvelle version." };
     }
     if (intent === "unshare") {
       await revokeShares(c.shop, id);
