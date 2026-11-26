@@ -50,8 +50,41 @@ export async function deleteLibrary(ids: string[]) {
   await db.libraryMaterial.deleteMany({ where: { id: { in: ids } } });
 }
 
-export async function getLibraryImage(id: string) {
-  return db.libraryMaterial.findUnique({ where: { id }, select: { mime: true, data: true } });
+const REMOTE = /^https:\/\/cdn\.dedar\.com\/bc-swatch-\d+-[a-f0-9]+\.(?:jpe?g|png|webp)$/i;
+
+/** Photo d'une matière : copie en base, ou vignette lue chez l'éditeur en 800 px. */
+export async function getLibraryImage(id: string): Promise<{ mime: string; data: Uint8Array } | null> {
+  const row = await db.libraryMaterial.findUnique({ where: { id }, select: { mime: true, data: true, remote: true } });
+  if (!row) return null;
+  if (row.data) return { mime: row.mime, data: row.data };
+  if (!row.remote || !REMOTE.test(row.remote)) return null;
+  try {
+    const r = await fetch(`${row.remote}?format=jpg&width=800`, {
+      headers: { "User-Agent": "MikadoDecoPro/1.0 (bibliotheque de matieres)", Accept: "image/jpeg,image/*;q=0.8" },
+      signal: AbortSignal.timeout(15_000),
+    });
+    const mime = r.headers.get("content-type")?.split(";")[0] || "";
+    if (!r.ok || !MIMES.includes(mime)) return null;
+    const data = new Uint8Array(await r.arrayBuffer());
+    return data.length > LIBRARY_MAX_BYTES * 4 ? null : { mime, data };
+  } catch {
+    return null;
+  }
+}
+
+/** Coloris dont la photo reste chez l'éditeur (une ligne, aucune copie de l'image). */
+export async function addRemoteLibrary(input: { maker: string; collection: string; colour: string; remote: string }) {
+  const maker = clean(input.maker, 80),
+    collection = clean(input.collection, 120),
+    colour = clean(input.colour, 60);
+  if (!maker || !collection || !REMOTE.test(input.remote)) throw Error("Coloris invalide.");
+  // Une vignette de l'éditeur n'entre qu'une fois, même si deux fiches portent le même nom.
+  const same = await db.libraryMaterial.findFirst({ where: { remote: input.remote }, select: { id: true } });
+  // Dimensions inconnues (0) : l'éditeur de planche mesure la photo à l'affichage.
+  const data = { maker, collection, colour, mime: "image/jpeg", data: null, remote: input.remote, width: 0, height: 0 };
+  return same
+    ? db.libraryMaterial.update({ where: { id: same.id }, data, select })
+    : db.libraryMaterial.create({ data, select });
 }
 
 export async function existingLibrary(ids: string[]) {
@@ -106,6 +139,24 @@ export async function importKvadratProduct(product: string, collection: string, 
 // ——— Import des coloris Dedar (fiches publiques de dedar.com) ———
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Plusieurs fiches Dedar à la suite, une page par seconde au plus. */
+export async function importDedarBatch(from: number, count: number) {
+  const slugs = await dedarSlugs();
+  const part = slugs.slice(from, from + count);
+  const done: { product: string; collection?: string; imported?: number; error?: string }[] = [];
+  for (const slug of part) {
+    await pause(1000);
+    try {
+      const r = await importDedarProduct(slug);
+      done.push({ product: slug, collection: r.collection, imported: r.imported });
+    } catch (e) {
+      done.push({ product: slug, error: e instanceof Error ? e.message : "erreur" });
+    }
+  }
+  const imported = done.reduce((n, d) => n + (d.imported || 0), 0);
+  return { total: slugs.length, from, next: from + part.length < slugs.length ? from + part.length : null, imported, done };
+}
 const UA = { "User-Agent": "MikadoDecoPro/1.0 (bibliotheque de matieres)" };
 
 export async function dedarSlugs() {
@@ -116,8 +167,8 @@ export async function dedarSlugs() {
 }
 
 /**
- * Coloris d'une fiche Dedar : la page, puis chaque vignette en 800 px, une
- * requête par seconde au plus.
+ * Coloris d'une fiche Dedar : une requête pour la page. Les vignettes restent
+ * sur cdn.dedar.com et sont lues à l'affichage (getLibraryImage).
  */
 export async function importDedarProduct(slug: string, dry = false) {
   const { DEDAR_SITE, dedarAllSwatches, dedarCollection, dedarPayloadTrace } = await import("../domain/dedar");
@@ -125,7 +176,9 @@ export async function importDedarProduct(slug: string, dry = false) {
   if (!r.ok) throw Error(`Dedar répond ${r.status} pour ${slug}.`);
   const html = await r.text();
   const swatches = dedarAllSwatches(html);
-  const collection = dedarCollection(swatches, slug);
+  let collection = dedarCollection(swatches, slug);
+  // Papier peint et tissu portent parfois le même nom : on les distingue.
+  if (/-wall(-|$)/.test(slug) && !/wall/i.test(collection)) collection += " Wall";
   const report = { product: slug, collection, swatches: swatches.length, imported: 0, skipped: [] as string[], sample: swatches.slice(0, 5) };
   if (dry) {
     // Diagnostic : vignettes présentes ailleurs que dans les balises img (données de la page).
@@ -141,16 +194,8 @@ export async function importDedarProduct(slug: string, dry = false) {
     return { ...report, colours: swatches.map((s) => s.colour), allSwatchIds: ids.length, missing: other || null, trace };
   }
   for (const s of swatches) {
-    await pause(1000);
     try {
-      const img = await fetch(`${s.src}?format=jpg&width=800`, {
-        headers: { ...UA, Accept: "image/jpeg,image/webp;q=0.9,image/png;q=0.8" },
-        signal: AbortSignal.timeout(30_000),
-      });
-      const mime = img.headers.get("content-type")?.split(";")[0] || "";
-      if (!img.ok) throw Error(`HTTP ${img.status}`);
-      const data = new Uint8Array(await img.arrayBuffer());
-      await addLibrary({ maker: "Dedar", collection, colour: s.colour, file: new File([data], `${slug}-${s.colour}.jpg`, { type: mime }) });
+      await addRemoteLibrary({ maker: "Dedar", collection, colour: s.colour, remote: s.src });
       report.imported++;
     } catch (err) {
       report.skipped.push(`${s.colour} (${err instanceof Error ? err.message : "erreur"})`);

@@ -305,7 +305,7 @@ export function MoodBoardEditor({
           const u =
             uploads.find((x) => `upload:${x.id}` === src) ||
             library.find((x) => `library:${x.id}` === src);
-          if (u) {
+          if (u && u.width > 0 && u.height > 0) {
             const r = u.width / u.height;
             ratios.current.set(src, r);
             return done(r);

@@ -19,6 +19,7 @@ import {
 import { BoardView } from "../components/moodboard/BoardView";
 import { TEXTURE_SOURCE } from "../domain/materials";
 import { LIBRARY_SOURCE } from "../domain/library";
+import { getLibraryImage } from "./library.server";
 import { demoProducts } from "./catalog.server";
 import { gql, type Admin } from "./shopify-api.server";
 import { launchBrowser } from "./pdf.server";
@@ -249,10 +250,7 @@ async function embed(quoteId: number, src: string, width: number) {
     return img ? { mime: img.mime, data: Buffer.from(img.data) } : null;
   }
   if (LIBRARY_SOURCE.test(src)) {
-    const img = await db.libraryMaterial.findUnique({
-      where: { id: src.slice(8) },
-      select: { mime: true, data: true },
-    });
+    const img = await getLibraryImage(src.slice(8));
     return img ? { mime: img.mime, data: Buffer.from(img.data) } : null;
   }
   // Hôtes admis : le CDN Shopify et les textures CC0 de Poly Haven.
