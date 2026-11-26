@@ -232,10 +232,7 @@ export async function importRubelliProduct(slug: string, dry = false) {
   const report = { product: slug, collection: colours[0]?.collection || "", colours: colours.length, imported: 0, skipped: [] as string[] };
   if (dry) {
     const probe = colours[0] ? await remoteImage(colours[0].image) : null;
-    // Diagnostic : la première vignette 84 px telle qu'elle est écrite dans la page.
-    const at = html.search(/cdn\.rubelli\.com\/A\d+_\d{3}\/[^"']*84x84c/);
-    const excerpt = at >= 0 ? html.slice(Math.max(0, at - 500), at + 300) : html.slice(0, 600);
-    return { ...report, bytes: html.length, excerpt, sample: colours.slice(0, 5), probe: probe ? { mime: probe.mime, bytes: probe.data.length, size: imageSize(probe.data, probe.mime) } : null };
+    return { ...report, sample: colours.slice(0, 5), probe: probe ? { mime: probe.mime, bytes: probe.data.length, size: imageSize(probe.data, probe.mime) } : null };
   }
   for (const c of colours) {
     try {
