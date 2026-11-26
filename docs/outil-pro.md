@@ -15,6 +15,30 @@ réglage par marque.
 | Marques et accès | oui | non |
 | Prix d'achat, marges | jamais affichés | jamais affichés |
 
+## L'accueil : le tableau de bord
+
+À la connexion, `/app` ouvre le tableau de bord du compte (tous les devis pour Mikado
+Deco, les siens pour une architecte). La liste complète des devis est sous `/app/devis`.
+Dans l'admin Shopify, `/app` reste la liste des devis.
+
+- « Bonjour » avec le prénom du compte, et une phrase sur ce qui attend.
+- Quatre chiffres, chacun ouvre la liste filtrée : en préparation, en attente du client
+  (avec le total HTVA), acceptés, à relancer.
+- À faire : validité dépassée ou proche (7 jours), devis envoyé sans réponse depuis
+  10 jours, PDF prêt à envoyer, commande à vérifier.
+- En attente du client : date d'envoi, validité, délai le plus long des produits retenus.
+  Un devis envoyé puis modifié repasse « en préparation », comme dans la liste, avec la
+  mention qu'une révision est déjà chez le client.
+- Devis acceptés : commande provisoire ou confirmée, état de livraison Shopify (en
+  commande, livrée en partie, livrée), délai annoncé et arrivée estimée chez Mikado Deco.
+
+Le délai vient du métachamp produit `custom.lead_time` posé par l'importateur
+(« 7-10 jours ouvrés », « 4-5 semaines », « sur demande ») : délai de la marque jusqu'à la
+boutique. Le tableau de bord prend le plus long des produits retenus et compte en jours
+ouvrés depuis la date de la commande confirmée (une semaine = cinq jours ouvrés). Un
+produit sans délai est signalé, l'estimation est alors partielle. Lecture seule : rien
+n'est écrit en base ni dans Shopify. Sans Shopify, la page s'affiche sans les délais.
+
 ## Le catalogue
 
 Les fiches sont lues dans Shopify côté serveur. Rien n'est publié ni modifié.

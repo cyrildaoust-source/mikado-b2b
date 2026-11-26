@@ -1,0 +1,180 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  addWorkingDays,
+  arrivalWindow,
+  deliveryLabel,
+  editingAfterRelease,
+  firstName,
+  longest,
+  parseLeadTime,
+  quoteLeadTime,
+  stage,
+  validityLeft,
+} from "../app/domain/dashboard";
+
+const rev = (
+  version: number,
+  n: number | null,
+  pdf: boolean,
+  sent: boolean,
+) => ({
+  version,
+  publishedNumber: n,
+  pdfGeneratedAt: pdf ? new Date() : null,
+  sentAt: sent ? new Date() : null,
+});
+
+test("étapes d'un devis", () => {
+  assert.equal(stage({ status: "draft", version: 1, revisions: [] }), "draft");
+  assert.equal(
+    stage({
+      status: "draft",
+      version: 2,
+      revisions: [rev(2, 1, false, false)],
+    }),
+    "draft",
+  );
+  assert.equal(
+    stage({ status: "draft", version: 2, revisions: [rev(2, 1, true, false)] }),
+    "ready",
+  );
+  assert.equal(
+    stage({ status: "draft", version: 2, revisions: [rev(2, 1, true, true)] }),
+    "sent",
+  );
+  // R1 envoyée puis modifiée : de nouveau en préparation, comme dans la liste.
+  const editing = {
+    status: "draft",
+    version: 3,
+    revisions: [rev(2, 1, true, true)],
+  };
+  assert.equal(stage(editing), "draft");
+  assert.equal(editingAfterRelease(editing), true);
+  // R1 prête mais pas envoyée, puis modifiée : en préparation, sans mention d'envoi.
+  const unsent = {
+    status: "draft",
+    version: 3,
+    revisions: [rev(2, 1, true, false)],
+  };
+  assert.equal(stage(unsent), "draft");
+  assert.equal(editingAfterRelease(unsent), false);
+  // La dernière révision prête décide, pas une plus ancienne envoyée.
+  assert.equal(
+    stage({
+      status: "draft",
+      version: 4,
+      revisions: [rev(4, 2, true, false), rev(2, 1, true, true)],
+    }),
+    "ready",
+  );
+  assert.equal(
+    stage({
+      status: "converted",
+      version: 1,
+      conversion: { status: "complete" },
+    }),
+    "ordered",
+  );
+  assert.equal(
+    stage({
+      status: "converted",
+      version: 1,
+      conversion: { status: "complete", orderStatus: "uncertain" },
+    }),
+    "check",
+  );
+  assert.equal(
+    stage({ status: "draft", version: 1, conversion: { status: "uncertain" } }),
+    "check",
+  );
+  assert.equal(stage({ status: "archived", version: 1 }), null);
+  assert.equal(stage({ status: "deleted", version: 1 }), null);
+});
+
+test("lecture des délais", () => {
+  assert.deepEqual(parseLeadTime("7-10 jours ouvrés"), {
+    kind: "days",
+    min: 7,
+    max: 10,
+    text: "7-10 jours ouvrés",
+  });
+  assert.deepEqual(parseLeadTime("6-10 semaines"), {
+    kind: "days",
+    min: 30,
+    max: 50,
+    text: "6-10 semaines",
+  });
+  assert.deepEqual(parseLeadTime("3 semaines"), {
+    kind: "days",
+    min: 15,
+    max: 15,
+    text: "3 semaines",
+  });
+  assert.deepEqual(parseLeadTime("1 semaine"), {
+    kind: "days",
+    min: 5,
+    max: 5,
+    text: "1 semaine",
+  });
+  assert.deepEqual(parseLeadTime("sur demande"), {
+    kind: "onRequest",
+    text: "sur demande",
+  });
+  assert.equal(parseLeadTime(""), null);
+  assert.equal(parseLeadTime(null), null);
+  assert.equal(parseLeadTime("bientôt"), null);
+  assert.equal(parseLeadTime("10-6 semaines"), null);
+});
+
+test("le délai le plus long d'un devis", () => {
+  const p = parseLeadTime;
+  assert.equal(
+    longest([p("7-10 jours ouvrés"), p("3-4 semaines"), null])?.text,
+    "3-4 semaines",
+  );
+  assert.equal(
+    longest([p("3-4 semaines"), p("sur demande")])?.text,
+    "sur demande",
+  );
+  assert.equal(longest([null, null]), null);
+  const map = new Map([
+    ["a", "7-10 jours ouvrés"],
+    ["b", "6-10 semaines"],
+    ["c", null],
+  ]);
+  assert.deepEqual(
+    { ...quoteLeadTime(["a", "b", "c", "a", "d"], map), longest: undefined },
+    { longest: undefined, missing: 2, products: 4 },
+  );
+  assert.equal(quoteLeadTime(["a", "b"], map).longest?.text, "6-10 semaines");
+});
+
+test("arrivée estimée en jours ouvrés", () => {
+  // Jeudi 26 novembre 2026 + 2 jours ouvrés = lundi 30 novembre.
+  const thu = new Date("2026-11-26T10:00:00Z");
+  assert.equal(addWorkingDays(thu, 2).toISOString().slice(0, 10), "2026-11-30");
+  assert.equal(addWorkingDays(thu, 0).toISOString().slice(0, 10), "2026-11-26");
+  const w = arrivalWindow(thu, parseLeadTime("3-4 semaines"))!;
+  assert.equal(w.from.toISOString().slice(0, 10), "2026-12-17");
+  assert.equal(w.to.toISOString().slice(0, 10), "2026-12-24");
+  assert.equal(arrivalWindow(thu, parseLeadTime("sur demande")), null);
+  assert.equal(arrivalWindow(thu, null), null);
+});
+
+test("validité, prénom et livraison", () => {
+  const today = new Date("2026-11-26T15:00:00Z");
+  assert.equal(validityLeft("2026-11-30", today), 4);
+  assert.equal(validityLeft("2026-11-26", today), 0);
+  assert.equal(validityLeft("2026-11-20", today), -6);
+  assert.equal(validityLeft("", today), null);
+  assert.equal(firstName("Marie Dupont"), "Marie");
+  assert.equal(firstName("  Cyril "), "Cyril");
+  assert.equal(firstName("archi@exemple.be"), "");
+  assert.equal(firstName(""), "");
+  assert.equal(deliveryLabel("FULFILLED"), "Livrée");
+  assert.equal(deliveryLabel("PARTIALLY_FULFILLED"), "Livrée en partie");
+  assert.equal(deliveryLabel("UNFULFILLED"), "En commande");
+  assert.equal(deliveryLabel("UNFULFILLED", true), "Commande annulée");
+  assert.equal(deliveryLabel(null), null);
+});

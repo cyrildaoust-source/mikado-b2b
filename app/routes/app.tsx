@@ -69,13 +69,16 @@ function ProNav({ demo, user }: { demo: boolean; user: NavUser }) {
       className={`pro-nav${open ? " menu-open" : ""}`}
       aria-label="Navigation principale"
     >
-      <NavLink to="/app/catalogue" className="pro-brand">
+      <NavLink to="/app" end className="pro-brand">
         <span>
           Mikado Deco<span className="pro-brand-suffix"> · Pro</span>
         </span>
       </NavLink>
       <div className="pro-nav-links" id="pro-nav-links">
         <NavLink to="/app" end>
+          Accueil
+        </NavLink>
+        <NavLink to="/app/devis">
           {user?.role === "admin" ? "Devis" : "Mes devis"}
         </NavLink>
         <NavLink to="/app/catalogue">Catalogue</NavLink>
