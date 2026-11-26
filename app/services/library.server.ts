@@ -100,6 +100,34 @@ export async function addRemoteLibrary(input: { maker: string; collection: strin
     : db.libraryMaterial.create({ data, select });
 }
 
+/** Même chose pour une collection entière : une lecture, une création groupée, les seules mises à jour utiles. */
+export async function addRemoteLibraryBatch(maker: string, rows: { collection: string; colour: string; remote: string }[]) {
+  const m = clean(maker, 80);
+  const wanted = new Map<string, { collection: string; colour: string }>();
+  for (const r of rows) {
+    const collection = clean(r.collection, 120),
+      colour = clean(r.colour, 60);
+    if (m && collection && REMOTE.test(r.remote) && !wanted.has(r.remote)) wanted.set(r.remote, { collection, colour });
+  }
+  if (!wanted.size) return 0;
+  const known = await db.libraryMaterial.findMany({ where: { remote: { in: [...wanted.keys()] } }, select: { id: true, remote: true, maker: true, collection: true, colour: true } });
+  const byRemote = new Map(known.map((k) => [k.remote as string, k]));
+  const fresh = [...wanted].filter(([remote]) => !byRemote.has(remote));
+  if (fresh.length) {
+    await db.libraryMaterial.createMany({
+      data: fresh.map(([remote, v]) => ({ maker: m, ...v, mime: "image/jpeg", remote, width: 0, height: 0 })),
+    });
+  }
+  const changed = known.filter((k) => {
+    const v = wanted.get(k.remote as string)!;
+    return k.maker !== m || k.collection !== v.collection || k.colour !== v.colour;
+  });
+  if (changed.length) {
+    await db.$transaction(changed.map((k) => db.libraryMaterial.update({ where: { id: k.id }, data: { maker: m, ...wanted.get(k.remote as string)! } })));
+  }
+  return wanted.size;
+}
+
 export async function existingLibrary(ids: string[]) {
   if (!ids.length) return new Set<string>();
   const rows = await db.libraryMaterial.findMany({ where: { id: { in: ids } }, select: { id: true } });
@@ -305,25 +333,45 @@ export async function importElitis(from: number, count: number, dry = false) {
   const collections = elitisCollections(await get("/shop-api/taxons"));
   const part = collections.slice(from, from + count);
   const report = { total: collections.length, from, next: from + part.length < collections.length ? from + part.length : null, imported: 0, skipped: [] as string[] };
-  for (const c of part) {
+  const read = async (c: (typeof part)[number]) => {
     const colours = [];
     for (let page = 1; page <= 30; page++) {
       const json = await get(`/shop-api/taxon-products/by-slug/${c.slug}?limit=100&page=${page}`);
       colours.push(...elitisColours(json));
       if (page >= Number(json?.pages || 1)) break;
     }
-    if (dry) {
-      const probe = colours[0] ? await remoteImage(colours[0].image) : null;
-      return { ...report, collections: part, first: { ...c, count: colours.length, sample: colours.slice(0, 6) }, probe: probe ? { mime: probe.mime, bytes: probe.data.length, size: imageSize(probe.data, probe.mime) } : null };
-    }
-    for (const k of colours) {
-      try {
-        await addRemoteLibrary({ maker: "Élitis", collection: c.name, colour: k.colour, remote: k.image });
-        report.imported++;
-      } catch (err) {
-        if (report.skipped.length < 50) report.skipped.push(`${c.name} ${k.colour} (${err instanceof Error ? err.message : "erreur"})`);
-      }
-    }
+    return colours;
+  };
+  if (dry) {
+    const c = part[0];
+    const colours = c ? await read(c) : [];
+    const probe = colours[0] ? await remoteImage(colours[0].image) : null;
+    return { ...report, collections: part, first: c && { ...c, count: colours.length, sample: colours.slice(0, 6) }, probe: probe ? { mime: probe.mime, bytes: probe.data.length, size: imageSize(probe.data, probe.mime) } : null };
+  }
+  // Quatre collections à la fois, une écriture groupée par collection.
+  for (let i = 0; i < part.length; i += 4) {
+    await Promise.all(
+      part.slice(i, i + 4).map(async (c) => {
+        try {
+          const colours = await read(c);
+          report.imported += await addRemoteLibraryBatch("Élitis", colours.map((k) => ({ collection: c.name, colour: k.colour, remote: k.image })));
+        } catch (err) {
+          report.skipped.push(`${c.name} (${err instanceof Error ? err.message : "erreur"})`);
+        }
+      }),
+    );
   }
   return report;
+}
+
+/** Collections Élitis encore absentes de la bibliothèque, par leur numéro dans la liste. */
+export async function elitisMissing() {
+  const { ELITIS_API, elitisCollections } = await import("../domain/elitis");
+  const r = await fetch(`${ELITIS_API}/shop-api/taxons`, { headers: { ...UA, Accept: "application/json" }, signal: AbortSignal.timeout(60_000) });
+  if (!r.ok) throw Error(`Élitis répond ${r.status}.`);
+  const collections = elitisCollections(await r.json());
+  const rows = await db.libraryMaterial.groupBy({ by: ["collection"], where: { maker: "Élitis" }, _count: true });
+  const have = new Set(rows.map((x) => x.collection));
+  const missing = collections.map((c, i) => ({ i, name: c.name })).filter((c) => !have.has(c.name));
+  return { total: collections.length, colours: rows.reduce((n, x) => n + x._count, 0), collections: rows.length, missing };
 }
