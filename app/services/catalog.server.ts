@@ -2,6 +2,7 @@ import db from "../db.server";
 import { cents } from "../domain/quote";
 import { gql, searchPrefix, shopInfo, type Admin } from "./shopify-api.server";
 import { productSpecs, type RawMetafield, type SpecGroup } from "../domain/specs";
+import { productModels3d, type Models3d } from "../domain/models3d";
 
 // Catalogue pro : lecture côté serveur des fiches Shopify, actives et en brouillon
 // (gold ou non), avec les marques que Mikado Deco masque. Rien n'est publié.
@@ -42,6 +43,8 @@ export type CatalogProduct = CatalogCard & {
   description: string;
   /** Dimensions, matériaux et autres caractéristiques, groupées. */
   specs: SpecGroup[];
+  /** Fichiers 3D pour les plans des architectes, ou la bibliothèque de la marque. */
+  models3d: Models3d | null;
   images: { url: string; alt: string }[];
   options: { name: string; values: string[] }[];
   productVariants: CatalogVariant[];
@@ -348,6 +351,9 @@ export async function getCatalogProduct(
     ...card(p, info.taxesIncluded),
     description: p.description,
     specs: productSpecs(specs.product?.metafields.nodes || []),
+    models3d: withSpecs
+      ? productModels3d(specs.product?.metafields.nodes || [], p.vendor)
+      : null,
     images: p.media.nodes
       .filter((m) => m.image?.url)
       .map((m) => ({ url: m.image!.url, alt: m.image!.altText || p.title })),
@@ -404,6 +410,7 @@ function demo(
     variants: productVariants.length,
     description: `${title} de ${vendor}. Fiche fictive pour la démonstration : dimensions, matières et finitions viennent de Shopify en réel.`,
     specs: productSpecs(demoSpecs(n)),
+    models3d: productModels3d(demoSpecs(n), vendor),
     images: [
       { url: swatch(color, title), alt: title },
       { url: swatch("#8a8577", "Détail"), alt: `${title}, détail` },
@@ -430,6 +437,21 @@ function demoSpecs(n: number): RawMetafield[] {
     f("origin", "Fabrication / Origine", "Fabriqué au Danemark"),
     f("warranty", "Garantie", "2 ans"),
     f("product_fact_sheet_url", "Fiche technique", "https://example.com/fiche.pdf"),
+    ...(n % 2
+      ? [
+          f(
+            "models_3d",
+            "Modèles 3D",
+            JSON.stringify({
+              files: [
+                { format: "DWG", url: "https://example.com/modele.dwg" },
+                { format: "SKP", url: "https://example.com/modele.skp" },
+              ],
+            }),
+            "json",
+          ),
+        ]
+      : []),
   ];
 }
 
@@ -454,7 +476,7 @@ function demoList(
       .filter((p) => isVisible(p, rules))
       .filter((p) => !filters.vendors?.length || filters.vendors.includes(p.vendor))
       .filter((p) => !types.length || types.includes(p.productType))
-      .map(({ description: _d, images: _i, options: _o, specs: _s, productVariants, ...c }) =>
+      .map(({ description: _d, images: _i, options: _o, specs: _s, models3d: _m, productVariants, ...c }) =>
         listedCard(c, productVariants[0]),
       )
       .filter((p) => !q || `${p.title} ${p.vendor} ${p.productType}`.toLowerCase().includes(q));

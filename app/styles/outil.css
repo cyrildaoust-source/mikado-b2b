@@ -3839,6 +3839,34 @@ button.picker-item:hover .picker-go {
   margin-top: 8px;
 }
 
+/* Modèles 3D de la fiche */
+.product-models {
+  display: grid;
+  gap: 12px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+.product-models h2 {
+  margin: 0;
+  font-size: var(--t-section);
+  font-weight: 600;
+}
+.product-models ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.product-models p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0;
+}
+
 /* ================================================================== */
 /* Mood board : planche 16:9 par pièce, photos à gauche               */
 /* Le contenu de la planche est en styles en ligne (BoardView) : le   */
