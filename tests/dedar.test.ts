@@ -123,3 +123,26 @@ test("Designers Guild : cartes du catalogue, collection et teinte", async () => 
     "Brera Lino|01 Chalk",
   ]);
 });
+
+test("Élitis : collections et coloris lus dans l'API", async () => {
+  const { elitisCollections, elitisColours, ELITIS_IMAGE } = await import("../app/domain/elitis");
+  const tree = [
+    { name: "L'Accessoire", slug: "accessoire", children: [{ name: "Alba", slug: "alba" }] },
+    { name: "Tissu", slug: "tissu", children: [{ name: "Faro", slug: "faro" }, { name: "Off", slug: "off", enabled: false }, { name: "Bad", slug: "../x" }] },
+    { name: "In-Outdoor", slug: "outdoor", children: [{ name: "Faro", slug: "faro" }, { name: "Faro", slug: "outdoor-faro" }] },
+  ];
+  assert.deepEqual(elitisCollections(tree), [
+    { category: "Tissu", name: "Faro", slug: "faro" },
+    { category: "In-Outdoor", name: "Faro", slug: "outdoor-faro" },
+  ]);
+  const colours = elitisColours({
+    items: [
+      { code: "OD_154_15", name: "Souvenir du jardin", images: [{ code: "complet", path: "b0/bb/b.jpg" }, { code: "main", path: "c7/73/outdoor-nossa-od-154-15-990e.jpg" }] },
+      { code: "X_1", name: "Sans image", images: [] },
+      { code: "X_2", name: "Chemin douteux", images: [{ code: "main", path: "../../etc.jpg" }] },
+    ],
+  });
+  assert.deepEqual(colours, [{ colour: "OD_154_15 Souvenir du jardin", image: "https://d1znk9ex7ihxii.cloudfront.net/media/cache/square_big/c7/73/outdoor-nossa-od-154-15-990e.jpg" }]);
+  assert.ok(ELITIS_IMAGE.test(colours[0].image));
+  assert.equal(ELITIS_IMAGE.test("https://evil.example/media/cache/square_big/c7/73/a.jpg"), false);
+});
