@@ -10,6 +10,7 @@ const SITES: Record<string, string> = {
   pierrefrey: "https://www.pierrefrey.com",
   designersguild: "https://www.designersguild.com",
   elitis: "https://www.elitis.fr",
+  elitisapi: "https://backoffice.elitis.fr",
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
