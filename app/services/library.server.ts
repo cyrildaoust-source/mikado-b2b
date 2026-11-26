@@ -57,9 +57,13 @@ export async function getLibraryImage(id: string): Promise<{ mime: string; data:
   const row = await db.libraryMaterial.findUnique({ where: { id }, select: { mime: true, data: true, remote: true } });
   if (!row) return null;
   if (row.data) return { mime: row.mime, data: row.data };
-  if (!row.remote || !REMOTE.test(row.remote)) return null;
+  return row.remote ? remoteImage(row.remote) : null;
+}
+
+async function remoteImage(url: string) {
+  if (!REMOTE.test(url)) return null;
   try {
-    const r = await fetch(`${row.remote}?format=jpg&width=800`, {
+    const r = await fetch(`${url}?format=jpg&width=800`, {
       headers: { "User-Agent": "MikadoDecoPro/1.0 (bibliotheque de matieres)", Accept: "image/jpeg,image/*;q=0.8" },
       signal: AbortSignal.timeout(15_000),
     });
@@ -191,7 +195,10 @@ export async function importDedarProduct(slug: string, dry = false) {
     } catch (e) {
       trace = String(e);
     }
-    return { ...report, colours: swatches.map((s) => s.colour), allSwatchIds: ids.length, missing: other || null, trace };
+    // Contrôle : la première vignette se lit comme à l'affichage.
+    const probe = swatches[0] ? await remoteImage(swatches[0].src) : null;
+    const size = probe ? imageSize(probe.data, probe.mime) : null;
+    return { ...report, probe: probe ? { mime: probe.mime, bytes: probe.data.length, size } : null, colours: swatches.map((s) => s.colour), allSwatchIds: ids.length, missing: other || null, trace };
   }
   for (const s of swatches) {
     try {
