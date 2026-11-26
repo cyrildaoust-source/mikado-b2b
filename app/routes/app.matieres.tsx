@@ -58,6 +58,8 @@ export default function Materials() {
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [query, setQuery] = useState("");
+  // Des milliers de coloris : 120 par éditeur à la fois.
+  const [shown, setShown] = useState<Record<string, number>>({});
   const [editing, setEditing] = useState<string | null>(null);
   const [kvadrat, setKvadrat] = useState("");
   const [loading, setLoading] = useState(false);
@@ -402,7 +404,7 @@ export default function Materials() {
                 )}
               </div>
               <ul className="library-grid">
-                {g.items.map((m) => (
+                {g.items.slice(0, shown[g.maker] || 120).map((m) => (
                   <li key={m.id}>
                     <img src={`/app/matieres/image/${m.id}`} alt="" loading="lazy" />
                     {editing === m.id ? (
@@ -443,6 +445,11 @@ export default function Materials() {
                   </li>
                 ))}
               </ul>
+              {g.items.length > (shown[g.maker] || 120) && (
+                <button type="button" className="text-button" onClick={() => setShown((s) => ({ ...s, [g.maker]: (s[g.maker] || 120) + 120 }))}>
+                  Afficher plus ({g.items.length - (shown[g.maker] || 120)} restants)
+                </button>
+              )}
             </div>
           ))
         )}

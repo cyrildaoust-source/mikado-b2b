@@ -204,7 +204,9 @@ model LibraryMaterial {
   collection String
   colour     String   @default("")
   mime       String
-  data       Bytes
+  data       Bytes?
+  /// Photo servie depuis le site de l'éditeur (cdn.dedar.com) au lieu d'être copiée.
+  remote     String?
   width      Int
   height     Int
   createdAt  DateTime @default(now())
