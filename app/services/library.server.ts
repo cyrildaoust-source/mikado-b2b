@@ -64,6 +64,37 @@ export async function getLibraryImage(id: string): Promise<{ mime: string; data:
   return row.remote ? remoteImage(row.remote) : null;
 }
 
+/** Largeurs servies : vignette de l'étagère, planche à l'écran, export. */
+export const LIBRARY_WIDTHS = [240, 800, 1600] as const;
+const sizedCache = new Map<string, { mime: string; data: Uint8Array }>();
+
+/**
+ * Photo réduite à la largeur demandée (JPEG). Une photo d'éditeur peut faire
+ * 2 400 px et 350 Ko : posée telle quelle sur la planche, elle fait ramer le navigateur.
+ */
+export async function getLibraryImageSized(id: string, width: number) {
+  const key = `${id}:${width}`;
+  const hit = sizedCache.get(key);
+  if (hit) return hit;
+  const img = await getLibraryImage(id);
+  if (!img) return null;
+  let out = img;
+  try {
+    const { default: sharp } = await import("sharp");
+    const data = await sharp(img.data, { failOn: "none" })
+      .rotate()
+      .resize({ width, height: width, fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 80, mozjpeg: true })
+      .toBuffer();
+    out = { mime: "image/jpeg", data: new Uint8Array(data) };
+  } catch {
+    // Photo illisible pour la réduction : servie telle quelle.
+  }
+  if (sizedCache.size > 400) sizedCache.delete(sizedCache.keys().next().value as string);
+  sizedCache.set(key, out);
+  return out;
+}
+
 async function remoteImage(url: string) {
   if (!REMOTE.test(url)) return null;
   try {

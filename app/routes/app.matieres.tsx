@@ -406,7 +406,7 @@ export default function Materials() {
               <ul className="library-grid">
                 {g.items.slice(0, shown[g.maker] || 120).map((m) => (
                   <li key={m.id}>
-                    <img src={`/app/matieres/image/${m.id}`} alt="" loading="lazy" />
+                    <img src={`/app/matieres/image/${m.id}?w=240`} alt="" loading="lazy" />
                     {editing === m.id ? (
                       <form
                         onSubmit={(e) => {
