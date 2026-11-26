@@ -1,3 +1,4 @@
+import { sellerLines, type Seller } from "../domain/seller";
 import { chromium } from "playwright";
 import inter400 from "../../public/fonts/inter-400.woff2?inline";
 import inter700 from "../../public/fonts/inter-700.woff2?inline";
@@ -49,7 +50,9 @@ async function generatePdf(shop: string, id: number, version: number) {
     : `v${version}`;
   if (r.pdf) return { bytes: Buffer.from(r.pdf), number, fileVersion };
   const state = quoteSchema.parse(JSON.parse(r.state));
-  const seller = r.documentMeta ? JSON.parse(r.documentMeta) : undefined;
+  const seller: Seller | undefined = r.documentMeta
+    ? JSON.parse(r.documentMeta)
+    : undefined;
   if (state.schemaVersion === 2 && !r.publishedNumber)
     throw new Response("Figez le devis avant téléchargement.", { status: 409 });
   const markup = renderToStaticMarkup(
@@ -91,10 +94,10 @@ async function generatePdf(shop: string, id: number, version: number) {
       headerTemplate: `<div style="font-family:Arial,sans-serif;font-size:8px;width:100%;margin:0 55px;text-align:right">${number}</div>`,
       footerTemplate: `<div style="font-family:Arial,sans-serif;font-size:7px;width:100%;margin:0 55px;display:flex;justify-content:space-between;gap:12px"><span>${[
         seller?.name || "Mikado Deco",
-        seller?.address || "Rue du Doyenné 75",
-        seller?.email || "shop@mikadodeco.be",
-        seller?.website || "www.mikadodeco.be",
+        sellerLines(seller).address.replace(/\s*\n\s*/g, ", "),
+        ...sellerLines(seller).contact,
       ]
+        .filter(Boolean)
         .map((value) => escapeHtml(String(value)))
         .join(" · ")}</span><span><span class="pageNumber"></span> sur <span class="totalPages"></span></span></div>`,
       margin: { top: "15mm", bottom: "18mm", left: "15mm", right: "15mm" },

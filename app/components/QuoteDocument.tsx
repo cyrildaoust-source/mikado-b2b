@@ -16,6 +16,8 @@ import type { Calculation } from "../services/shopify-api.server";
 export { safeImage } from "./LegacyQuoteDocument";
 import { safeImage } from "./LegacyQuoteDocument";
 import { SALES_TERMS_NOTICE, SALES_TERMS_URL } from "../domain/legal";
+import type { Seller } from "../domain/seller";
+import { sellerLines, safeLogo } from "../domain/seller";
 export function QuoteDocument({
   state: raw,
   number,
@@ -23,14 +25,11 @@ export function QuoteDocument({
   demo = false,
   issuedAt,
   seller,
+  logoSrc,
 }: {
-  seller?: {
-    name: string;
-    address: string;
-    email: string;
-    website: string;
-    vat: string;
-  };
+  seller?: Seller;
+  /** Adresse du logo quand il n'est pas lu dans la révision (page en ligne). */
+  logoSrc?: string;
   state: QuoteState;
   number: string;
   version: number;
@@ -121,6 +120,13 @@ export function QuoteDocument({
     <article className="paper b2b-paper">
       <div className="paperheader">
         <div>
+          {(logoSrc || safeLogo(seller?.logo)) && (
+            <img
+              className="doc-logo"
+              src={logoSrc || safeLogo(seller?.logo)}
+              alt={`Logo de ${seller?.name}`}
+            />
+          )}
           <h1>{seller?.name || "Mikado Deco"}</h1>
           <p>Offre d’aménagement professionnel</p>
         </div>
@@ -290,11 +296,16 @@ export function QuoteDocument({
           <p>{s.delivery}</p>
           <h3>REMARQUES</h3>
           <p className="preline">{s.note}</p>
-          <h3>CONDITIONS GÉNÉRALES DE VENTE</h3>
-          <p className="doc-legal">
-            {SALES_TERMS_NOTICE} Consultez-les sur :{" "}
-            <a href={SALES_TERMS_URL}>{SALES_TERMS_URL}</a>
-          </p>
+          {/* Les conditions de Mikado Deco ne valent pas pour l'offre d'un cabinet. */}
+          {seller?.kind !== "firm" && (
+            <>
+              <h3>CONDITIONS GÉNÉRALES DE VENTE</h3>
+              <p className="doc-legal">
+                {SALES_TERMS_NOTICE} Consultez-les sur :{" "}
+                <a href={SALES_TERMS_URL}>{SALES_TERMS_URL}</a>
+              </p>
+            </>
+          )}
         </div>
         <div className="docsummary">
           <h3>RÉCAPITULATIF DU PROJET</h3>
@@ -374,9 +385,8 @@ export function QuoteDocument({
       </div>
       <footer>
         <strong>{seller?.name || "Mikado Deco"}</strong>
-        <div className="preline">{seller?.address || "Rue du Doyenné 75"}</div>
-        {seller?.email || "shop@mikadodeco.be"} ·{" "}
-        {seller?.website || "www.mikadodeco.be"}
+        <div className="preline">{sellerLines(seller).address}</div>
+        {sellerLines(seller).contact.join(" · ")}
         {seller?.vat && <div>TVA : {seller.vat}</div>}
       </footer>
     </article>

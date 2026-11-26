@@ -53,6 +53,7 @@ model Quote {
   owner       User?     @relation(fields: [ownerId], references: [id], onDelete: Restrict)
   moodBoard   MoodBoard?
   moodImages  MoodImage[]
+  shares      QuoteShare[]
   @@index([shop, updatedAt])
   @@index([ownerId])
 }
@@ -71,6 +72,7 @@ model Revision {
   calculation String?
   documentMeta String?
   pdfGeneratedAt DateTime?
+  shares QuoteShare[]
   @@unique([quoteId, version])
   @@unique([quoteId, publishedNumber])
 }
@@ -227,4 +229,23 @@ model LibraryMaterial {
   height     Int
   createdAt  DateTime @default(now())
   @@index([maker, collection])
+}
+
+/// Lien secret vers une révision figée d'un devis. Seule l'empreinte SHA-256
+/// du jeton est conservée : le lien complet n'est montré qu'à sa création.
+model QuoteShare {
+  id            Int       @id @default(autoincrement())
+  quoteId       Int
+  quote         Quote     @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  revisionId    Int
+  revision      Revision  @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  tokenHash     String    @unique
+  createdAt     DateTime  @default(now())
+  createdById   Int?
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  firstViewedAt DateTime?
+  lastViewedAt  DateTime?
+  views         Int       @default(0)
+  @@index([quoteId])
 }

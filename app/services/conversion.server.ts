@@ -1,5 +1,5 @@
 import db from "../db.server";
-import { sellerSnapshot } from "./seller.server";
+import { documentSeller } from "./seller.server";
 import { getQuote } from "./quotes.server";
 import { quoteSchema, reference, fiscalTotals } from "../domain/quote";
 import {
@@ -70,6 +70,7 @@ export async function publishQuote(
   if(state.taxPolicy !== "BE21")throw Error("Vérifiez le passage à 21 % de cet ancien devis avant de créer une nouvelle version.");
   const hasDelivery = Boolean(state.shipping.address1.trim() && state.shipping.city.trim() && state.shipping.zip.trim());
   if (!fiscalTotals(state).complete) throw Error("Vérifiez les prix avant de préparer le PDF.");
+  const seller = await documentSeller(q.ownerId);
   // An offer can be issued before delivery details are known; order creation still validates Shopify taxes.
   const calculation = hasDelivery ? await previewConversion(shop, id, version, admin) : null;
   if (calculation && !calculation.matches)
@@ -101,7 +102,7 @@ export async function publishQuote(
       data: {
         publishedNumber: (max._max.publishedNumber || 0) + 1,
         issuedAt: new Date(),
-        documentMeta: JSON.stringify(sellerSnapshot()),
+        documentMeta: JSON.stringify(seller),
         calculation: calculation ? JSON.stringify(calculation) : null,
       },
     });

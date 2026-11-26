@@ -1,3 +1,5 @@
+import { SharePanel } from "./quote/SharePanel";
+import type { ActiveShare } from "../services/share.server";
 import { ProPrice } from "./ProPrice";
 import { publicMerchandise } from "../domain/pro";
 import { NumberField } from "./quote/NumberField";
@@ -101,8 +103,11 @@ export default function Editor({
   result,
   billingMode,
   odooUrl,
+  share = null,
 }: {
   q: RecordQuote;
+  /** Lien en ligne actif du devis, sans son jeton. */
+  share?: ActiveShare | null;
   billingMode: "disabled" | "simulation" | "live";
   odooUrl: string | null;
   demo: boolean;
@@ -1406,6 +1411,14 @@ export default function Editor({
             ? `Envoi déclaré le ${new Date(current.sentAt).toLocaleDateString("fr-BE")}.`
             : "PDF prêt, pas encore déclaré envoyé. Après votre envoi par e-mail ou WhatsApp, cliquez sur « Marquer comme envoyé »."}
         </p>
+      )}
+      {!embedded && q.status === "draft" && ready && !dirty && (
+        <SharePanel
+          version={q.version}
+          publishedNumber={current?.publishedNumber ?? null}
+          share={share}
+          disabled={busy}
+        />
       )}
       {demo && (
         <div className="demo-ribbon">

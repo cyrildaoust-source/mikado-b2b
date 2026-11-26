@@ -183,6 +183,19 @@ le type est lu dans le fichier, pas dans son nom). Le nom, l'adresse et la TVA
 sont requis pour partager une proposition en ligne au nom du cabinet. Mikado
 Deco ouvre la fiche d'un architecte par « Fiche cabinet » dans « Accès ».
 
+### Proposition en ligne
+
+Une fois le PDF prêt, « Créer le lien » donne une adresse privée `/d/…` à
+envoyer au client. Le lien montre la révision figée : mêmes prix, alternatives
+et options, au nom du cabinet de l'architecte (ou de Mikado Deco pour ses propres
+devis). Il vaut jusqu'à la fin du jour de validité, et un mois au plus après
+l'émission. Un seul lien est actif par devis : « Remplacer le lien » retire
+l'ancien, « Retirer le lien » le ferme. La base ne garde que l'empreinte SHA-256
+du jeton, d'où un lien affiché une seule fois. La page n'est pas indexée et ne
+transmet pas son adresse aux sites tiers. Le devis d'un architecte ne peut être
+figé que si « Mon cabinet » porte le nom, l'adresse et la TVA ; il n'affiche alors
+ni les coordonnées ni les conditions générales de Mikado Deco.
+
 ## Configuration
 
 Variables en plus de celles de Mikado Devis (voir `.env.production.example`) :

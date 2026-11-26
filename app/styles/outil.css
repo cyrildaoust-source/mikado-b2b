@@ -4359,3 +4359,59 @@ button.mood-swatch.active:hover:not(:disabled) {
     grid-template-columns: 1fr;
   }
 }
+
+/* Proposition en ligne (lien envoyé au client) */
+.shared-quote {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+.shared-validity {
+  margin: 0 0 16px;
+  color: var(--muted, #6b6b6b);
+}
+.shared-paper .paper {
+  margin: 0 auto;
+}
+.shared-closed h1 {
+  margin-top: 40px;
+}
+
+/* Lien en ligne du devis */
+.share-panel {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.share-head {
+  display: grid;
+  gap: 2px;
+}
+.share-url {
+  display: flex;
+  gap: 8px;
+}
+.share-url input {
+  flex: 1;
+  min-width: 0;
+}
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+.share-panel .notice,
+.share-panel .error,
+.share-panel .success {
+  margin: 0;
+}
+@media (max-width: 560px) {
+  .share-url {
+    flex-direction: column;
+  }
+}

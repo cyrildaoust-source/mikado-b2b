@@ -49,6 +49,11 @@ import {
 import { useRef, useState } from "react";
 import { useFetchers } from "react-router";
 import { rememberQuote } from "../services/current-quote.server";
+import {
+  activeShare,
+  createShare,
+  revokeShares,
+} from "../services/share.server";
 
 export const meta = ({ data }: { data?: { q?: { number: string } } }) => [
   { title: `${data?.q?.number || "Devis"} · Mikado Deco Pro` },
@@ -78,6 +83,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     actor: c.actor,
     billingMode: billingMode(c.shop),
     odooUrl: c.demo ? null : odooPublicUrl(),
+    share: await activeShare(q.id),
   }, { headers });
 }
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -195,6 +201,17 @@ export async function action({ request, params }: ActionFunctionArgs) {
         c.user?.id || null,
       );
       return redirect(`/app/quotes/${q2.id}`);
+    }
+    if (intent === "share") {
+      const { token } = await createShare(c.shop, id, version, c.user?.id ?? null);
+      return {
+        ok: "Lien créé. Copiez-le maintenant : il ne sera plus affiché.",
+        shareUrl: `${new URL(request.url).origin}/d/${token}`,
+      };
+    }
+    if (intent === "unshare") {
+      await revokeShares(c.shop, id);
+      return { ok: "Lien retiré. Le client ne peut plus ouvrir la proposition." };
     }
     if (intent === "publish") {
       await publishQuote(c.shop, id, version, c.admin);

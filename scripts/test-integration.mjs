@@ -30,6 +30,7 @@ try {
       "--test-concurrency=1",
       "tests/integration/persistence.test.ts",
       "tests/integration/pro-access.test.ts",
+      "tests/integration/share.test.ts",
     ],
   ]) {
     const status = run(args);
