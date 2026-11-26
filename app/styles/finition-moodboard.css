@@ -614,3 +614,9 @@ button.mood-material:hover:not(:disabled) .mood-material-color {
   margin-top: -2px;
   color: var(--muted, #5f5d58);
 }
+.library-field-wide {
+  flex: 1 1 360px;
+}
+.library-field-wide input {
+  width: 100%;
+}

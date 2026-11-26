@@ -130,6 +130,15 @@ base (`LibraryMaterial`). Une photo déjà présente pour le même éditeur, la 
 le même coloris est remplacée. Une matière retirée disparaît des planches à leur prochaine
 ouverture. Sur la planche, une matière de la bibliothèque s'écrit `library:<id>`.
 
+« Importer depuis Kvadrat » : Cyril colle l'adresse d'une fiche kvadrat.dk ou son numéro de
+produit. Le serveur relaie, sans le garder, le pack d'images basse résolution que la fiche
+publique propose (`kvadrat-downloadcenter.azurewebsites.net/api/downloadcenter/downloadimages/<n°>`),
+une requête par clic. Le navigateur ouvre l'archive (`app/domain/zip.ts`) et remplit la liste
+à vérifier : collection tirée de l'adresse, coloris lu dans le nom du fichier
+(`kvadratColour`). Cyril retire les photos d'ambiance et complète les coloris manquants avant
+l'envoi. Un zip téléchargé à la main se dépose de la même façon. Accord de Cyril, partenaire
+Kvadrat, le 26/11/2026.
+
 ## Les accès
 
 Pas d'envoi d'e-mail : Mikado Deco crée l'accès dans « Accès » et transmet lui-même le

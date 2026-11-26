@@ -6,10 +6,14 @@ import {
   LIBRARY_MAX_BYTES,
   LIBRARY_MAX_SIDE,
   groupLibrary,
+  kvadratColour,
   matchLibrary,
+  parseKvadratProduct,
   parseSwatchName,
   type LibraryEntry,
 } from "../domain/library";
+
+import { listZip, mimeOf, readZipEntry, zipImages } from "../domain/zip";
 
 export const meta = () => [{ title: "Matières · Mikado Deco Pro" }];
 
@@ -55,13 +59,24 @@ export default function Materials() {
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
+  const [kvadrat, setKvadrat] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => () => pending.forEach((p) => URL.revokeObjectURL(p.preview)), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const makers = useMemo(() => [...new Set(library.map((m) => m.maker))], [library]);
   const groups = groupLibrary(query.trim() ? library.filter((m) => matchLibrary(m, query)) : library);
 
-  function choose(files: File[]) {
+  function choose(input: File[]) {
+    let files = input;
+    for (const z of files.filter((f) => /\.zip$/i.test(f.name))) {
+      const p = parseKvadratProduct(kvadrat);
+      z.arrayBuffer()
+        .then((b) => openZip(b, p?.number || "", p?.collection || ""))
+        .catch((e) => setMessage({ tone: "error", text: e instanceof Error ? e.message : "Archive illisible." }));
+    }
+    files = files.filter((f) => !/\.zip$/i.test(f.name));
+    if (!files.length) return;
     const images = files.filter((f) => /^image\/(jpeg|png|webp)$/.test(f.type));
     setPending((cur) => [
       ...cur,
@@ -74,6 +89,48 @@ export default function Materials() {
     ]);
     if (images.length < files.length)
       setMessage({ tone: "error", text: "Certains fichiers ne sont pas des photos JPEG, PNG ou WebP : ils sont ignorés." });
+  }
+
+  /** Photos d'un pack zip : collection saisie (ou lue dans le nom), coloris lu dans le nom. */
+  async function openZip(buf: ArrayBuffer, product: string, collection: string) {
+    const images = zipImages(listZip(buf)).slice(0, 300);
+    if (!images.length) throw Error("L'archive ne contient aucune photo JPEG, PNG ou WebP.");
+    const items: Pending[] = [];
+    for (const [i, e] of images.entries()) {
+      const name = e.name.split("/").pop() || e.name;
+      const file = new File([await readZipEntry(buf, e)], name, { type: mimeOf(name) });
+      const parsed = parseSwatchName(name);
+      items.push({
+        key: `${Date.now()}-z${i}-${name}`,
+        file,
+        preview: URL.createObjectURL(file),
+        collection: collection || parsed.collection,
+        colour: product ? kvadratColour(e.name, product) : parsed.colour,
+      });
+    }
+    setPending((cur) => [...cur, ...items]);
+    return items.length;
+  }
+
+  async function loadKvadrat() {
+    const p = parseKvadratProduct(kvadrat);
+    if (!p) {
+      setMessage({ tone: "error", text: "Collez l'adresse de la fiche Kvadrat ou son numéro de produit (ex. 1000)." });
+      return;
+    }
+    setLoading(true);
+    setMessage(null);
+    try {
+      const r = await fetch(`/app/matieres/kvadrat/${p.number}`);
+      if (!r.ok) throw Error((await r.text()) || "Pack d'images indisponible.");
+      const n = await openZip(await r.arrayBuffer(), p.number, p.collection);
+      setMaker("Kvadrat");
+      setMessage({ tone: "ok", text: `${n} photo(s) chargée(s). Vérifiez la collection et le coloris, retirez les photos d'ambiance, puis ajoutez.` });
+    } catch (e) {
+      setMessage({ tone: "error", text: e instanceof Error ? e.message : "Pack d'images indisponible." });
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function send() {
@@ -153,10 +210,37 @@ export default function Materials() {
         </p>
       )}
 
+      <section className="list-card library-import" aria-labelledby="library-kvadrat-title">
+        <h2 id="library-kvadrat-title">Importer depuis Kvadrat</h2>
+        <p className="muted">
+          Collez l'adresse d'une fiche produit kvadrat.dk (ou son numéro). L'outil charge le pack d'images
+          basse résolution que Kvadrat propose sur la fiche, puis vous montre la liste avant tout envoi.
+        </p>
+        <form
+          className="library-import-row"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void loadKvadrat();
+          }}
+        >
+          <label className="library-field library-field-wide">
+            <span>Fiche Kvadrat</span>
+            <input
+              value={kvadrat}
+              placeholder="https://www.kvadrat.dk/en/products/upholstery/1000-hallingdal-65"
+              onChange={(e) => setKvadrat(e.target.value)}
+            />
+          </label>
+          <button className="primary" disabled={loading || busy || !kvadrat.trim()}>
+            {loading ? "Chargement…" : "Charger les photos"}
+          </button>
+        </form>
+      </section>
+
       <section className="list-card library-import" aria-labelledby="library-import-title">
         <h2 id="library-import-title">Ajouter des photos</h2>
         <p className="muted">
-          Choisissez un dossier ou plusieurs photos. Le nom du fichier donne la collection et le coloris,
+          Choisissez un dossier, plusieurs photos ou un zip. Le nom du fichier donne la collection et le coloris,
           par exemple « Hallingdal 65 - 130.jpg ». Vérifiez la liste avant l'envoi. Une photo déjà présente
           (même éditeur, collection et coloris) est remplacée.
         </p>
@@ -174,7 +258,7 @@ export default function Materials() {
             Choisir des photos
             <input
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/jpeg,image/png,image/webp,.zip,application/zip"
               multiple
               style={{ display: "none" }}
               disabled={busy}

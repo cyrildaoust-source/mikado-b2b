@@ -72,3 +72,37 @@ export function matchLibrary(m: LibraryEntry, query: string) {
     .filter(Boolean)
     .every((w) => hay.includes(w));
 }
+
+/**
+ * Produit Kvadrat saisi par Cyril : son numéro, ou l'adresse de sa fiche
+ * (« https://www.kvadrat.dk/en/products/upholstery/1000-hallingdal-65 »).
+ * Le nom de la collection vient de l'adresse quand elle le porte.
+ */
+export function parseKvadratProduct(input: string) {
+  const s = input.trim();
+  if (/^\d{1,6}$/.test(s)) return { number: s, collection: "" };
+  const slug = s.match(/\/(\d{1,6})-([a-z0-9-]+?)\/?(?:[?#].*)?$/i);
+  if (slug)
+    return {
+      number: slug[1],
+      collection: slug[2]
+        .split("-")
+        .filter(Boolean)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" "),
+    };
+  const bare = s.match(/\/products\/(\d{1,6})(?:[/?#]|$)/i);
+  return bare ? { number: bare[1], collection: "" } : null;
+}
+
+/**
+ * Coloris dans le nom d'une photo du pack Kvadrat : un numéro de quatre
+ * chiffres commençant par 0 (« 0130 »), sinon le dernier numéro de trois ou
+ * quatre chiffres autre que celui du produit. Vide quand rien ne convient :
+ * Cyril le complète avant l'envoi.
+ */
+export function kvadratColour(file: string, product: string) {
+  const base = (file.split("/").pop() || file).replace(/\.[a-z0-9]{2,5}$/i, "");
+  const groups = (base.match(/(?<!\d)\d{3,4}(?!\d)/g) || []).filter((g) => g !== product);
+  return groups.find((g) => /^0\d{3}$/.test(g)) || groups.pop() || "";
+}

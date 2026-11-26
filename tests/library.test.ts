@@ -40,3 +40,17 @@ test("planche : une matière de la bibliothèque est admise, une adresse libre n
   assert.ok(!boardSchema.safeParse(item("library:../../etc")).success);
   assert.ok(!boardSchema.safeParse(item("https://www.kvadrat.dk/x.jpg")).success);
 });
+
+test("Kvadrat : produit saisi et coloris du pack d'images", async () => {
+  const { parseKvadratProduct, kvadratColour } = await import("../app/domain/library");
+  assert.deepEqual(parseKvadratProduct("1000"), { number: "1000", collection: "" });
+  assert.deepEqual(
+    parseKvadratProduct("https://www.kvadrat.dk/en/products/upholstery/1000-hallingdal-65"),
+    { number: "1000", collection: "Hallingdal 65" },
+  );
+  assert.deepEqual(parseKvadratProduct("https://kvadrat.dk/products/1000?colorway=0130"), { number: "1000", collection: "" });
+  assert.equal(parseKvadratProduct("Hallingdal"), null);
+  assert.equal(kvadratColour("Hallingdal 65/1000_0130.jpg", "1000"), "0130");
+  assert.equal(kvadratColour("1000-130-hallingdal.jpg", "1000"), "130");
+  assert.equal(kvadratColour("hallingdal-ambiance.jpg", "1000"), "");
+});
