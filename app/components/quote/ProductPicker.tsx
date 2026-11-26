@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { money, type Line, type QuoteState } from "../../domain/quote";
 import { Modal } from "./Modal";
+import { sized } from "../catalog/image";
 export type Customer = {
   id: string | null;
   name: string;
@@ -23,14 +24,14 @@ export function ProductPicker({
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const seq = useRef(0);
-  async function lookup(after?: string) {
+  async function lookup(after?: string, q = search) {
     const n = ++seq.current;
     setBusy(true);
     setError("");
     try {
       const url = new URL("/app/catalog", location.origin);
       url.searchParams.set("kind", kind);
-      url.searchParams.set("q", search);
+      url.searchParams.set("q", q);
       if (after) url.searchParams.set("after", after);
       const r = await fetch(url);
       if (!r.ok) throw Error();
@@ -48,92 +49,156 @@ export function ProductPicker({
     void lookup();
     return () => {
       seq.current++;
+      clearTimeout(timer.current);
     };
   }, []);
+  // La recherche part pendant la frappe : pas de bouton à viser.
+  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const type = (value: string) => {
+    setSearch(value);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => void lookup(undefined, value), 300);
+  };
+  const isProducts = kind === "products";
   return (
     <Modal
-      title={kind === "products" ? "Choisir des produits" : "Choisir un client"}
+      title={isProducts ? "Choisir des produits" : "Choisir un client"}
       onClose={onClose}
     >
       <form
-        className="search"
+        className="picker-search"
+        role="search"
         onSubmit={(e) => {
           e.preventDefault();
+          clearTimeout(timer.current);
           void lookup();
         }}
       >
         <input
-          aria-label="Rechercher"
+          type="search"
+          aria-label={isProducts ? "Rechercher un produit" : "Rechercher un client"}
           placeholder={
-            kind === "products"
-              ? "Nom du produit ou référence"
-              : "Nom du client"
+            isProducts ? "Nom du produit ou référence" : "Nom, société ou e-mail"
           }
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          autoFocus
+          onChange={(e) => type(e.target.value)}
         />
-        <button disabled={busy}>Rechercher</button>
       </form>
+      <p className="picker-status" role="status">
+        {busy
+          ? "Recherche…"
+          : error
+            ? ""
+            : !items.length
+              ? search.trim()
+                ? `Aucun ${isProducts ? "produit" : "client"} trouvé pour « ${search.trim()} ».`
+                : `Aucun ${isProducts ? "produit" : "client"} pour le moment.`
+              : ""}
+      </p>
       {error && (
         <p role="alert" className="error">
           {error}
         </p>
       )}
-      {busy && <p role="status">Recherche…</p>}
-      <div className="searchresults">
-        {items.map((i, n) =>
-          "price" in i ? (
-            <label className="picker-row" key={i.id}>
-              <input
-                type="checkbox"
-                checked={selected.some((s) => s.id === i.id)}
-                onChange={(e) =>
-                  setSelected((s) =>
-                    e.target.checked
-                      ? [...s, i]
-                      : s.filter((x) => x.id !== i.id),
-                  )
-                }
-              />
-              <span>
-                <strong>{i.name}</strong>
-                <small>{i.sku}</small>
-              </span>
-              <span>{money(i.price)} HTVA</span>
-            </label>
-          ) : (
-            <button key={i.id || n} onClick={() => onSelect([i])}>
-              <span>
-                {i.address.company || i.name}
-                <small>
-                  {i.name} · {i.email} · {i.address.city}
-                </small>
-              </span>
-            </button>
-          ),
-        )}
-        {!busy && !items.length && <p>Aucun résultat.</p>}
-      </div>
+      {items.length > 0 && (
+        <ul className="picker-list" aria-busy={busy}>
+          {items.map((i, n) =>
+            "price" in i ? (
+              <li key={i.id}>
+                <label className="picker-item">
+                  <input
+                    type="checkbox"
+                    checked={selected.some((x) => x.id === i.id)}
+                    onChange={(e) =>
+                      setSelected((x) =>
+                        e.target.checked
+                          ? [...x, i]
+                          : x.filter((y) => y.id !== i.id),
+                      )
+                    }
+                  />
+                  {i.image ? (
+                    <img className="picker-thumb" src={sized(i.image, 96)} alt="" />
+                  ) : (
+                    <span className="picker-thumb" aria-hidden="true" />
+                  )}
+                  <span className="picker-text">
+                    <strong>{i.name}</strong>
+                    {i.sku && <small>{i.sku}</small>}
+                  </span>
+                  <span className="picker-price">{money(i.price)}</span>
+                </label>
+              </li>
+            ) : (
+              <li key={i.id || n}>
+                <button
+                  type="button"
+                  className="picker-item"
+                  onClick={() => onSelect([i])}
+                >
+                  <span className="picker-initials" aria-hidden="true">
+                    {initials(i.address.company || i.name)}
+                  </span>
+                  <span className="picker-text">
+                    <strong>{i.address.company || i.name || i.email}</strong>
+                    <small>
+                      {[
+                        i.address.company && i.name !== i.address.company ? i.name : "",
+                        i.email,
+                        i.address.city,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </small>
+                  </span>
+                  <span className="picker-go" aria-hidden="true">
+                    Choisir
+                  </span>
+                </button>
+              </li>
+            ),
+          )}
+        </ul>
+      )}
       {next && (
-        <button disabled={busy} onClick={() => void lookup(next)}>
-          Charger la suite
+        <button
+          type="button"
+          className="text-button picker-more"
+          disabled={busy}
+          onClick={() => void lookup(next)}
+        >
+          Afficher plus
         </button>
       )}
-      {kind === "products" && (
+      {isProducts && (
         <footer className="modal-actions">
-          <span>{selected.length} produit(s) sélectionné(s)</span>
+          <span>
+            {selected.length
+              ? `${selected.length} produit${selected.length > 1 ? "s" : ""} choisi${selected.length > 1 ? "s" : ""}`
+              : "Cochez les produits à ajouter"}
+          </span>
           <button
             className="primary"
             disabled={!selected.length || busy}
             onClick={() => onSelect(selected)}
           >
-            Ajouter la sélection
+            Ajouter
           </button>
         </footer>
       )}
     </Modal>
   );
 }
+
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() || "")
+    .join("") || "?";
+
 export async function nativeProducts(): Promise<Line[] | null> {
   const selection = await window.shopify.resourcePicker({
     type: "product",

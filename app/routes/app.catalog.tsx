@@ -42,10 +42,17 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
   if (u.searchParams.get("kind") === "product") {
     // Finitions d'un produit, pour les choisir au moment de l'ajout.
-    const product = await getCatalogProduct(
-      c.admin,
-      u.searchParams.get("produit") || "",
-    ).catch(() => null);
+    let product;
+    try {
+      product = await getCatalogProduct(c.admin, u.searchParams.get("produit") || "", {
+        specs: false,
+      });
+    } catch {
+      return Response.json(
+        { error: "Shopify n'a pas répondu. Réessayez dans un instant." },
+        { status: 502, headers: { "Cache-Control": "no-store" } },
+      );
+    }
     if (!product)
       return Response.json(
         { error: "Ce produit n'est plus au catalogue." },
@@ -64,7 +71,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
       const product = await getCatalogProduct(
         c.admin,
         u.searchParams.get("produit") || "",
-      );
+        { specs: false },
+      ).catch(() => {
+        throw Error("Shopify n'a pas répondu. Réessayez dans un instant.");
+      });
       if (!product) throw Error("Ce produit n'est plus au catalogue.");
       const line = await lineFor(
         c.admin,

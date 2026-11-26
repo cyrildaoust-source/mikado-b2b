@@ -455,18 +455,13 @@ export default function Catalogue() {
       )}
       {(openQuote || quotes.length > 0) && (
         <div
-          className={`catalogue-dock${dragCard ? " dragging" : ""}${dropKey === "dock" ? " over" : ""}`}
+          className={`catalogue-dock${dragCard ? " dragging" : ""}`}
           role="region"
           aria-label="Devis en cours"
-          {...(openQuote ? dropZone("dock", "end", lastRoom ? `à ${lastRoom}` : "au devis") : {})}
         >
           {openQuote ? (
             <span className="dock-quote">
-              <small>
-                <span className="dock-label">Devis ouvert · </span>
-                <span className="dock-number">{openQuote.number} · </span>
-                {money(openQuote.total)}
-              </small>
+              <small>Devis en cours</small>
               <strong>{openQuote.title}</strong>
             </span>
           ) : (
@@ -497,9 +492,8 @@ export default function Catalogue() {
               <span className="dock-error">{chooser.data.error}</span>
             ) : openQuote ? (
               <span className="dock-hint">
-                <span className="hint-fine">Glissez un produit sur cette barre ou cliquez sur + : </span>
-                <span className="hint-coarse">Touchez + sur un produit : </span>
-                il s'ajoute {lastRoom ? `à ${lastRoom}` : "au devis"}.
+                + ajoute un produit {lastRoom ? `à ${lastRoom}` : "au devis"}.
+                <span className="hint-fine"> Glissez-le pour choisir la pièce, une alternative ou une option.</span>
               </span>
             ) : (
               <span className="dock-hint">
@@ -507,6 +501,12 @@ export default function Catalogue() {
               </span>
             )}
           </span>
+          {openQuote && (
+            <span className="dock-total">
+              <small>Total HTVA</small>
+              <strong>{money(openQuote.total)}</strong>
+            </span>
+          )}
           <span className="dock-actions">
             {(otherQuotes.length > 0 || openQuote) && (
               <details className="action-menu dock-menu">

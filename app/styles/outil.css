@@ -1180,21 +1180,30 @@ button.catalogue-add:hover:not(:disabled) {
     border-color 0.12s,
     background-color 0.12s;
 }
+/* Pendant un glisser, le panneau de dépôt prend le relais. */
 .catalogue-dock.dragging {
-  border: 1px dashed var(--brass);
-  background: var(--brass-bg);
+  visibility: hidden;
 }
-.catalogue-dock.over {
-  border-style: solid;
-  box-shadow:
-    var(--shadow-float),
-    0 0 0 3px var(--brass-bg);
+.dock-total {
+  display: grid;
+  flex: none;
+  padding-left: 16px;
+  border-left: 1px solid var(--line);
+  text-align: right;
+}
+.dock-total small {
+  color: var(--ink-3);
+  font-size: var(--t-small);
+}
+.dock-total strong {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
 .dock-quote {
   display: grid;
   flex: 0 1 auto;
-  min-width: 0;
-  max-width: 280px;
+  min-width: min(160px, 100%);
+  max-width: 260px;
 }
 .dock-quote small {
   overflow: hidden;
@@ -1211,7 +1220,7 @@ button.catalogue-add:hover:not(:disabled) {
 }
 .dock-status {
   display: flex;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   flex-wrap: wrap;
   align-items: center;
   gap: 0 12px;
@@ -1275,7 +1284,7 @@ button.catalogue-add:hover:not(:disabled) {
   cursor: grab;
 }
 .catalogue:has(.catalogue-dock) .drop-panel {
-  bottom: 96px;
+  bottom: 16px;
 }
 
 /* ================================================================== */
@@ -3640,7 +3649,10 @@ html:has(.quote-workspace) {
   .dock-actions .button.primary {
     padding: 0 12px;
   }
-  .dock-number,
+  .dock-total {
+    padding-left: 0;
+    border-left: 0;
+  }
   .dock-suffix {
     display: none;
   }
@@ -3653,7 +3665,7 @@ html:has(.quote-workspace) {
   .dock-actions .action-menu > summary {
     padding: 0 10px;
   }
-  .dock-label {
+  .dock-total small {
     display: none;
   }
 }
@@ -3709,4 +3721,116 @@ html:has(.quote-workspace) {
 .finish-dialog button,
 .product-values button {
   min-height: var(--touch);
+}
+
+/* Recherche de clients et de produits Shopify : même liste que le reste de l'outil. */
+.picker-search input {
+  width: 100%;
+  margin: 0;
+}
+.picker-status {
+  min-height: 1.4em;
+  margin: 12px 0 4px;
+  color: var(--ink-3);
+  font-size: var(--t-small);
+}
+.picker-status:empty {
+  margin: 4px 0 0;
+}
+.picker-list {
+  display: grid;
+  max-height: min(55vh, 480px);
+  margin: 0 -8px;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  transition: opacity 0.15s;
+}
+.picker-list[aria-busy="true"] {
+  opacity: 0.6;
+}
+.picker-list li + li {
+  border-top: 1px solid var(--line);
+}
+button.picker-item,
+label.picker-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 60px;
+  margin: 0;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+button.picker-item:hover,
+label.picker-item:hover {
+  background: var(--ground);
+}
+.picker-item input[type="checkbox"] {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+.picker-initials,
+.picker-thumb {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--ground);
+  color: var(--ink-2);
+  font-size: var(--t-small);
+  font-weight: 500;
+}
+.picker-thumb {
+  border-radius: 6px;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+}
+.picker-text {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.picker-text strong {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.picker-text small {
+  overflow: hidden;
+  color: var(--ink-3);
+  font-size: var(--t-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.picker-text small:empty {
+  display: none;
+}
+.picker-price {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.picker-go {
+  flex: none;
+  color: var(--ink-3);
+  font-size: var(--t-small);
+}
+button.picker-item:hover .picker-go {
+  color: var(--ink);
+}
+.picker-more {
+  margin-top: 8px;
 }
