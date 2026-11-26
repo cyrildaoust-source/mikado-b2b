@@ -64,7 +64,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 const newUser = z.object({
   name: z.string().trim().min(1).max(150),
   email: z.string().trim().email().max(250),
-  role: z.enum(["architect", "admin"]),
+  // Case « équipe Mikado Deco » : cochée, l'accès règle l'outil ; sinon architecte.
+  team: z.literal("1").optional(),
 });
 
 // L'adresse de la page ouverte : un lien créé sur une Preview mène à cette Preview.
@@ -147,7 +148,11 @@ export async function action({ request }: ActionFunctionArgs) {
     if (await db.user.findUnique({ where: { email } }))
       return { error: "Cet e-mail a déjà un accès." };
     const user = await db.user.create({
-      data: { name: parsed.data.name, email, role: parsed.data.role },
+      data: {
+        name: parsed.data.name,
+        email,
+        role: parsed.data.team ? "admin" : "architect",
+      },
     });
     return {
       ok: `Accès créé pour ${user.name}.`,
@@ -275,7 +280,7 @@ export default function Users() {
       </div>
       <div className="list-card">
         <Form method="post" className="user-form">
-          <h2>Ajouter un accès</h2>
+          <h2>Ajouter un architecte</h2>
           <label>
             Nom
             <input name="name" required maxLength={150} autoComplete="off" />
@@ -290,24 +295,18 @@ export default function Users() {
               autoComplete="off"
             />
           </label>
-          <label>
-            Rôle
-            <select
-              name="role"
-              defaultValue="architect"
-              aria-describedby="role-help"
-            >
-              <option value="architect">Architecte</option>
-              <option value="admin">Mikado Deco</option>
-            </select>
+          <label className="check-row">
+            <input type="checkbox" name="team" value="1" />
+            C'est un membre de l'équipe Mikado Deco (voit tous les devis et règle
+            l'outil)
           </label>
           <button className="primary" name="intent" value="create">
             Créer l'accès
           </button>
-          <p id="role-help" className="user-form-help">
-            Un architecte voit ses propres devis, sans prix d'achat. Mikado Deco
-            voit tout et règle l'outil. Un lien d'invitation est créé, à envoyer
-            vous-même.
+          <p className="user-form-help">
+            L'architecte voit ses propres devis et démarre au palier ouvert dès
+            l'inscription (chiffre 0 €). Un lien d'invitation est créé, à lui
+            envoyer vous-même.
           </p>
         </Form>
       </div>
