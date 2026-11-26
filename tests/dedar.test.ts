@@ -57,3 +57,30 @@ test("Dedar : coloris cachés dans la charge Nuxt", async () => {
     ["Acacia 012", "Acacia 020", "Acacia 031"],
   );
 });
+
+test("Dedar : variantes du produit de la page, avec teinte et grande photo", async () => {
+  const { dedarAllSwatches } = await import("../app/domain/dedar");
+  const flat = [
+    { entry: 1 },
+    { slug: 2, title: 3, variants: 4 },
+    "acacia",
+    "Acacia",
+    [5, 11],
+    { code: 6, color: 7, swatch: 8, imagesBc: 9 },
+    "012",
+    "rose indien",
+    { url: 10 },
+    [12],
+    "https://cdn.dedar.com/bc-swatch-1-aa.jpg",
+    { code: 13, swatch: 14 },
+    "https://cdn.dedar.com/bc-variant-19445-c54df3fa.jpg",
+    "001",
+    { url: 15 },
+    "https://cdn.dedar.com/bc-swatch-2-bb.jpg",
+  ];
+  const html = `<script id="__NUXT_DATA__" type="application/json">${JSON.stringify(flat)}</script>`;
+  assert.deepEqual(dedarAllSwatches(html, "acacia"), [
+    { name: "Acacia", colour: "012", src: "https://cdn.dedar.com/bc-swatch-1-aa.jpg", image: "https://cdn.dedar.com/bc-variant-19445-c54df3fa.jpg", tint: "rose indien" },
+    { name: "Acacia", colour: "001", src: "https://cdn.dedar.com/bc-swatch-2-bb.jpg" },
+  ]);
+});
