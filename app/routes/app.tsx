@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { context } from "../services/context.server";
+import { FinishChooserHost } from "../components/catalog/FinishChooser";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const c = await context(request);
@@ -28,12 +29,14 @@ export default function App() {
     return (
       <AppProvider embedded apiKey={apiKey}>
         <Outlet />
+        <FinishChooserHost />
       </AppProvider>
     );
   return (
     <div className="pro-app">
       <ProNav demo={demo} user={user} />
       <Outlet />
+      <FinishChooserHost />
     </div>
   );
 }

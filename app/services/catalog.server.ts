@@ -143,15 +143,10 @@ const numeric = (gid: string) => gid.split("/").pop() || "";
 export const finish = (title: string) =>
   title === "Default Title" ? "" : title;
 
-type RawVariant = {
-  id: string;
-  title: string;
-  price: string;
-  media: { nodes: { preview: { image: { url: string; altText: string | null } | null } | null }[] };
-  product: RawCard;
-};
+type RawListed = RawCard & { variants: { nodes: { id: string; title: string }[] } };
 
-/** Catalogue pro : une carte par variante, sans rien changer dans Shopify. */
+/** Catalogue pro : une carte par produit, sa photo principale (le packshot),
+ * et ses finitions à choisir au moment de l'ajout. Rien ne change dans Shopify. */
 export async function listCatalog(
   admin: Admin | null,
   filters: {
@@ -166,52 +161,46 @@ export async function listCatalog(
   if (!admin) return demoList(filters, rules);
   const info = await shopInfo(admin);
   const data = await gql<{
-    productVariants: {
-      nodes: RawVariant[];
+    products: {
+      nodes: RawListed[];
       pageInfo: { hasNextPage: boolean; endCursor: string };
     };
   }>(
     admin,
-    `query Catalog($query: String!, $after: String, $sort: ProductVariantSortKeys!, $first: Int!) {
-      productVariants(first: $first, after: $after, query: $query, sortKey: $sort) {
-        nodes {
-          id title price
-          media(first: 1) { nodes { preview { image { url altText } } } }
-          product { ${cardFields} }
-        }
+    `query Catalog($query: String!, $after: String, $sort: ProductSortKeys!, $first: Int!) {
+      products(first: $first, after: $after, query: $query, sortKey: $sort) {
+        nodes { ${cardFields} variants(first: 1) { nodes { id title } } }
         pageInfo { hasNextPage endCursor }
       }
     }`,
     {
-      query: catalogQuery(rules, filters, "product_status"),
+      query: catalogQuery(rules, filters),
       after: filters.after || null,
       first: CATALOG_PAGE,
-      sort: filters.q?.trim() ? "RELEVANCE" : "FULL_TITLE",
+      sort: filters.q?.trim() ? "RELEVANCE" : "TITLE",
     },
   );
   return {
-    items: data.productVariants.nodes
-      .filter((v) => isVisible(v.product, rules))
-      .map((v) => variantCard(v, info.taxesIncluded)),
-    next: data.productVariants.pageInfo.hasNextPage
-      ? data.productVariants.pageInfo.endCursor
+    items: data.products.nodes
+      .filter((p) => isVisible(p, rules) && p.variants.nodes.length)
+      .map((p) => listedCard(card(p, info.taxesIncluded), p.variants.nodes[0])),
+    next: data.products.pageInfo.hasNextPage
+      ? data.products.pageInfo.endCursor
       : null,
   };
 }
 
-function variantCard(v: RawVariant, taxesIncluded: boolean): CatalogVariantCard {
-  const base = card(v.product, taxesIncluded),
-    price = netPrice(v.price, taxesIncluded),
-    own = v.media.nodes[0]?.preview?.image;
+/** Carte du catalogue : l'identifiant est celui de la première variante, ajoutée
+ * telle quelle quand le produit n'a qu'une finition. */
+function listedCard(
+  c: CatalogCard,
+  first: { id: string; title: string },
+): CatalogVariantCard {
   return {
-    ...base,
-    id: v.id,
-    image: own?.url || base.image,
-    imageAlt: own?.altText || base.imageAlt,
-    minPrice: price,
-    maxPrice: price,
-    variantNumericId: numeric(v.id),
-    variantTitle: finish(v.title),
+    ...c,
+    id: first.id,
+    variantNumericId: numeric(first.id),
+    variantTitle: c.variants > 1 ? "" : finish(first.title),
   };
 }
 
@@ -460,20 +449,10 @@ function demoList(
       .filter((p) => isVisible(p, rules))
       .filter((p) => !filters.vendors?.length || filters.vendors.includes(p.vendor))
       .filter((p) => !types.length || types.includes(p.productType))
-      .flatMap(({ description: _d, images: _i, options: _o, specs: _s, productVariants, ...c }) =>
-        productVariants.map(
-          (v): CatalogVariantCard => ({
-            ...c,
-            id: v.id,
-            image: v.image || c.image,
-            minPrice: v.price,
-            maxPrice: v.price,
-            variantNumericId: numeric(v.id),
-            variantTitle: finish(v.title),
-          }),
-        ),
+      .map(({ description: _d, images: _i, options: _o, specs: _s, productVariants, ...c }) =>
+        listedCard(c, productVariants[0]),
       )
-      .filter((p) => !q || `${p.title} ${p.variantTitle} ${p.vendor} ${p.productType}`.toLowerCase().includes(q));
+      .filter((p) => !q || `${p.title} ${p.vendor} ${p.productType}`.toLowerCase().includes(q));
   const start = Number(filters.after) || 0,
     end = start + CATALOG_PAGE;
   return {

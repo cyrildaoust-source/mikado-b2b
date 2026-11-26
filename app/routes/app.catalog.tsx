@@ -40,6 +40,23 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
     return Response.json({ family }, { headers: { "Cache-Control": "no-store" } });
   }
+  if (u.searchParams.get("kind") === "product") {
+    // Finitions d'un produit, pour les choisir au moment de l'ajout.
+    const product = await getCatalogProduct(
+      c.admin,
+      u.searchParams.get("produit") || "",
+    ).catch(() => null);
+    if (!product)
+      return Response.json(
+        { error: "Ce produit n'est plus au catalogue." },
+        { status: 404, headers: { "Cache-Control": "no-store" } },
+      );
+    const { title, vendor, image, imageAlt, options, productVariants } = product;
+    return Response.json(
+      { title, vendor, image, imageAlt, options, variants: productVariants },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  }
   if (u.searchParams.get("kind") === "line") {
     // Une carte du catalogue glissée dans le devis : même ligne que l'ajout
     // rapide, avec les mêmes règles de visibilité des marques.

@@ -27,6 +27,7 @@ import {
 import { money } from "../domain/quote";
 import { sized } from "../components/catalog/image";
 import { Picker } from "../components/catalog/Picker";
+import { chooseFinish } from "../components/catalog/FinishChooser";
 import { Breadcrumb } from "../components/Breadcrumb";
 
 export const meta = () => [{ title: "Catalogue · Mikado Deco Pro" }];
@@ -112,12 +113,23 @@ export default function Catalogue() {
   const undoer = useFetcher<{ ok?: string; error?: string }>();
   const [added, setAdded] = useState<{ title: string; product: string; where: string } | null>(null);
   const lastRoom = openQuote?.sections.at(-1)?.title || "";
-  type Card = { id: string; numericId: string; title: string };
-  const quickAdd = (p: Card, placement = "end", where = lastRoom ? `à ${lastRoom}` : "") => {
+  type Card = { id: string; numericId: string; title: string; variants: number };
+  const quickAdd = async (p: Card, placement = "end", where = lastRoom ? `à ${lastRoom}` : "") => {
     if (!openQuote) return;
+    // Plusieurs finitions : on choisit avant d'ajouter, comme sur la fiche.
+    const variant =
+      p.variants > 1
+        ? await chooseFinish({
+            numericId: p.numericId,
+            title: p.title,
+            variantId: p.id,
+            action: where ? `Ajouter ${where}` : "Ajouter au devis",
+          })
+        : p.id;
+    if (!variant) return;
     setAdded({ title: p.title, product: p.numericId, where });
     adder.submit(
-      { variant: p.id, qty: "1", quote: String(openQuote.id), placement },
+      { variant, qty: "1", quote: String(openQuote.id), placement },
       { method: "post", action: `/app/catalogue/${p.numericId}` },
     );
   };
@@ -142,7 +154,7 @@ export default function Catalogue() {
       if (!card) return;
       e.preventDefault();
       e.stopPropagation();
-      quickAdd(card, placement, where);
+      void quickAdd(card, placement, where);
       dragRef.current = null;
       setDragCard(null);
       setDropKey("");
@@ -339,13 +351,13 @@ export default function Catalogue() {
                   aria-label={`Ajouter ${p.title} au devis ${openQuote.title}`}
                   title={lastRoom ? `Ajouter à ${lastRoom}` : "Ajouter au devis"}
                   disabled={adder.state !== "idle"}
-                  onClick={() => quickAdd(p)}
+                  onClick={() => void quickAdd(p)}
                 >
                   <span aria-hidden="true">+</span>
                 </button>
               )}
               <Link
-                to={`/app/catalogue/${p.numericId}?variante=${p.variantNumericId}`}
+                to={`/app/catalogue/${p.numericId}${p.variants > 1 ? "" : `?variante=${p.variantNumericId}`}`}
                 className="catalogue-card"
               >
                 <div className="catalogue-photo">
@@ -366,8 +378,12 @@ export default function Catalogue() {
                   <small>{p.vendor}</small>
                   <strong title={p.title}>{p.title}</strong>
                   <span className="catalogue-row">
-                    <span className="catalogue-finish">{p.variantTitle}</span>
-                    <span className="catalogue-price">{money(p.minPrice)}</span>
+                    <span className="catalogue-finish">
+                      {p.variants > 1 ? `${p.variants} finitions` : p.variantTitle}
+                    </span>
+                    <span className="catalogue-price">
+                      {p.maxPrice > p.minPrice ? `dès ${money(p.minPrice)}` : money(p.minPrice)}
+                    </span>
                   </span>
                 </div>
               </Link>

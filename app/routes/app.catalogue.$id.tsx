@@ -28,6 +28,7 @@ import {
 import { readForm } from "../services/form.server";
 import { money } from "../domain/quote";
 import { sized } from "../components/catalog/image";
+import { FinishPicker } from "../components/catalog/FinishPicker";
 
 export const meta = ({ data }: { data?: { product?: { title: string } } }) => [
   { title: `${data?.product?.title || "Produit"} · Mikado Deco Pro` },
@@ -125,7 +126,6 @@ export default function Product() {
   };
   const [variantId, setVariantId] = useState(initial);
   const [qty, setQty] = useState(1);
-  const [allValues, setAllValues] = useState<string[]>([]);
   const variant =
     product.productVariants.find((v) => v.id === variantId) ||
     product.productVariants[0];
@@ -142,35 +142,6 @@ export default function Product() {
   ];
   const [shown, setShown] = useState<number | null>(null);
   const photo = images[shown ?? 0];
-
-  // Une rangée par option Shopify ; une combinaison absente est grisée.
-  const axes = product.options.filter((o) => o.values.length > 1);
-  const current = (name: string) =>
-    variant?.options.find((o) => o.name === name)?.value || "";
-  const match = (name: string, value: string) => {
-    const wanted = (v: (typeof product.productVariants)[number]) =>
-      v.options.some((o) => o.name === name && o.value === value);
-    return (
-      product.productVariants.find(
-        (v) =>
-          wanted(v) &&
-          axes.every(
-            (a) => a.name === name || v.options.some((o) => o.name === a.name && o.value === current(a.name)),
-          ),
-      ) || null
-    );
-  };
-  const pick = (name: string, value: string) => {
-    const exact = match(name, value);
-    const any = product.productVariants.find((v) =>
-      v.options.some((o) => o.name === name && o.value === value),
-    );
-    const next = exact || any;
-    if (next) {
-      setVariantId(next.id);
-      setShown(null);
-    }
-  };
 
   // Un seul choix « Ajouter à » : devis, pièce, alternative, option.
   const targets: { group: string; items: Target[] }[] = [];
@@ -311,45 +282,15 @@ export default function Product() {
               {money(variant.price)} <small>HTVA · prix public</small>
             </p>
           )}
-          {axes.map((axis) => {
-            const open = allValues.includes(axis.name);
-            const values = open || axis.values.length <= 12 ? axis.values : axis.values.slice(0, 11);
-            const sel = current(axis.name);
-            const visible = values.includes(sel) ? values : [...values, sel];
-            return (
-              <fieldset key={axis.name} className="product-option">
-                <legend>
-                  {axis.name} · <strong>{sel}</strong>
-                  {axis.values.length > 6 && (
-                    <span className="muted"> {axis.values.length} choix</span>
-                  )}
-                </legend>
-                <div className="product-values">
-                  {visible.map((value) => (
-                    <button
-                      key={value}
-                      type="button"
-                      aria-pressed={value === sel}
-                      className={match(axis.name, value) ? "" : "unavailable"}
-                      title={match(axis.name, value) ? undefined : "Pas avec ce choix : l'autre option changera"}
-                      onClick={() => pick(axis.name, value)}
-                    >
-                      {value}
-                    </button>
-                  ))}
-                  {visible.length < axis.values.length && (
-                    <button
-                      type="button"
-                      className="more"
-                      onClick={() => setAllValues([...allValues, axis.name])}
-                    >
-                      + {axis.values.length - visible.length}
-                    </button>
-                  )}
-                </div>
-              </fieldset>
-            );
-          })}
+          <FinishPicker
+            options={product.options}
+            variants={product.productVariants}
+            value={variant?.id || ""}
+            onChange={(id) => {
+              setVariantId(id);
+              setShown(null);
+            }}
+          />
           <Form method="post" className="product-add" onSubmit={() => setHere("")}>
             <input type="hidden" name="variant" value={variant?.id} />
             <input type="hidden" name="quote" value={chosen.quote} />

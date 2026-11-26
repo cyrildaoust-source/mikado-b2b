@@ -22,8 +22,11 @@ Les fiches sont lues dans Shopify côté serveur. Rien n'est publié ni modifié
 - Toutes les fiches encodées sont visibles, **actives ou en brouillon**, gold ou non
   (décision de Cyril du 25/11/2026).
 - Page « Marques » : masquer une marque entière.
-- Une carte par variante (finition, taille…), avec sa photo ; la fiche montre la photo de
-  la variante puis les photos d'ambiance du produit. Rien ne change dans Shopify.
+- Une carte par produit, avec sa photo principale (le packshot), le nombre de finitions et
+  le prix « dès ». Quand un produit a plusieurs finitions, + ou un glisser ouvre le choix
+  par option (taille, couleur…), comme sur la fiche ; une finition déjà proposée pour ce
+  produit du devis est barrée. La fiche montre la photo de la variante puis les photos
+  d'ambiance du produit. Rien ne change dans Shopify.
 - Une fiche archivée n'apparaît jamais. Une fiche masquée renvoie une page introuvable,
   même si on devine son adresse.
 - Les prix affichés sont les prix publics HTVA (prix Shopify TVAC divisé par 1,21).

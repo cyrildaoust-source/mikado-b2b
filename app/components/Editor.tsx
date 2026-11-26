@@ -37,6 +37,7 @@ import {
   type CatalogueCard,
   type CatalogueTarget,
 } from "./quote/CatalogueBrowser";
+import { chooseFinish } from "./catalog/FinishChooser";
 import { Modal } from "./quote/Modal";
 import { Breadcrumb } from "./Breadcrumb";
 import { useDraft } from "./quote/useDraft";
@@ -380,11 +381,34 @@ export default function Editor({
   async function addCard(card: CatalogueCard, target: Target) {
     if (locked) return;
     setError("");
+    let variant = card.id;
+    if ((card.variants || 1) > 1) {
+      // Plusieurs finitions : on choisit, sans celles déjà proposées pour ce produit.
+      const owner = target.group || target.parent;
+      const g = owner ? s.groups.find((x) => x.id === owner) : undefined;
+      const chosen = await chooseFinish({
+        numericId: card.numericId,
+        title: card.title,
+        variantId: card.id,
+        taken: owner
+          ? [...(g?.items || []), ...optionsOf(s, owner)].flatMap((l) =>
+              l.variantId ? [l.variantId, l.name] : [l.name],
+            )
+          : [],
+        action: target.extra
+          ? "Ajouter en option"
+          : target.group
+            ? "Proposer en alternative"
+            : "Ajouter au devis",
+      });
+      if (!chosen) return;
+      variant = chosen;
+    }
     try {
       const url = new URL("/app/catalog", location.origin);
       url.searchParams.set("kind", "line");
       url.searchParams.set("produit", card.numericId);
-      url.searchParams.set("variante", card.id);
+      url.searchParams.set("variante", variant);
       const r = await fetch(url);
       const d = await r.json();
       if (!r.ok || !d.items?.length) throw Error(d.error || "");

@@ -1062,6 +1062,10 @@ s-badge[tone="success"] {
   font-size: var(--t-name);
   line-height: 1.35;
 }
+/* Un texte long reste dans sa carte : il ne déborde pas sur la voisine. */
+.catalogue-meta > * {
+  min-width: 0;
+}
 .catalogue-row {
   display: flex;
   flex-wrap: wrap;
@@ -1070,7 +1074,8 @@ s-badge[tone="success"] {
   color: var(--ink-2);
 }
 .catalogue-finish {
-  min-width: 0;
+  flex: 1 1 0;
+  min-width: min(100%, 6em);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3651,4 +3656,57 @@ html:has(.quote-workspace) {
   .dock-label {
     display: none;
   }
+}
+
+/* Choix de la finition au moment d'ajouter un produit du catalogue. */
+.finish-dialog {
+  width: 720px;
+}
+.finish-dialog .modal-head h2 {
+  display: grid;
+  gap: 2px;
+}
+.finish-dialog .modal-head h2 small {
+  color: var(--ink-2);
+  font-size: var(--t-small);
+  font-weight: 400;
+}
+.finish-body {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.finish-photo {
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius);
+  background: var(--ground);
+  overflow: hidden;
+}
+.finish-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+}
+.finish-choice {
+  display: grid;
+  gap: 16px;
+}
+.product-values button.taken {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+@media (max-width: 700px) {
+  .finish-body {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .finish-photo {
+    width: 140px;
+  }
+}
+.finish-dialog button,
+.product-values button {
+  min-height: var(--touch);
 }
