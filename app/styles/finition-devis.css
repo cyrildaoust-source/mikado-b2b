@@ -1,1 +1,283 @@
 /* Finition devis : passe de finition du 26/11 sur cette zone, chargée après outil.css. */
+
+/* ------------------------------------------------------------------ */
+/* Fenêtres : l'action destructive se lit comme telle                 */
+/* ------------------------------------------------------------------ */
+.modal-actions > button.danger {
+  background: var(--error);
+  border-color: var(--error);
+  color: #fff;
+}
+.modal-actions > button.danger:hover:not(:disabled) {
+  background: var(--error);
+  border-color: var(--error);
+  filter: brightness(0.92);
+}
+/* Les fenêtres courtes (archiver, corbeille, nouvelle pièce) n'ont pas
+   besoin d'un pied collant ni d'un grand vide au-dessus. */
+dialog:not(.wide-dialog) > p + .modal-actions {
+  margin-top: 8px;
+}
+dialog .modal-head h2 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------ */
+/* Client et conditions : les deux cartes gardent leur hauteur        */
+/* ------------------------------------------------------------------ */
+.coords-body {
+  align-items: start;
+}
+.coords-band > summary {
+  min-height: var(--touch);
+}
+
+/* ------------------------------------------------------------------ */
+/* Historique : arrivée par « Autres actions », sous l'en-tête collant */
+/* ------------------------------------------------------------------ */
+#historique {
+  scroll-margin-top: 80px;
+}
+.timeline-row > button {
+  min-height: var(--control);
+}
+
+/* ------------------------------------------------------------------ */
+/* Total en bas : une seule bande avec le bouton Catalogue, dès que le */
+/* catalogue passe en volet (iPad vertical et téléphone).             */
+/* ------------------------------------------------------------------ */
+@media (max-width: 1000px) {
+  .quote-pane .total-bar {
+    justify-self: stretch;
+    justify-content: flex-end;
+    margin-left: 112px;
+    bottom: max(16px, env(safe-area-inset-bottom));
+  }
+  .quote-pane .total-bar > span:first-child {
+    margin-right: auto;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Téléphone : boutons de même taille, côte à côte ou en pleine largeur */
+/* ------------------------------------------------------------------ */
+@media (max-width: 700px) {
+  /* En-tête : Mood board et Autres actions à parts égales, puis le PDF */
+  .quote-header .header-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .quote-header .header-actions > * {
+    width: 100%;
+    min-width: 0;
+  }
+  .quote-header .header-actions > .action-menu > summary {
+    width: 100%;
+    justify-content: center;
+  }
+  .quote-header .header-actions {
+    grid-auto-flow: row dense;
+  }
+  .quote-header .header-actions > button {
+    grid-column: 1 / -1;
+  }
+  .quote-header .action-menu > div button {
+    min-height: var(--touch);
+  }
+
+  /* Barres d'ajout : deux boutons égaux */
+  .section-toolbar > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+  .section-toolbar > div > button {
+    min-width: 0;
+    padding-inline: 8px;
+    white-space: normal;
+    line-height: 1.2;
+  }
+}
+@media (max-width: 380px) {
+  .section-toolbar > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Pied de produit quand le devis est étroit : alternative et option en
+   pleine largeur, l'une sous l'autre, Organiser en dessous. */
+@container devis (max-width: 520px) {
+  .group-footer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .group-footer > button.add-action {
+    justify-content: center;
+    min-width: 0;
+    min-height: var(--touch);
+    padding-inline: 6px;
+    white-space: normal;
+    line-height: 1.2;
+  }
+  .group-footer > details,
+  .group-footer > .alternative-hint {
+    grid-column: 1 / -1;
+    margin-left: 0;
+  }
+  .group-footer > details > summary {
+    min-height: var(--touch);
+  }
+  .group-settings {
+    max-width: none;
+  }
+  .group-settings .button-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .lot-footer > button.add-action,
+  s-section > button.add-action {
+    width: 100%;
+    justify-content: center;
+    min-height: var(--touch);
+  }
+}
+
+/* Lignes de produit sur téléphone : les trois champs se partagent toute
+   la largeur, le prix ne se coupe plus (« 1290 » restait tronqué à
+   320 px). La croix garde sa colonne sur le premier rang. */
+@container devis (max-width: 520px) {
+  .product-row {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    column-gap: 8px;
+  }
+  .product-row > .product-heading {
+    grid-column: 1 / 6;
+  }
+  .product-row > button.icon-button {
+    grid-column: 6;
+  }
+  .product-row > label {
+    grid-column: span 2;
+  }
+  .product-row > label input:not([type="checkbox"]):not([type="radio"]) {
+    padding: 0 8px;
+  }
+}
+
+/* En-tête du devis : quand la place manque (iPad avec le catalogue
+   ouvert), les boutons passent sous le titre au lieu de l'écraser. */
+@media (min-width: 701px) {
+  .quote-header {
+    flex-wrap: wrap;
+    row-gap: 16px;
+  }
+  .quote-header > div:first-child {
+    flex: 1 1 300px;
+  }
+}
+.status-line > button.text-button {
+  min-height: var(--compact);
+}
+
+/* Aperçu du PDF sur téléphone : adresses l'une sous l'autre, numéro du
+   devis sur une ligne, e-mail sans coupure au milieu d'un mot. */
+@media (max-width: 600px) {
+  .preview-scroll .paperheader {
+    flex-wrap: wrap;
+    gap: 8px 16px;
+  }
+  .preview-scroll .paperheader > div:last-child {
+    white-space: nowrap;
+    text-align: left;
+  }
+  .preview-scroll .doc-addresses {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    overflow-wrap: break-word;
+  }
+}
+
+/* Suggestions d'e-mail client : messages et choix à la bonne taille */
+p.email-suggestions {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: var(--t-small);
+}
+@media (pointer: coarse) {
+  .email-suggestions button {
+    min-height: var(--touch);
+  }
+}
+
+/* Produit visé par une alternative ou une option (fond laiton clair) :
+   libellés assez contrastés. */
+.alternative-group.is-target .selection-label,
+.alternative-group.is-target .alternative-hint {
+  color: var(--warn);
+}
+.alternative-group.is-target .field-label,
+.alternative-group.is-target .line-amount > span,
+.alternative-group.is-target .muted,
+.alternative-group.is-target .alternative-caption {
+  color: var(--ink-2);
+}
+.picker-text small {
+  color: var(--ink-2);
+}
+
+/* Le total collant en bas ne masque pas le champ qui reçoit le focus. */
+.quote-pane {
+  scroll-padding-bottom: 88px;
+}
+@media (max-width: 1000px) {
+  html:has(.quote-workspace) {
+    scroll-padding-bottom: 88px;
+  }
+}
+
+/* Historique sur téléphone : boutons en pleine largeur, de même taille */
+@media (max-width: 700px) {
+  .timeline-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .timeline-row > button,
+  .timeline > details button {
+    width: 100%;
+    white-space: normal;
+  }
+}
+
+/* Prestations : « Depuis le catalogue » a la même forme que son voisin
+   « Ajouter une prestation ». */
+.section-toolbar > div > button.text-button {
+  min-height: var(--control);
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  box-shadow: var(--shadow-control);
+}
+.section-toolbar > div > button.text-button:hover:not(:disabled) {
+  background: var(--paper);
+  border-color: var(--line-hover);
+}
+/* Champs d'une prestation sur téléphone : deux par rang */
+@container devis (max-width: 520px) {
+  .option-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .option-fields label:has(select) {
+    grid-column: 1 / -1;
+  }
+  .option-fields label {
+    white-space: normal;
+  }
+}
+
+/* Recherche de produit ou de client : la fenêtre reste en haut pendant que
+   les résultats arrivent, au lieu de sauter verticalement à chaque frappe. */
+dialog:has(> .picker-search) {
+  margin-top: max(16px, 8vh);
+}

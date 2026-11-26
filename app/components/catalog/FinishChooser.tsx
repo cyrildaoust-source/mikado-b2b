@@ -132,9 +132,10 @@ export function FinishChooserHost() {
               {error}
             </p>
           ) : !data ? (
-            <p className="muted" role="status">
-              Chargement des finitions…
-            </p>
+            <div className="finish-loading">
+              <span aria-hidden="true" />
+              <p role="status">Chargement des finitions…</p>
+            </div>
           ) : (
             <div className="finish-body">
               <div className="finish-photo">

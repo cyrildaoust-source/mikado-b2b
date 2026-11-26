@@ -396,7 +396,7 @@ export default function Catalogue() {
             <h2>Aucun produit trouvé</h2>
             <p>Retirez un filtre ou cherchez un autre mot.</p>
             {filtered && (
-              <Link to="/app/catalogue" reloadDocument>
+              <Link to="/app/catalogue" reloadDocument className="button">
                 Voir tout le catalogue
               </Link>
             )}
@@ -462,7 +462,8 @@ export default function Catalogue() {
           {openQuote ? (
             <span className="dock-quote">
               <small>Devis en cours</small>
-              <strong>{openQuote.title}</strong>
+              <strong title={openQuote.title}>{openQuote.title}</strong>
+              <span className="dock-quote-total">{money(openQuote.total)} HTVA</span>
             </span>
           ) : (
             <span className="dock-quote">
@@ -492,8 +493,8 @@ export default function Catalogue() {
               <span className="dock-error">{chooser.data.error}</span>
             ) : openQuote ? (
               <span className="dock-hint">
-                + ajoute un produit {lastRoom ? `à ${lastRoom}` : "au devis"}.
-                <span className="hint-fine"> Glissez-le pour choisir la pièce, une alternative ou une option.</span>
+                Le bouton <b>+</b> d'une carte l'ajoute {lastRoom ? `à ${lastRoom}` : "au devis"}.
+                <span className="hint-fine"> Glissez une carte pour choisir la pièce, une alternative ou une option.</span>
               </span>
             ) : (
               <span className="dock-hint">
@@ -525,10 +526,7 @@ export default function Catalogue() {
                     >
                       <span>
                         {q.title}
-                        <small>
-                          {q.number}
-                          {q.customer ? ` · ${q.customer}` : ""}
-                        </small>
+                        {q.customer && <small>{q.customer}</small>}
                       </span>
                     </button>
                   ))}

@@ -64,9 +64,14 @@ export function CustomerEmailAutocomplete({
           maxLength={254}
           disabled={disabled}
           value={value}
+          role="combobox"
           aria-autocomplete="list"
-          aria-expanded={show && (busy || error || items.length > 0)}
-          aria-controls="customer-email-suggestions"
+          aria-expanded={show && !busy && !error && items.length > 0}
+          aria-controls={
+            show && !busy && !error && items.length > 0
+              ? "customer-email-suggestions"
+              : undefined
+          }
           onFocus={() => setFocused(true)}
           onBlur={() => window.setTimeout(() => setFocused(false), 120)}
           onChange={(event) => onChange(event.target.value)}
@@ -75,23 +80,28 @@ export function CustomerEmailAutocomplete({
           }}
         />
       </label>
-      {show && (busy || error || items.length > 0) && (
+      {show && busy && (
+        <p className="email-suggestions" role="status">
+          Recherche dans Shopify…
+        </p>
+      )}
+      {show && !busy && error && (
+        <p className="email-suggestions" role="alert">
+          Suggestions Shopify indisponibles.
+        </p>
+      )}
+      {show && !busy && !error && items.length > 0 && (
         <div
           id="customer-email-suggestions"
           className="email-suggestions"
           role="listbox"
           aria-label="Clients Shopify suggérés"
         >
-          {busy && <p role="status">Recherche dans Shopify…</p>}
-          {!busy && error && (
-            <p role="alert">Suggestions Shopify indisponibles.</p>
-          )}
-          {!busy &&
-            !error &&
-            items.map((customer) => (
+          {items.map((customer) => (
               <button
                 type="button"
                 role="option"
+                aria-selected={false}
                 key={customer.id || customer.email}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => {

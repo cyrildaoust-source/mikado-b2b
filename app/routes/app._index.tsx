@@ -162,35 +162,81 @@ export default function Quotes() {
             </tbody>
           </table>
         ) : (
-          <div className="empty-state">
-            <span className="empty-symbol">◇</span>
-            <h2>
-              {search || filter !== "all"
-                ? "Aucun devis trouvé"
-                : "Votre premier projet commence ici"}
-            </h2>
-            <p>
-              {search || filter !== "all"
-                ? "Essayez un autre nom ou un autre filtre."
-                : "Choisissez un client, composez votre proposition et préparez son PDF."}
-            </p>
-            {!search && filter === "all" && (
-              <Form method="post">
-                <button className="primary">Créer un devis</button>
-              </Form>
-            )}
-          </div>
+          <EmptyList search={search} filter={filter} />
         )}
-        <footer className="pagination">
-          <span>
-            {total} devis · page {page} sur {pages}
-          </span>
-          <div>
-            {page > 1 && <Link to={href(page - 1)}>Précédent</Link>}
-            {page < pages && <Link to={href(page + 1)}>Suivant</Link>}
-          </div>
-        </footer>
+        {total > 0 && (
+          <footer className="pagination">
+            <span>
+              {total} devis
+              {pages > 1 && ` · page ${page} sur ${pages}`}
+            </span>
+            {pages > 1 && (
+              <div>
+                {page > 1 && (
+                  <Link className="button" to={href(page - 1)}>
+                    Précédent
+                  </Link>
+                )}
+                {page < pages && (
+                  <Link className="button" to={href(page + 1)}>
+                    Suivant
+                  </Link>
+                )}
+              </div>
+            )}
+          </footer>
+        )}
       </div>
     </main>
+  );
+}
+
+const EMPTY: Record<string, [string, string]> = {
+  draft: ["Aucun brouillon", "Les devis en cours de rédaction apparaîtront ici."],
+  ready: ["Aucun devis prêt à envoyer", "Un devis complet, pas encore envoyé, apparaîtra ici."],
+  sent: ["Aucun devis envoyé", "Les devis envoyés au client apparaîtront ici."],
+  ordered: ["Aucune commande", "Les devis transformés en commande apparaîtront ici."],
+  archived: ["Aucun devis archivé", "Les devis que vous archivez sont rangés ici."],
+  deleted: ["La corbeille est vide", "Les devis supprimés restent ici, prêts à être restaurés."],
+};
+
+/** État vide : un premier devis à créer, ou une recherche sans résultat
+ * qu'on efface d'un clic. */
+function EmptyList({ search, filter }: { search: string; filter: string }) {
+  if (search)
+    return (
+      <div className="empty-state">
+        <h2>Aucun devis pour « {search} »</h2>
+        <p>Vérifiez l'orthographe, ou cherchez un client ou une référence.</p>
+        <Link
+          className="button"
+          to={filter === "all" ? "/app" : `/app?status=${filter}`}
+        >
+          Effacer la recherche
+        </Link>
+      </div>
+    );
+  if (filter !== "all") {
+    const [title, text] = EMPTY[filter] || ["Aucun devis", ""];
+    return (
+      <div className="empty-state">
+        <h2>{title}</h2>
+        {text && <p>{text}</p>}
+        <Link className="button" to="/app">
+          Voir tous les devis
+        </Link>
+      </div>
+    );
+  }
+  return (
+    <div className="empty-state">
+      <h2>Votre premier projet commence ici</h2>
+      <p>
+        Choisissez un client, composez votre proposition et préparez son PDF.
+      </p>
+      <Form method="post">
+        <button className="primary">Créer un devis</button>
+      </Form>
+    </div>
   );
 }

@@ -1,1 +1,417 @@
 /* Finition moodboard : passe de finition du 26/11 sur cette zone, chargée après outil.css. */
+
+/* ——— Menu Exporter : deux groupes nommés, lignes de même hauteur ——— */
+.mood-export > div {
+  min-width: 280px;
+  max-width: min(360px, calc(100vw - 32px));
+}
+.mood-export > div button {
+  width: 100%;
+  min-height: var(--touch);
+  padding: 6px 12px;
+  white-space: normal;
+}
+.mood-export > div button small {
+  line-height: 1.35;
+}
+.mood-export > div button:disabled small {
+  color: inherit;
+}
+.mood-menu-label {
+  padding: 10px 12px 4px;
+  color: var(--ink-3);
+  font-size: var(--t-small);
+  font-weight: 500;
+}
+.mood-menu-label ~ .mood-menu-label {
+  margin-top: 4px;
+  border-top: 1px solid var(--line);
+}
+.mood-export > summary[aria-busy] {
+  color: var(--ink-2);
+}
+
+/* ——— Messages ——— */
+.mood-message {
+  justify-content: space-between;
+}
+.mood-message .text-button {
+  min-height: var(--compact);
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ——— Devis sans produit ——— */
+.mood-empty {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.mood-empty h2 {
+  font-size: var(--t-section);
+  font-weight: 500;
+  color: var(--ink);
+}
+
+/* ——— Onglets des pièces ——— */
+.mood-tabs button {
+  max-width: 280px;
+  min-height: var(--compact);
+  padding: 0 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ——— Colonne de photos ——— */
+.mood-palette {
+  gap: 12px;
+}
+.mood-palette-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.mood-palette-actions button {
+  min-width: 0;
+  min-height: var(--control);
+  padding: 0 10px;
+}
+.mood-palette-actions .mood-add-photo {
+  grid-column: 1 / -1;
+}
+.mood-palette-empty {
+  margin: 0;
+  padding: 16px 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--ink-2);
+  font-size: var(--t-small);
+  line-height: 1.5;
+  text-align: center;
+}
+button.mood-photo {
+  align-content: start;
+  height: 100%;
+}
+button.mood-photo:disabled {
+  cursor: default;
+}
+.mood-photo-name {
+  font-size: var(--t-small);
+}
+.mood-tag {
+  max-width: calc(100% - 20px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+button.mood-remove {
+  display: grid;
+  place-items: center;
+  width: var(--compact);
+  min-height: var(--compact);
+  height: var(--compact);
+  border-color: var(--line-strong);
+  background: var(--surface);
+  box-shadow: var(--shadow-control);
+  font-size: 18px;
+  line-height: 1;
+}
+.mood-remove-confirm {
+  padding: 4px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-float);
+}
+.mood-remove-confirm button {
+  min-height: var(--compact);
+}
+
+/* ——— Barre d'outils : une ligne de hauteur fixe, la planche ne saute plus ——— */
+.mood-toolbar {
+  flex-wrap: nowrap;
+  gap: 8px;
+  min-width: 0;
+}
+.mood-tools {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  /* Place pour l'anneau de focus, sans couper les boutons */
+  margin: -4px;
+  padding: 4px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.mood-tools::-webkit-scrollbar {
+  display: none;
+}
+.mood-tools.has-more {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+}
+.mood-tools > *,
+.mood-toolbar-end > * {
+  flex: none;
+}
+.mood-toolbar button,
+.mood-toolbar select,
+.mood-toolbar input[type="text"] {
+  height: var(--compact);
+  min-height: var(--compact);
+  white-space: nowrap;
+}
+.mood-toolbar select {
+  min-width: 104px;
+}
+.mood-toolbar-end {
+  flex: none;
+  gap: 6px;
+  margin-left: 0;
+}
+.mood-history {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.mood-icon,
+.mood-history {
+  min-width: var(--compact);
+  justify-content: center;
+}
+.mood-toolbar button.mood-icon {
+  width: var(--compact);
+  padding: 0;
+}
+.mood-group,
+.mood-swatches {
+  display: inline-flex;
+  gap: 4px;
+}
+.mood-sep {
+  flex: none;
+  height: 24px;
+}
+
+/* Pastilles : la cible a la taille d'un bouton, le rond reste discret */
+.mood-toolbar button.mood-swatch {
+  display: grid;
+  place-items: center;
+  width: var(--compact);
+  height: var(--compact);
+  min-height: var(--compact);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  box-shadow: none;
+}
+.mood-toolbar button.mood-swatch:hover:not(:disabled) {
+  background: var(--ground);
+}
+.mood-swatch > span {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-pill);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.mood-toolbar button.mood-swatch.active,
+.mood-toolbar button.mood-swatch.active:hover:not(:disabled) {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.mood-swatch.active > span {
+  box-shadow:
+    inset 0 0 0 1px var(--line-strong),
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--brass);
+}
+.mood-toolbar button.mood-swatch:focus-visible {
+  box-shadow: var(--focus);
+}
+.mood-color-field input[type="color"] {
+  width: var(--control);
+  height: var(--compact);
+  cursor: pointer;
+}
+.mood-toolbar input.mood-color-name {
+  width: 200px;
+}
+
+/* ——— Planche ——— */
+.mood-board {
+  position: relative;
+}
+.mood-board-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  color: var(--ink-3);
+  font-size: var(--t-body);
+  line-height: 1.5;
+  text-align: center;
+  pointer-events: none;
+}
+.mood-board[aria-busy="true"] .mood-board-state {
+  background: var(--paper);
+}
+.mood-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--line-strong);
+  border-top-color: var(--brass);
+  border-radius: var(--radius-pill);
+  animation: mood-spin 0.8s linear infinite;
+}
+@keyframes mood-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mood-spinner {
+    animation: none;
+  }
+}
+/* Un élément minuscule (sous-titre, légende) reste attrapable */
+.mood-item {
+  min-width: 24px;
+  min-height: 24px;
+}
+/* Poignée : rond visible, zone de prise plus large */
+.mood-handle {
+  right: -12px;
+  bottom: -12px;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: transparent;
+}
+.mood-handle::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 2px solid var(--surface);
+  border-radius: var(--radius-pill);
+  background: var(--brass);
+  box-shadow: 0 1px 3px rgba(22, 24, 26, 0.3);
+}
+@media (pointer: coarse) {
+  .mood-handle {
+    right: -22px;
+    bottom: -22px;
+    width: var(--touch);
+    height: var(--touch);
+  }
+  .mood-handle::after {
+    inset: 11px;
+  }
+}
+.mood-stage > .mood-hint {
+  max-width: 72ch;
+  line-height: 1.5;
+}
+
+/* Libellés d'Annuler et Rétablir sur grand écran seulement */
+@media (max-width: 1279px) {
+  .mood-btn-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .mood-toolbar button.mood-history {
+    width: var(--compact);
+    padding: 0;
+  }
+}
+
+/* Tablette en portrait et téléphone */
+@media (max-width: 1000px) {
+  .mood-palette-actions {
+    grid-template-columns: 1fr 1fr 2fr;
+  }
+  .mood-palette-actions .mood-add-photo {
+    grid-column: auto;
+  }
+}
+@media (max-width: 700px) {
+  .mood-tabs {
+    flex-wrap: nowrap;
+    margin: 0 calc(-1 * var(--gutter)) 12px;
+    padding: 2px var(--gutter);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .mood-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .mood-tabs button {
+    flex: none;
+    max-width: 220px;
+  }
+  .mood-toolbar input.mood-color-name {
+    width: 170px;
+  }
+  .mood-photos li {
+    flex-basis: 128px;
+  }
+}
+@media (max-width: 440px) {
+  .mood-palette-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+  .mood-palette-actions .mood-add-photo {
+    grid-column: 1 / -1;
+  }
+}
+
+/* En-tête : sur téléphone, le titre garde sa hauteur naturelle (la règle
+   flex 1 1 300px de l'en-tête du devis devient une hauteur en colonne) et
+   Exporter, seul bouton, garde sa largeur. */
+.quote-header.mood-header > div:first-child {
+  flex-basis: auto;
+}
+@media (max-width: 700px) {
+  .quote-header.mood-header .header-actions {
+    display: flex;
+  }
+  .quote-header.mood-header .header-actions > * {
+    width: auto;
+  }
+  .quote-header.mood-header .mood-export > div {
+    left: 0;
+    right: auto;
+  }
+}
+
+/* Onglet au nom long : coupé proprement à droite */
+.mood-tabs button {
+  min-width: 0;
+}
+.mood-tab-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mood-toolbar .mood-color-field {
+  height: var(--compact);
+  margin: 0;
+  padding: 0;
+  line-height: 1;
+}

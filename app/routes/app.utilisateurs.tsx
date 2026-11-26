@@ -132,80 +132,116 @@ export default function Users() {
           )}
         </div>
       )}
-      {users.length > 0 && (
-        <div className="list-card">
-          <table className="quote-table">
+      <div className="list-card">
+        {users.length > 0 ? (
+          <table className="quote-table user-table">
             <thead>
               <tr>
-                <th>Nom</th>
-                <th>E-mail</th>
+                <th>Personne</th>
                 <th>Rôle</th>
                 <th>État</th>
-                <th></th>
+                <th>
+                  <span className="visually-hidden">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
               {users.map((u) => (
-                <tr key={u.id}>
-                  <td>{u.name}</td>
-                  <td>{u.email}</td>
+                <tr key={u.id} className={u.active ? undefined : "is-off"}>
+                  <td>
+                    <span className="user-name">
+                      {u.name}
+                      {u.id === me && <span className="muted"> · vous</span>}
+                    </span>
+                    <small>{u.email}</small>
+                  </td>
                   <td>{u.role === "admin" ? "Mikado Deco" : "Architecte"}</td>
                   <td>
-                    {!u.active
-                      ? "Accès retiré"
-                      : u.ready
-                        ? u.lastLoginAt
-                          ? `Dernière connexion le ${new Date(u.lastLoginAt).toLocaleDateString("fr-BE")}`
-                          : "Prêt"
-                        : "Invitation en attente"}
+                    <UserState user={u} />
                   </td>
                   <td className="row-actions">
-                    <Form method="post">
-                      <input type="hidden" name="id" value={u.id} />
-                      {u.active && (
-                        <button name="intent" value="invite">
-                          Nouveau lien
-                        </button>
-                      )}
-                      {u.id !== me && (
-                        <button name="intent" value="toggle">
-                          {u.active ? "Retirer l'accès" : "Rouvrir l'accès"}
-                        </button>
-                      )}
-                    </Form>
+                    {(u.active || u.id !== me) && (
+                      <Form method="post">
+                        <input type="hidden" name="id" value={u.id} />
+                        {u.active && (
+                          <button name="intent" value="invite">
+                            Nouveau lien
+                          </button>
+                        )}
+                        {u.id !== me && (
+                          <button name="intent" value="toggle">
+                            {u.active ? "Retirer l'accès" : "Rouvrir l'accès"}
+                          </button>
+                        )}
+                      </Form>
+                    )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      )}
+        ) : (
+          <div className="empty-state">
+            <h2>Aucun accès pour l'instant</h2>
+            <p>Ajoutez une première personne ci-dessous.</p>
+          </div>
+        )}
+      </div>
       <div className="list-card">
         <Form method="post" className="user-form">
           <h2>Ajouter un accès</h2>
           <label>
             Nom
-            <input name="name" required maxLength={150} />
+            <input name="name" required maxLength={150} autoComplete="off" />
           </label>
           <label>
             E-mail
-            <input name="email" type="email" required maxLength={250} />
+            <input
+              name="email"
+              type="email"
+              required
+              maxLength={250}
+              autoComplete="off"
+            />
           </label>
           <label>
             Rôle
-            <select name="role" defaultValue="architect">
-              <option value="architect">
-                Architecte · ses devis, sans prix d'achat
-              </option>
-              <option value="admin">Mikado Deco (tout voir, régler)</option>
+            <select
+              name="role"
+              defaultValue="architect"
+              aria-describedby="role-help"
+            >
+              <option value="architect">Architecte</option>
+              <option value="admin">Mikado Deco</option>
             </select>
           </label>
           <button className="primary" name="intent" value="create">
-            Créer l'accès et le lien
+            Créer l'accès
           </button>
+          <p id="role-help" className="user-form-help">
+            Un architecte voit ses propres devis, sans prix d'achat. Mikado
+            Deco voit tout et règle l'outil. Un lien d'invitation est créé, à
+            envoyer vous-même.
+          </p>
         </Form>
       </div>
     </main>
+  );
+}
+
+function UserState({
+  user,
+}: {
+  user: { active: boolean; ready: boolean; lastLoginAt: string | Date | null };
+}) {
+  if (!user.active) return <s-badge tone="critical">Accès retiré</s-badge>;
+  if (!user.ready) return <s-badge>Invitation en attente</s-badge>;
+  return (
+    <s-badge tone="success">
+      {user.lastLoginAt
+        ? `Connecté le ${new Date(user.lastLoginAt).toLocaleDateString("fr-BE")}`
+        : "Prêt"}
+    </s-badge>
   );
 }
 

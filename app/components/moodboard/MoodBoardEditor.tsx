@@ -7,6 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import { Link } from "react-router";
 import { Breadcrumb } from "../Breadcrumb";
 import { BoardView } from "./BoardView";
 import {
@@ -59,6 +60,51 @@ const TAGS: Record<PaletteItem["tag"], string> = {
   ajout: "Ajoutée",
 };
 const INKS = ["#16181a", "#5f5d58", "#8a6a3d", "#ffffff"];
+const INK_NAMES: Record<string, string> = {
+  "#16181a": "noir",
+  "#5f5d58": "gris",
+  "#8a6a3d": "laiton",
+  "#ffffff": "blanc",
+};
+const ALIGNS = [
+  { value: "left", label: "Aligner à gauche" },
+  { value: "center", label: "Centrer" },
+  { value: "right", label: "Aligner à droite" },
+] as const;
+
+/** Petites icônes au trait, à la couleur du texte. */
+function AlignIcon({ align }: { align: "left" | "center" | "right" }) {
+  const widths = [14, 9, 14, 7];
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+      {widths.map((w, n) => {
+        const x = align === "left" ? 1 : align === "right" ? 15 - w : (16 - w) / 2;
+        return <rect key={n} x={x} y={2 + n * 3.4} width={w} height="1.4" rx="0.7" fill="currentColor" />;
+      })}
+    </svg>
+  );
+}
+function HistoryIcon({ redo }: { redo?: boolean }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      focusable="false"
+      style={redo ? { transform: "scaleX(-1)" } : undefined}
+    >
+      <path
+        d="M5.5 3 2.5 6l3 3M2.8 6H10a3.5 3.5 0 0 1 0 7H6.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 const MAX_SIDE = 2000;
 
 /** Nouveau fond : les textes aux couleurs par défaut restent lisibles. */
@@ -104,10 +150,37 @@ export function MoodBoardEditor({
   const gesture = useRef<Gesture | null>(null);
   const ratios = useRef(new Map<string, number>());
   const fileInput = useRef<HTMLInputElement>(null);
+  const exportMenu = useRef<HTMLDetailsElement>(null);
+  const tools = useRef<HTMLDivElement>(null);
+  const [moreTools, setMoreTools] = useState(false);
 
   const section = sections.find((s) => s.key === key);
   const board = boards.find((b) => b.key === key) || { key, background: "#ffffff", items: [] };
   const item = board.items.find((i) => i.id === selected) || null;
+  const toolsKind = item?.kind || "board";
+
+  // Barre d'outils : sur un écran étroit elle défile, un fondu signale la suite.
+  useEffect(() => {
+    const el = tools.current;
+    if (!el) return;
+    el.scrollLeft = 0;
+    const check = () => setMoreTools(el.scrollWidth - el.clientWidth - el.scrollLeft > 2);
+    check();
+    el.addEventListener("scroll", check, { passive: true });
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(check);
+    ro?.observe(el);
+    return () => {
+      el.removeEventListener("scroll", check);
+      ro?.disconnect();
+    };
+  }, [toolsKind, key]);
+
+  // Un message de réussite s'efface tout seul ; une erreur reste affichée.
+  useEffect(() => {
+    if (message?.tone !== "ok") return;
+    const t = setTimeout(() => setMessage(null), 6000);
+    return () => clearTimeout(t);
+  }, [message]);
 
   const resolve = useCallback(
     (src: string) =>
@@ -517,6 +590,7 @@ export function MoodBoardEditor({
 
   // ——— Exports
   async function download(format: "pptx" | "pdf" | "png", only?: string) {
+    if (exportMenu.current) exportMenu.current.open = false;
     setBusy(format);
     setMessage(null);
     try {
@@ -558,12 +632,15 @@ export function MoodBoardEditor({
         key={it.id}
         style={style}
         className={`mood-item mood-${it.kind}${isSel ? " selected" : ""}${isEditing ? " editing" : ""}`}
-        role="button"
+        // Objet posé sur une planche à dessin : sa place et sa taille sont le
+        // contenu (exception « essentielle » du critère 2.5.8), d'où un groupe
+        // nommé plutôt qu'un bouton. Tab le sélectionne, les flèches le déplacent.
+        role="group"
+        aria-roledescription="élément de la planche"
         tabIndex={0}
-        aria-label={
+        aria-label={`${
           it.kind === "photo" ? `Photo ${it.alt}` : it.kind === "text" ? `Texte ${it.text}` : `Couleur ${it.label || it.color}`
-        }
-        aria-pressed={isSel}
+        }${isSel ? ", sélectionné" : ""}`}
         onFocus={() => setSelected(it.id)}
         onPointerDown={(e) => onItemDown(e, it, "move")}
         onPointerMove={onItemMove}
@@ -606,6 +683,9 @@ export function MoodBoardEditor({
   const saveLabel =
     status === "saving" ? "Enregistrement…" : status === "error" ? "Non enregistré" : "Enregistré";
   const nonEmpty = boards.some((b) => b.items.length);
+  // Première ouverture : la planche de la pièce se dispose encore.
+  const preparing = !!section && !boards.some((b) => b.key === key);
+  const exporting = busy && busy !== "upload";
 
   return (
     <main className="workspace mood-page">
@@ -627,40 +707,59 @@ export function MoodBoardEditor({
             <span className="muted">{project}</span>
           </div>
         </div>
-        <div className="header-actions">
-          <details className="action-menu mood-export">
-            <summary>{busy && busy !== "upload" ? "Préparation…" : "Exporter"}</summary>
-            <div>
-              <button disabled={!!busy || !nonEmpty} onClick={() => download("pptx")}>
-                PowerPoint, toutes les pièces
-                <small>S'ouvre aussi dans Canva et Keynote</small>
-              </button>
-              <button disabled={!!busy || !nonEmpty} onClick={() => download("pdf")}>
-                PDF, toutes les pièces
-                <small>Une page par pièce</small>
-              </button>
-              <button disabled={!!busy || !board.items.length} onClick={() => download("pdf", key)}>
-                PDF de cette planche
-              </button>
-              <button disabled={!!busy || !board.items.length} onClick={() => download("png", key)}>
-                Image HD de cette planche
-                <small>PNG 3840 × 2160, pour Photoshop</small>
-              </button>
-            </div>
-          </details>
-        </div>
+        {sections.length > 0 && (
+          <div className="header-actions">
+            <details ref={exportMenu} className="action-menu mood-export">
+              <summary aria-busy={exporting ? true : undefined}>
+                {exporting ? "Préparation…" : "Exporter"}
+              </summary>
+              <div>
+                <span className="mood-menu-label">Toutes les pièces</span>
+                <button disabled={!!busy || !nonEmpty} onClick={() => download("pptx")}>
+                  PowerPoint
+                  <small>Une diapositive par pièce, s'ouvre dans Canva et Keynote</small>
+                </button>
+                <button disabled={!!busy || !nonEmpty} onClick={() => download("pdf")}>
+                  PDF
+                  <small>Une page par pièce</small>
+                </button>
+                <span className="mood-menu-label">Planche ouverte</span>
+                <button disabled={!!busy || !board.items.length} onClick={() => download("pdf", key)}>
+                  PDF
+                  <small>{section?.title || "Cette planche"}, une page</small>
+                </button>
+                <button disabled={!!busy || !board.items.length} onClick={() => download("png", key)}>
+                  Image HD
+                  <small>PNG 3840 × 2160, pour Photoshop</small>
+                </button>
+              </div>
+            </details>
+          </div>
+        )}
       </header>
 
       {message && (
-        <p role={message.tone === "error" ? "alert" : "status"} className={message.tone === "error" ? "error" : "success"}>
-          {message.text}
+        <p
+          role={message.tone === "error" ? "alert" : "status"}
+          className={`mood-message ${message.tone === "error" ? "error" : "success"}`}
+        >
+          <span>{message.text}</span>
+          {message.tone === "error" && (
+            <button type="button" className="text-button" onClick={() => setMessage(null)}>
+              Fermer
+            </button>
+          )}
         </p>
       )}
 
       {sections.length === 0 ? (
-        <s-section>
-          <p>Ajoutez des produits au devis : chaque pièce aura sa planche.</p>
-        </s-section>
+        <section className="empty-state mood-empty">
+          <h2>Aucun produit dans ce devis</h2>
+          <p>Ajoutez des produits au devis : chaque pièce aura sa planche, avec les photos déjà posées.</p>
+          <Link className="button primary" to={`/app/quotes/${id}`}>
+            Ouvrir le devis
+          </Link>
+        </section>
       ) : (
         <>
           {sections.length > 1 && (
@@ -668,16 +767,18 @@ export function MoodBoardEditor({
               {sections.map((s) => (
                 <button
                   key={s.key}
+                  type="button"
                   role="tab"
                   aria-selected={s.key === key}
                   className={s.key === key ? "active" : ""}
+                  title={s.title}
                   onClick={() => {
                     setKey(s.key);
                     setSelected(null);
                     setEditing(null);
                   }}
                 >
-                  {s.title}
+                  <span className="mood-tab-label">{s.title}</span>
                 </button>
               ))}
             </div>
@@ -686,17 +787,27 @@ export function MoodBoardEditor({
           <div className="mood-layout">
             <aside className="mood-palette" aria-label="Photos et éléments">
               <div className="mood-palette-actions">
-                <button type="button" onClick={addText}>Texte</button>
-                <button type="button" onClick={addColor}>Couleur</button>
-                <button type="button" disabled={busy === "upload"} onClick={() => fileInput.current?.click()}>
-                  {busy === "upload" ? "Envoi…" : "Ajouter une photo"}
+                <button type="button" onClick={addText} disabled={preparing}>
+                  Texte
+                </button>
+                <button type="button" onClick={addColor} disabled={preparing}>
+                  Couleur
+                </button>
+                <button
+                  type="button"
+                  className="mood-add-photo"
+                  disabled={busy === "upload" || preparing}
+                  onClick={() => fileInput.current?.click()}
+                >
+                  {busy === "upload" ? "Envoi en cours…" : "Ajouter une photo"}
                 </button>
                 <input
                   ref={fileInput}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   multiple
                   style={{ display: "none" }}
+                  aria-label="Photos à ajouter"
                   onChange={(e) => {
                     const files = [...(e.target.files || [])];
                     e.target.value = "";
@@ -704,163 +815,208 @@ export function MoodBoardEditor({
                   }}
                 />
               </div>
-              <p className="muted mood-hint">
-                Touchez une photo pour l'ajouter, ou glissez-la sur la planche.
-              </p>
-              <ul className="mood-photos">
-                {palette.map((p) => {
-                  const u = p.tag === "ajout" ? uploads.find((x) => `upload:${x.id}` === p.src) : null;
-                  return (
-                    <li key={p.src}>
-                      <button
-                        type="button"
-                        className="mood-photo"
-                        draggable
-                        onDragStart={(e) => {
-                          e.dataTransfer.setData("application/x-mood-photo", JSON.stringify({ src: p.src, alt: p.alt }));
-                          e.dataTransfer.effectAllowed = "copy";
-                        }}
-                        onClick={() => void addPhoto(p)}
-                        title={p.alt}
-                      >
-                        <img src={p.src.startsWith("upload:") ? resolve(p.src) : sized(p.src, 400)} alt="" loading="lazy" />
-                        <span className={`mood-tag tag-${p.tag}`}>{TAGS[p.tag]}</span>
-                        <span className="mood-photo-name">{p.alt}</span>
-                      </button>
-                      {u &&
-                        (confirmDelete === u.id ? (
-                          <span className="mood-remove-confirm">
-                            <button type="button" className="danger" onClick={() => void removeUpload(u)}>
-                              Supprimer
-                            </button>
-                            <button type="button" onClick={() => setConfirmDelete(null)}>
-                              Garder
-                            </button>
-                          </span>
-                        ) : (
+              {palette.length > 0 ? (
+                <>
+                  <p className="muted mood-hint">
+                    Touchez une photo pour l'ajouter, ou glissez-la sur la planche.
+                  </p>
+                  <ul className="mood-photos">
+                    {palette.map((p) => {
+                      const u = p.tag === "ajout" ? uploads.find((x) => `upload:${x.id}` === p.src) : null;
+                      return (
+                        <li key={p.src}>
                           <button
                             type="button"
-                            className="mood-remove"
-                            aria-label={`Supprimer la photo ${u.name}`}
-                            onClick={() => setConfirmDelete(u.id)}
+                            className="mood-photo"
+                            draggable
+                            disabled={preparing}
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData("application/x-mood-photo", JSON.stringify({ src: p.src, alt: p.alt }));
+                              e.dataTransfer.effectAllowed = "copy";
+                            }}
+                            onClick={() => void addPhoto(p)}
+                            title={p.alt}
+                            aria-label={`Ajouter ${p.alt || "la photo"} (${TAGS[p.tag].toLowerCase()})`}
                           >
-                            ×
+                            <img src={p.src.startsWith("upload:") ? resolve(p.src) : sized(p.src, 400)} alt="" loading="lazy" />
+                            <span className={`mood-tag tag-${p.tag}`}>{TAGS[p.tag]}</span>
+                            <span className="mood-photo-name">{p.alt || "Photo"}</span>
                           </button>
-                        ))}
-                    </li>
-                  );
-                })}
-              </ul>
-              {!palette.length && (
-                <p className="muted">Aucune photo pour cette pièce. Ajoutez les vôtres.</p>
+                          {u &&
+                            (confirmDelete === u.id ? (
+                              <span className="mood-remove-confirm">
+                                <button type="button" className="danger" onClick={() => void removeUpload(u)}>
+                                  Supprimer
+                                </button>
+                                <button type="button" onClick={() => setConfirmDelete(null)}>
+                                  Garder
+                                </button>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="mood-remove"
+                                aria-label={`Supprimer la photo ${u.name}`}
+                                title="Supprimer cette photo"
+                                onClick={() => setConfirmDelete(u.id)}
+                              >
+                                <span aria-hidden="true">×</span>
+                              </button>
+                            ))}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </>
+              ) : (
+                <p className="mood-palette-empty">
+                  Aucune photo pour cette pièce. Ajoutez les vôtres : JPEG, PNG ou WebP.
+                </p>
               )}
             </aside>
 
             <section className="mood-stage" aria-label={`Planche ${section?.title || ""}`}>
               <div className="mood-toolbar" role="toolbar" aria-label="Mise en forme">
-                {!item && (
-                  <>
-                    <span className="mood-label">Fond</span>
-                    {BACKGROUNDS.map((bg) => (
-                      <button
-                        key={bg.value}
-                        type="button"
-                        className={`mood-swatch${board.background === bg.value ? " active" : ""}`}
-                        style={{ background: bg.value }}
-                        aria-label={`Fond ${bg.label}`}
-                        aria-pressed={board.background === bg.value}
-                        onClick={() => updateBoard((b) => withBackground(b, bg.value))}
-                      />
-                    ))}
-                    <span className="mood-sep" />
-                    <button type="button" onClick={() => void relayout()}>
-                      Disposer automatiquement
-                    </button>
-                  </>
-                )}
-                {item?.kind === "text" && (
-                  <>
-                    <select
-                      aria-label="Style du texte"
-                      value={item.style}
-                      onChange={(e) => updateItem(item.id, { style: e.target.value as TextStyle })}
-                    >
-                      {Object.entries(TEXT_STYLES).map(([k, v]) => (
-                        <option key={k} value={k}>
-                          {v.label}
-                        </option>
-                      ))}
-                    </select>
-                    {(["left", "center", "right"] as const).map((a) => (
-                      <button
-                        key={a}
-                        type="button"
-                        aria-pressed={item.align === a}
-                        className={item.align === a ? "active" : ""}
-                        onClick={() => updateItem(item.id, { align: a })}
-                      >
-                        {a === "left" ? "Gauche" : a === "center" ? "Centré" : "Droite"}
+                <div
+                  ref={tools}
+                  key={toolsKind}
+                  className={`mood-tools${moreTools ? " has-more" : ""}`}
+                >
+                  {!item && (
+                    <>
+                      <span className="mood-label" id="mood-bg-label">
+                        Fond
+                      </span>
+                      <span className="mood-swatches" role="group" aria-labelledby="mood-bg-label">
+                        {BACKGROUNDS.map((bg) => (
+                          <button
+                            key={bg.value}
+                            type="button"
+                            className={`mood-swatch${board.background === bg.value ? " active" : ""}`}
+                            aria-label={`Fond ${bg.label}`}
+                            title={bg.label}
+                            aria-pressed={board.background === bg.value}
+                            disabled={preparing}
+                            onClick={() => updateBoard((b) => withBackground(b, bg.value))}
+                          >
+                            <span style={{ background: bg.value }} />
+                          </button>
+                        ))}
+                      </span>
+                      <span className="mood-sep" aria-hidden="true" />
+                      <button type="button" disabled={preparing} onClick={() => void relayout()}>
+                        Disposer automatiquement
                       </button>
-                    ))}
-                    {INKS.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        className={`mood-swatch${item.color === c ? " active" : ""}`}
-                        style={{ background: c }}
-                        aria-label={`Couleur du texte ${c}`}
-                        aria-pressed={item.color === c}
-                        onClick={() => updateItem(item.id, { color: c })}
-                      />
-                    ))}
-                    <button type="button" onClick={() => setEditing(item.id)}>
-                      Modifier le texte
-                    </button>
-                  </>
-                )}
-                {item?.kind === "color" && (
-                  <>
-                    <label className="mood-color-field">
-                      <span className="mood-label">Teinte</span>
+                    </>
+                  )}
+                  {item?.kind === "text" && (
+                    <>
+                      <select
+                        aria-label="Style du texte"
+                        value={item.style}
+                        onChange={(e) => updateItem(item.id, { style: e.target.value as TextStyle })}
+                      >
+                        {Object.entries(TEXT_STYLES).map(([k, v]) => (
+                          <option key={k} value={k}>
+                            {v.label}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="mood-group" role="group" aria-label="Alignement">
+                        {ALIGNS.map((a) => (
+                          <button
+                            key={a.value}
+                            type="button"
+                            className={`mood-icon${item.align === a.value ? " active" : ""}`}
+                            aria-label={a.label}
+                            title={a.label}
+                            aria-pressed={item.align === a.value}
+                            onClick={() => updateItem(item.id, { align: a.value })}
+                          >
+                            <AlignIcon align={a.value} />
+                          </button>
+                        ))}
+                      </span>
+                      <span className="mood-swatches" role="group" aria-label="Couleur du texte">
+                        {INKS.map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            className={`mood-swatch${item.color === c ? " active" : ""}`}
+                            aria-label={`Texte ${INK_NAMES[c]}`}
+                            title={INK_NAMES[c]}
+                            aria-pressed={item.color === c}
+                            onClick={() => updateItem(item.id, { color: c })}
+                          >
+                            <span style={{ background: c }} />
+                          </button>
+                        ))}
+                      </span>
+                      <button type="button" onClick={() => setEditing(item.id)}>
+                        Modifier le texte
+                      </button>
+                    </>
+                  )}
+                  {item?.kind === "color" && (
+                    <>
+                      <label className="mood-color-field">
+                        <span className="mood-label">Teinte</span>
+                        <input
+                          type="color"
+                          value={item.color}
+                          onChange={(e) => updateItem(item.id, { color: e.target.value })}
+                        />
+                      </label>
                       <input
-                        type="color"
-                        value={item.color}
-                        onChange={(e) => updateItem(item.id, { color: e.target.value })}
+                        type="text"
+                        className="mood-color-name"
+                        aria-label="Nom de la couleur"
+                        placeholder="Nom (ex. chêne fumé)"
+                        maxLength={80}
+                        value={item.label}
+                        onChange={(e) => updateItem(item.id, { label: e.target.value })}
                       />
-                    </label>
-                    <input
-                      type="text"
-                      className="mood-color-name"
-                      placeholder="Nom (ex. chêne fumé)"
-                      maxLength={80}
-                      value={item.label}
-                      onChange={(e) => updateItem(item.id, { label: e.target.value })}
-                    />
-                  </>
-                )}
-                {item && (
-                  <>
-                    {item.kind !== "photo" && <span className="mood-sep" />}
-                    <button type="button" onClick={() => reorder(true)}>Premier plan</button>
-                    <button type="button" onClick={() => reorder(false)}>Arrière-plan</button>
-                    <button type="button" onClick={duplicate}>Dupliquer</button>
-                    <button type="button" className="danger" onClick={removeSelected}>
-                      Retirer
-                    </button>
-                  </>
-                )}
+                    </>
+                  )}
+                  {item && (
+                    <>
+                      {item.kind !== "photo" && <span className="mood-sep" aria-hidden="true" />}
+                      <button type="button" onClick={() => reorder(true)}>
+                        Premier plan
+                      </button>
+                      <button type="button" onClick={() => reorder(false)}>
+                        Arrière-plan
+                      </button>
+                      <button type="button" onClick={duplicate}>
+                        Dupliquer
+                      </button>
+                      <button type="button" className="danger" onClick={removeSelected}>
+                        Retirer
+                      </button>
+                    </>
+                  )}
+                </div>
                 <span className="mood-toolbar-end">
-                  <button type="button" disabled={!past.length} onClick={undo}>
-                    Annuler
+                  <button type="button" className="mood-history" disabled={!past.length} onClick={undo} title="Annuler (Ctrl Z)">
+                    <HistoryIcon />
+                    <span className="mood-btn-label">Annuler</span>
                   </button>
-                  <button type="button" disabled={!future.length} onClick={redo}>
-                    Rétablir
+                  <button
+                    type="button"
+                    className="mood-history"
+                    disabled={!future.length}
+                    onClick={redo}
+                    title="Rétablir (Ctrl Maj Z)"
+                  >
+                    <HistoryIcon redo />
+                    <span className="mood-btn-label">Rétablir</span>
                   </button>
                 </span>
               </div>
               <div
                 ref={boardRef}
                 className={`mood-board${dropping ? " drop-over" : ""}`}
+                aria-busy={preparing || undefined}
                 onPointerDown={(e) => {
                   if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains("mood-canvas")) {
                     setSelected(null);
@@ -876,10 +1032,22 @@ export function MoodBoardEditor({
                 onDrop={onDrop}
               >
                 <BoardView board={board} resolve={resolve} renderItem={renderItem} className="mood-canvas" />
+                {preparing ? (
+                  <div className="mood-board-state" role="status">
+                    <span className="mood-spinner" aria-hidden="true" />
+                    Mise en page de la planche…
+                  </div>
+                ) : (
+                  !board.items.length && (
+                    <div className="mood-board-state">
+                      Planche vide. Touchez une photo pour la poser ici, ou ajoutez un texte.
+                    </div>
+                  )
+                )}
               </div>
               <p className="muted mood-hint">
-                Glissez pour déplacer, tirez le coin pour agrandir. Double-cliquez sur un texte pour l'écrire.
-                Le mood board s'enregistre tout seul et ne change pas le devis.
+                Glissez pour déplacer, tirez le rond du coin pour agrandir, touchez à nouveau un texte pour
+                l'écrire. Le mood board s'enregistre tout seul et ne change pas le devis.
               </p>
             </section>
           </div>

@@ -7,8 +7,9 @@ import {
   useLocation,
   useLoaderData,
   useRouteError,
+  useRouteLoaderData,
 } from "react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { context } from "../services/context.server";
@@ -41,18 +42,28 @@ export default function App() {
   );
 }
 
-/** Barre du haut. Sur téléphone, les liens passent dans un menu. */
-function ProNav({
-  demo,
-  user,
-}: {
-  demo: boolean;
-  user: { name: string; role: string } | null | undefined;
-}) {
+type NavUser = { name: string; role: string } | null | undefined;
+
+/** Barre du haut. Sur téléphone, les liens passent dans un panneau qui
+ * s'ouvre sous la barre, par-dessus la page : Échap, un clic en dehors ou
+ * un changement de page le referment. */
+function ProNav({ demo, user }: { demo: boolean; user: NavUser }) {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
+  const toggle = useRef<HTMLButtonElement>(null);
   useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      toggle.current?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
   useMenus();
+  const account = demo ? "Mode local · catalogue fictif" : user?.name;
   return (
     <nav
       className={`pro-nav${open ? " menu-open" : ""}`}
@@ -76,12 +87,10 @@ function ProNav({
         )}
         {open && (
           <div className="pro-nav-account">
-            <span className="muted">
-              {demo ? "Mode local · catalogue fictif" : user?.name}
-            </span>
+            <span className="muted">{account}</span>
             {!demo && (
               <Form method="post" action="/deconnexion">
-                <button className="text-button">Se déconnecter</button>
+                <button>Se déconnecter</button>
               </Form>
             )}
           </div>
@@ -95,8 +104,8 @@ function ProNav({
             </span>
           </button>
         </Form>
-        <span className="pro-user">
-          {demo ? "Mode local · catalogue fictif" : user?.name}
+        <span className="pro-user" title={account}>
+          {account}
         </span>
         {!demo && (
           <Form method="post" action="/deconnexion" className="pro-logout-form">
@@ -104,6 +113,7 @@ function ProNav({
           </Form>
         )}
         <button
+          ref={toggle}
           type="button"
           className="pro-nav-toggle"
           aria-expanded={open}
@@ -113,6 +123,13 @@ function ProNav({
           {open ? "Fermer" : "Menu"}
         </button>
       </div>
+      {open && (
+        <div
+          className="pro-nav-scrim"
+          aria-hidden="true"
+          onClick={() => setOpen(false)}
+        />
+      )}
     </nav>
   );
 }
@@ -160,27 +177,64 @@ function useMenus() {
 }
 export function ErrorBoundary() {
   const error = useRouteError();
-  if (isRouteErrorResponse(error)) {
+  if (
+    isRouteErrorResponse(error) &&
+    typeof error.data === "string" &&
+    error.data.includes("<")
+  )
     // Les réponses d'authentification Shopify portent du HTML à exécuter.
-    if (typeof error.data === "string" && error.data.includes("<"))
-      return boundary.error(error);
-    return (
-      <main className="workspace">
-        <h1>
-          {error.status === 404 ? "Page introuvable" : "Accès impossible"}
-        </h1>
-        <p>{typeof error.data === "string" ? error.data : error.statusText}</p>
-        <p>
-          <a href="/app/catalogue">Retour au catalogue</a>
+    return boundary.error(error);
+  return <ErrorPage error={error} />;
+}
+
+/** Page d'erreur dans le cadre de l'outil : la barre du haut reste là quand
+ * elle peut s'afficher, et deux chemins ramènent au travail. */
+function ErrorPage({ error }: { error: unknown }) {
+  const app = useRouteLoaderData<typeof loader>("routes/app");
+  const status = isRouteErrorResponse(error) ? error.status : 500;
+  const detail =
+    isRouteErrorResponse(error) && typeof error.data === "string"
+      ? error.data
+      : "";
+  const title =
+    status === 404
+      ? "Page introuvable"
+      : status === 403 || status === 401
+        ? "Accès réservé"
+        : "Une erreur est survenue";
+  const text =
+    status === 404
+      ? detail && detail !== "Not Found"
+        ? `${detail}. Il a peut-être été supprimé, ou le lien est incomplet.`
+        : "Cette adresse ne mène à aucune page de l'outil. Le lien est peut-être incomplet."
+      : status === 403 || status === 401
+        ? detail || "Cette page est réservée à Mikado Deco."
+        : "Rechargez la page. Si le problème persiste, prévenez Mikado Deco.";
+  const body = (
+    <main className="workspace error-page">
+      <div className="error-card">
+        <p className="error-code">
+          {status === 500 ? "Erreur" : `Erreur ${status}`}
         </p>
-      </main>
-    );
-  }
-  return (
-    <main className="workspace">
-      <h1>Une erreur est survenue</h1>
-      <p>Rechargez la page. Si le problème persiste, prévenez Mikado Deco.</p>
+        <h1>{title}</h1>
+        <p>{text}</p>
+        <div className="error-actions">
+          <a className="button primary" href="/app">
+            Voir les devis
+          </a>
+          <a className="button" href="/app/catalogue">
+            Ouvrir le catalogue
+          </a>
+        </div>
+      </div>
     </main>
+  );
+  if (!app || app.embedded) return body;
+  return (
+    <div className="pro-app">
+      <ProNav demo={app.demo} user={app.user} />
+      {body}
+    </div>
   );
 }
 export const headers: HeadersFunction = (args) => boundary.headers(args);
