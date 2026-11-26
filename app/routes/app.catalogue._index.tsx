@@ -112,15 +112,17 @@ export async function action({ request }: ActionFunctionArgs) {
  */
 export function shouldRevalidate({
   currentUrl,
-  nextUrl,
+  formMethod,
   formAction,
   defaultShouldRevalidate,
 }: ShouldRevalidateFunctionArgs) {
-  if (!formAction) return defaultShouldRevalidate;
-  if (!formAction.startsWith("/app/catalogue")) return false;
+  // Filtres, recherche et navigation (GET) : rechargement normal.
+  if (!formMethod || formMethod.toUpperCase() === "GET")
+    return defaultShouldRevalidate;
+  if (!formAction?.startsWith("/app/catalogue")) return false;
   const fetcher =
     currentUrl.searchParams.has("apres") || currentUrl.searchParams.has("index");
-  return !fetcher && currentUrl.href === nextUrl.href;
+  return !fetcher && defaultShouldRevalidate;
 }
 export default function Catalogue() {
   const { items, next, facets, families, filters, openQuote, quotes, demo, error } =
