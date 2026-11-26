@@ -11,6 +11,9 @@ import db from "../db.server";
 import { context, requireAdmin } from "../services/context.server";
 import { createInvite, normalizeEmail } from "../services/auth.server";
 import { readForm } from "../services/form.server";
+import { acceptedVolumes, listClasses } from "../services/classes.server";
+import { classStatus, percent } from "../domain/dashboard";
+import { money } from "../domain/quote";
 
 export const meta = () => [{ title: "Accès · Mikado Deco Pro" }];
 
@@ -27,13 +30,24 @@ export async function loader({ request }: LoaderFunctionArgs) {
       active: true,
       lastLoginAt: true,
       passwordHash: true,
+      classId: true,
     },
   });
+  const [classes, volumes] = await Promise.all([
+    listClasses(),
+    acceptedVolumes(c.shop),
+  ]);
   return {
-    users: users.map(({ passwordHash, ...u }) => ({
-      ...u,
-      ready: !!passwordHash,
-    })),
+    users: users.map(({ passwordHash, ...u }) => {
+      const volume = volumes.get(u.id) || 0;
+      return {
+        ...u,
+        ready: !!passwordHash,
+        volume,
+        current: classStatus(classes, u.classId, volume).current,
+      };
+    }),
+    classes,
     me: c.user?.id ?? null,
   };
 }
@@ -49,11 +63,74 @@ function inviteUrl(request: Request, token: string) {
   return `${new URL(request.url).origin}/invitation/${token}`;
 }
 
+const classInput = z.object({
+  name: z.string().trim().min(1).max(60),
+  // Saisie belge : « 12,5 » comme « 12.5 ».
+  discount: z.coerce.number().min(0).max(100),
+  threshold: z.coerce.number().min(0).max(100000000),
+});
+function readClass(form: FormData) {
+  const raw = (k: string) =>
+    String(form.get(k) ?? "")
+      .replace(/\s/g, "")
+      .replace(",", ".");
+  return classInput.safeParse({
+    name: form.get("name"),
+    discount: raw("discount"),
+    threshold: raw("threshold") || "0",
+  });
+}
+
 export async function action({ request }: ActionFunctionArgs) {
   const c = await context(request);
   requireAdmin(c);
   const form = await readForm(request),
     intent = String(form.get("intent"));
+  if (intent === "class-create" || intent === "class-update") {
+    const parsed = readClass(form);
+    if (!parsed.success)
+      return { error: "Vérifiez le nom, la remise (0 à 100 %) et le palier." };
+    const data = {
+      name: parsed.data.name,
+      discount: parsed.data.discount,
+      threshold: Math.round(parsed.data.threshold * 100),
+    };
+    if (intent === "class-create") {
+      await db.architectClass.create({ data });
+      return { ok: `Classe ${data.name} créée.` };
+    }
+    const id = Number(form.get("id"));
+    if (!Number.isSafeInteger(id)) return { error: "Classe introuvable." };
+    const done = await db.architectClass.updateMany({ where: { id }, data });
+    return done.count
+      ? { ok: `Classe ${data.name} enregistrée.` }
+      : { error: "Classe introuvable." };
+  }
+  if (intent === "class-delete") {
+    const id = Number(form.get("id"));
+    if (!Number.isSafeInteger(id)) return { error: "Classe introuvable." };
+    const done = await db.architectClass.deleteMany({ where: { id } });
+    return done.count
+      ? {
+          ok: "Classe supprimée. Ses architectes suivent maintenant leur chiffre.",
+        }
+      : { error: "Classe introuvable." };
+  }
+  if (intent === "user-class") {
+    const id = Number(form.get("id")),
+      raw = String(form.get("classId") || ""),
+      classId = raw ? Number(raw) : null;
+    if (
+      !Number.isSafeInteger(id) ||
+      (classId !== null &&
+        !(await db.architectClass.findUnique({ where: { id: classId } })))
+    )
+      return { error: "Classe ou accès introuvable." };
+    const done = await db.user.updateMany({ where: { id }, data: { classId } });
+    return done.count
+      ? { ok: "Classe enregistrée." }
+      : { error: "Accès introuvable." };
+  }
   if (intent === "create") {
     const parsed = newUser.safeParse(Object.fromEntries(form));
     if (!parsed.success) return { error: "Vérifiez le nom et l'e-mail." };
@@ -95,7 +172,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function Users() {
-  const { users, me } = useLoaderData<typeof loader>();
+  const { users, me, classes } = useLoaderData<typeof loader>();
   const result = useActionData<typeof action>();
   return (
     <main className="workspace">
@@ -219,12 +296,16 @@ export default function Users() {
             Créer l'accès
           </button>
           <p id="role-help" className="user-form-help">
-            Un architecte voit ses propres devis, sans prix d'achat. Mikado
-            Deco voit tout et règle l'outil. Un lien d'invitation est créé, à
-            envoyer vous-même.
+            Un architecte voit ses propres devis, sans prix d'achat. Mikado Deco
+            voit tout et règle l'outil. Un lien d'invitation est créé, à envoyer
+            vous-même.
           </p>
         </Form>
       </div>
+      <Classes
+        classes={classes}
+        architects={users.filter((u) => u.role !== "admin" && u.active)}
+      />
     </main>
   );
 }
@@ -262,5 +343,205 @@ function CopyButton({ text }: { text: string }) {
     >
       {done ? "Lien copié" : "Copier le lien"}
     </button>
+  );
+}
+
+type ClassRow = {
+  id: number;
+  name: string;
+  discount: number;
+  threshold: number;
+};
+
+/** Classes d'architectes et classe de chacun. */
+function Classes({
+  classes,
+  architects,
+}: {
+  classes: ClassRow[];
+  architects: {
+    id: number;
+    name: string;
+    classId: number | null;
+    volume: number;
+    current: ClassRow | null;
+  }[];
+}) {
+  const euros = (c: number) => String(Math.round(c / 100));
+  return (
+    <>
+      <section className="list-card class-card" aria-labelledby="classes-title">
+        <div className="class-head">
+          <h2 id="classes-title">Classes et remises</h2>
+          <p>
+            Chaque architecte voit sa remise et la suivante sur son accueil. Sa
+            classe est la plus haute entre celle choisie plus bas et celle que
+            son chiffre ouvre : devis acceptés HTVA sur les 12 derniers mois.
+          </p>
+        </div>
+        <table className="class-table">
+          <thead>
+            <tr>
+              <th>Classe</th>
+              <th>Remise (%)</th>
+              <th>Palier, € HTVA sur 12 mois</th>
+              <th>
+                <span className="visually-hidden">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {classes.map((k) => (
+              <tr key={k.id}>
+                <td data-label="Classe">
+                  <input
+                    form={`class-${k.id}`}
+                    name="name"
+                    defaultValue={k.name}
+                    required
+                    maxLength={60}
+                    aria-label="Nom de la classe"
+                  />
+                </td>
+                <td data-label="Remise (%)">
+                  <input
+                    form={`class-${k.id}`}
+                    name="discount"
+                    defaultValue={String(k.discount).replace(".", ",")}
+                    inputMode="decimal"
+                    required
+                    aria-label="Remise en pour cent"
+                  />
+                </td>
+                <td data-label="Palier, € HTVA sur 12 mois">
+                  <input
+                    form={`class-${k.id}`}
+                    name="threshold"
+                    defaultValue={euros(k.threshold)}
+                    inputMode="numeric"
+                    aria-label="Palier en euros HTVA"
+                  />
+                </td>
+                <td className="row-actions">
+                  <Form method="post" id={`class-${k.id}`}>
+                    <input type="hidden" name="id" value={k.id} />
+                    <button name="intent" value="class-update">
+                      Enregistrer
+                    </button>
+                    <button
+                      name="intent"
+                      value="class-delete"
+                      className="text-button"
+                    >
+                      Supprimer
+                    </button>
+                  </Form>
+                </td>
+              </tr>
+            ))}
+            <tr className="class-new" key={`new-${classes.length}`}>
+              <td data-label="Nouvelle classe">
+                <input
+                  form="class-new"
+                  name="name"
+                  required
+                  maxLength={60}
+                  placeholder={
+                    classes.length ? "Nouvelle classe" : "Ex. Bronze"
+                  }
+                  aria-label="Nom de la nouvelle classe"
+                />
+              </td>
+              <td data-label="Remise (%)">
+                <input
+                  form="class-new"
+                  name="discount"
+                  inputMode="decimal"
+                  required
+                  placeholder="Ex. 5"
+                  aria-label="Remise de la nouvelle classe, en pour cent"
+                />
+              </td>
+              <td data-label="Palier, € HTVA sur 12 mois">
+                <input
+                  form="class-new"
+                  name="threshold"
+                  inputMode="numeric"
+                  placeholder="0 = dès l'inscription"
+                  aria-label="Palier de la nouvelle classe, en euros HTVA"
+                />
+              </td>
+              <td className="row-actions">
+                <Form method="post" id="class-new">
+                  <button
+                    className="primary"
+                    name="intent"
+                    value="class-create"
+                  >
+                    Ajouter
+                  </button>
+                </Form>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+      {classes.length > 0 && architects.length > 0 && (
+        <section className="list-card class-card" aria-labelledby="class-users">
+          <div className="class-head">
+            <h2 id="class-users">Classe des architectes</h2>
+          </div>
+          <table className="class-table">
+            <thead>
+              <tr>
+                <th>Architecte</th>
+                <th>Chiffre 12 mois</th>
+                <th>Classe choisie</th>
+                <th>Remise actuelle</th>
+              </tr>
+            </thead>
+            <tbody>
+              {architects.map((u) => (
+                <tr key={u.id}>
+                  <td data-label="Architecte">{u.name}</td>
+                  <td data-label="Chiffre 12 mois">{money(u.volume)} HTVA</td>
+                  <td data-label="Classe choisie">
+                    <Form method="post" className="class-pick">
+                      <input type="hidden" name="id" value={u.id} />
+                      <input type="hidden" name="intent" value="user-class" />
+                      <select
+                        name="classId"
+                        defaultValue={u.classId ?? ""}
+                        aria-label={`Classe de ${u.name}`}
+                        onChange={(e) => e.currentTarget.form?.requestSubmit()}
+                      >
+                        <option value="">Selon le chiffre</option>
+                        {classes.map((k) => (
+                          <option key={k.id} value={k.id}>
+                            {k.name} au minimum
+                          </option>
+                        ))}
+                      </select>
+                      <noscript>
+                        <button>Enregistrer</button>
+                      </noscript>
+                    </Form>
+                  </td>
+                  <td data-label="Remise actuelle">
+                    {u.current ? (
+                      <s-badge tone="success">
+                        {u.current.name} · {percent(u.current.discount)}
+                      </s-badge>
+                    ) : (
+                      <span className="muted">Aucune</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+    </>
   );
 }

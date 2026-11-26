@@ -1,0 +1,126 @@
+/*
+ * Accès : classes d'architectes et remises.
+ * Reprend les variables et les champs d'outil.css.
+ */
+.class-card {
+  margin-top: 20px;
+}
+.class-head {
+  padding: 20px 20px 12px;
+}
+.class-head h2 {
+  margin: 0;
+  font-size: var(--t-section);
+  font-weight: 500;
+}
+.class-head p {
+  max-width: 720px;
+  margin: 6px 0 0;
+  font-size: var(--t-body);
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+.class-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--t-body);
+}
+.class-table th,
+.class-table td {
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: middle;
+  border-top: 1px solid var(--line);
+}
+.class-table th:first-child,
+.class-table td:first-child {
+  padding-left: 20px;
+}
+.class-table th:last-child,
+.class-table td:last-child {
+  padding-right: 20px;
+}
+.class-table th {
+  font-size: var(--t-small);
+  font-weight: 500;
+  color: var(--ink-3);
+}
+.class-table input {
+  width: 100%;
+  min-height: var(--control);
+}
+.class-table .row-actions {
+  width: 1%;
+  white-space: nowrap;
+}
+.class-table .row-actions form {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0;
+}
+.class-table .row-actions button:not(.text-button):not(.primary) {
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-control);
+  font-weight: 500;
+}
+.class-table .row-actions button.primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
+}
+.class-table .row-actions .text-button {
+  color: var(--ink-2);
+}
+.class-table .class-new td {
+  background: var(--paper);
+}
+.class-pick {
+  margin: 0;
+}
+.class-pick select {
+  min-height: var(--control);
+  max-width: 260px;
+}
+
+@media (max-width: 700px) {
+  .class-table thead {
+    display: none;
+  }
+  .class-table,
+  .class-table tbody,
+  .class-table tr,
+  .class-table td {
+    display: block;
+    width: 100%;
+  }
+  .class-table tr {
+    padding: 12px 16px;
+    border-top: 1px solid var(--line);
+  }
+  .class-table td,
+  .class-table td:first-child,
+  .class-table td:last-child {
+    padding: 4px 0;
+    border: 0;
+  }
+  .class-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    font-size: var(--t-small);
+    color: var(--ink-3);
+  }
+  .class-table .row-actions {
+    width: 100%;
+  }
+  .class-table .row-actions form {
+    justify-content: flex-start;
+  }
+  .class-pick select {
+    max-width: none;
+    width: 100%;
+  }
+}

@@ -1,6 +1,10 @@
 import { Form, Link } from "react-router";
 import { money } from "../../domain/quote";
-import { FOLLOW_UP_DAYS } from "../../domain/dashboard";
+import {
+  FOLLOW_UP_DAYS,
+  percent,
+  type ClassStatus,
+} from "../../domain/dashboard";
 import type {
   Dashboard,
   DashboardQuote,
@@ -128,15 +132,65 @@ function Project({ q }: { q: DashboardQuote }) {
   );
 }
 
+/** Classe de l'architecte : sa remise, et ce qui ouvre la suivante. */
+function TierCard({ tier }: { tier: ClassStatus }) {
+  const { current, next } = tier;
+  return (
+    <section className="dash-tier" aria-label="Votre classe et votre remise">
+      <div className="dash-tier-now">
+        <span className="dash-tier-label">Votre remise Mikado Deco</span>
+        <strong>{current ? percent(current.discount) : "—"}</strong>
+        <span>
+          {current ? `Classe ${current.name}` : "Pas encore de classe"}
+        </span>
+      </div>
+      <div className="dash-tier-next">
+        {next ? (
+          <>
+            <p>
+              Prochaine remise : <strong>{percent(next.discount)}</strong>,
+              classe {next.name}
+            </p>
+            <div
+              className="dash-tier-bar"
+              role="progressbar"
+              aria-label={`Avancement vers la classe ${next.name}`}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(tier.progress * 100)}
+            >
+              <span style={{ width: `${Math.max(2, tier.progress * 100)}%` }} />
+            </div>
+            <small>
+              Encore {money(tier.remaining)} HTVA de devis acceptés. Vous en
+              êtes à {money(tier.volume)} sur les 12 derniers mois.
+            </small>
+          </>
+        ) : (
+          <>
+            <p>Vous êtes à la remise la plus haute.</p>
+            <small>
+              {money(tier.volume)} HTVA de devis acceptés sur les 12 derniers
+              mois. Merci pour votre confiance.
+            </small>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export function DashboardView({
   data,
   name,
+  tier,
   admin,
   demo,
   error,
 }: {
   data: Dashboard;
   name: string;
+  tier?: ClassStatus | null;
   admin: boolean;
   demo: boolean;
   error?: string;
@@ -171,7 +225,10 @@ export function DashboardView({
       <header className="dash-head">
         <div>
           <p className="dash-date">{today}</p>
-          <h1>{name ? `Bonjour ${name}` : "Bonjour"}</h1>
+          <h1>
+            Bonjour{name ? "," : ""}
+            {name && <span className="dash-name">{name}</span>}
+          </h1>
           <p className="dash-summary">
             {quotes.length
               ? summary.length
@@ -197,6 +254,7 @@ export function DashboardView({
           {error}
         </p>
       )}
+      {tier && <TierCard tier={tier} />}
       {data.shopifyError && (
         <p className="notice">
           Les délais et l'état des commandes n'ont pas pu être lus dans Shopify.
@@ -222,7 +280,7 @@ export function DashboardView({
         <>
           <nav className="dash-stats" aria-label="Vos devis par statut">
             <Link to="/app/devis?status=draft" className="dash-stat">
-              <span>En préparation</span>
+              <span>Devis ouverts</span>
               <strong>{counts.draft}</strong>
               <small>
                 {counts.ready
@@ -465,7 +523,7 @@ export function DashboardView({
               aria-labelledby="dash-prep"
             >
               <div className="dash-section-head">
-                <h2 id="dash-prep">En préparation</h2>
+                <h2 id="dash-prep">Devis ouverts</h2>
                 <Link to="/app/devis">Tous les devis</Link>
               </div>
               <ul className="dash-recent">

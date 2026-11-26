@@ -138,6 +138,21 @@ model User {
   lastLoginAt  DateTime?
   quotes       Quote[]
   invites      Invite[]
+  // Classe choisie par Mikado Deco : un minimum, le chiffre peut la dépasser.
+  classId      Int?
+  class        ArchitectClass? @relation(fields: [classId], references: [id], onDelete: SetNull)
+}
+
+// Classe d'architecte : une remise et le chiffre annuel qui l'ouvre.
+model ArchitectClass {
+  id        Int      @id @default(autoincrement())
+  name      String
+  // Remise accordée, en pour cent (10 = 10 %).
+  discount  Float
+  // Devis acceptés HTVA sur 12 mois glissants, en centimes, pour y entrer.
+  threshold Int      @default(0)
+  createdAt DateTime @default(now())
+  users     User[]
 }
 
 model Invite {
