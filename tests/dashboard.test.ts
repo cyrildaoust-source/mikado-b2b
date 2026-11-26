@@ -178,3 +178,40 @@ test("validité, prénom et livraison", () => {
   assert.equal(deliveryLabel("UNFULFILLED", true), "Commande annulée");
   assert.equal(deliveryLabel(null), null);
 });
+
+test("classes d'architectes : remise actuelle et suivante", async () => {
+  const { classStatus } = await import("../app/domain/dashboard");
+  const classes = [
+    { id: 3, name: "Or", discount: 15, threshold: 5000000 },
+    { id: 1, name: "Bronze", discount: 5, threshold: 0 },
+    { id: 2, name: "Argent", discount: 10, threshold: 2000000 },
+  ];
+  // Nouveau compte : Bronze par le palier 0, Argent ensuite.
+  let s = classStatus(classes, null, 0);
+  assert.equal(s.current?.name, "Bronze");
+  assert.equal(s.next?.name, "Argent");
+  assert.equal(s.remaining, 2000000);
+  assert.equal(s.progress, 0);
+  // Le chiffre ouvre Argent.
+  s = classStatus(classes, null, 2500000);
+  assert.equal(s.current?.name, "Argent");
+  assert.equal(s.earned, true);
+  assert.equal(s.next?.name, "Or");
+  assert.equal(s.remaining, 2500000);
+  assert.equal(s.progress, 0.5);
+  // Mikado Deco a mis Or : un minimum, même sans chiffre.
+  s = classStatus(classes, 3, 100);
+  assert.equal(s.current?.name, "Or");
+  assert.equal(s.earned, false);
+  assert.equal(s.next, null);
+  assert.equal(s.progress, 1);
+  // Choix plus bas que le chiffre : le chiffre l'emporte.
+  s = classStatus(classes, 1, 6000000);
+  assert.equal(s.current?.name, "Or");
+  // Sans classe à palier 0 ni choix : pas de classe, la première à atteindre.
+  s = classStatus([classes[0], classes[2]], null, 1000000);
+  assert.equal(s.current, null);
+  assert.equal(s.next?.name, "Argent");
+  assert.equal(s.remaining, 1000000);
+  assert.equal(classStatus([], null, 0).current, null);
+});

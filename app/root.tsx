@@ -6,6 +6,7 @@ import refonteCss from "./styles/refonte.css?url";
 import proCss from "./styles/pro.css?url";
 import outilCss from "./styles/outil.css?url";
 import dashboardCss from "./styles/dashboard.css?url";
+import classesCss from "./styles/classes.css?url";
 import finitionCatalogueCss from "./styles/finition-catalogue.css?url";
 import finitionDevisCss from "./styles/finition-devis.css?url";
 import finitionMoodboardCss from "./styles/finition-moodboard.css?url";
@@ -35,6 +36,7 @@ const STYLES = {
     finitionDevisCss,
     finitionMoodboardCss,
     dashboardCss,
+    classesCss,
   ],
   admin: [appCss, documentCss, refonteCss, proCss],
 };

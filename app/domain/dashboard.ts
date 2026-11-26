@@ -205,3 +205,80 @@ export function deliveryLabel(
       return null;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Classes d'architectes                                               */
+/* ------------------------------------------------------------------ */
+
+export type ArchitectClass = {
+  id: number;
+  name: string;
+  /** Remise en pour cent. */
+  discount: number;
+  /** Chiffre accepté HTVA sur 12 mois, en centimes, pour y entrer. */
+  threshold: number;
+};
+
+export type ClassStatus = {
+  current: ArchitectClass | null;
+  next: ArchitectClass | null;
+  /** Centimes HTVA qu'il reste à accepter pour la classe suivante. */
+  remaining: number;
+  /** Avancement vers la classe suivante, de 0 à 1. */
+  progress: number;
+  /** Chiffre accepté HTVA sur 12 mois, en centimes. */
+  volume: number;
+  /** La classe vient du chiffre (et non du seul choix de Mikado Deco). */
+  earned: boolean;
+};
+
+/** Classes de la plus basse à la plus haute : palier, puis remise. */
+export function sortClasses(classes: ArchitectClass[]) {
+  return [...classes].sort(
+    (a, b) =>
+      a.threshold - b.threshold || a.discount - b.discount || a.id - b.id,
+  );
+}
+
+/**
+ * Classe d'un architecte : la plus haute entre celle que Mikado Deco a choisie
+ * (un minimum) et celle que son chiffre des 12 derniers mois lui ouvre.
+ */
+export function classStatus(
+  classes: ArchitectClass[],
+  assignedId: number | null,
+  volume: number,
+): ClassStatus {
+  const sorted = sortClasses(classes);
+  const earnedIndex = sorted.reduce(
+    (best, c, i) => (c.threshold <= volume ? i : best),
+    -1,
+  );
+  const assignedIndex = sorted.findIndex((c) => c.id === assignedId);
+  const index = Math.max(earnedIndex, assignedIndex);
+  const current = index >= 0 ? sorted[index] : null;
+  const next =
+    sorted
+      .slice(index + 1)
+      .find(
+        (c) => c.discount > (current?.discount ?? -1) && c.threshold > volume,
+      ) || null;
+  const remaining = next ? Math.max(0, next.threshold - volume) : 0;
+  const progress = next
+    ? next.threshold
+      ? Math.min(1, volume / next.threshold)
+      : 1
+    : 1;
+  return {
+    current,
+    next,
+    remaining,
+    progress,
+    volume,
+    earned: index >= 0 && index === earnedIndex && earnedIndex >= assignedIndex,
+  };
+}
+
+/** « 10 % », « 12,5 % ». */
+export const percent = (n: number) =>
+  `${n.toLocaleString("fr-BE", { maximumFractionDigits: 2 })} %`;
