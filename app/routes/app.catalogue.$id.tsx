@@ -28,6 +28,7 @@ import { readForm } from "../services/form.server";
 import { money } from "../domain/quote";
 import { sized } from "../components/catalog/image";
 import { FinishPicker } from "../components/catalog/FinishPicker";
+import { Models3dBlock } from "../components/catalog/Models3d";
 
 export const meta = ({ data }: { data?: { product?: { title: string } } }) => [
   { title: `${data?.product?.title || "Produit"} · Mikado Deco Pro` },
@@ -359,6 +360,9 @@ export default function Product() {
               </p>
             )}
           </Form>
+          {product.models3d && (
+            <Models3dBlock models={product.models3d} title={product.title} />
+          )}
           {product.description && (
             <div className="product-description">
               {product.description.split(/\n+/).map((para, i) => (

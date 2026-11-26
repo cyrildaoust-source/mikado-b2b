@@ -29,6 +29,11 @@ Les fiches sont lues dans Shopify côté serveur. Rien n'est publié ni modifié
   d'ambiance du produit. Rien ne change dans Shopify.
 - Une fiche archivée n'apparaît jamais. Une fiche masquée renvoie une page introuvable,
   même si on devine son adresse.
+- Modèles 3D : la fiche montre les fichiers du produit (métachamp `custom.models_3d`,
+  JSON `{"files": [{"format": "DWG", "url": "https://…"}], "page": "https://…"}`, posé par
+  l'importateur). Sans fichier, elle renvoie vers la bibliothèque 3D de la marque
+  (`app/domain/models3d.ts`) ; pour une marque réservée aux revendeurs, elle invite à
+  demander le fichier à Mikado Deco. Une marque sans source vérifiée n'affiche rien.
 - Les prix affichés sont les prix publics HTVA (prix Shopify TVAC divisé par 1,21).
 
 ## Les accès
