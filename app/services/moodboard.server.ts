@@ -9,12 +9,15 @@ import {
   WHOLE_PROJECT,
   moodSchema,
   sized,
+  isDark,
+  materialCaption,
   type Board,
   type BoardSection,
   type MoodState,
   type PaletteItem,
 } from "../domain/moodboard";
 import { BoardView } from "../components/moodboard/BoardView";
+import { TEXTURE_SOURCE } from "../domain/materials";
 import { demoProducts } from "./catalog.server";
 import { gql, type Admin } from "./shopify-api.server";
 import { launchBrowser } from "./pdf.server";
@@ -41,7 +44,7 @@ export async function saveMood(quoteId: number, raw: unknown) {
   );
   for (const b of state.boards)
     for (const i of b.items)
-      if (i.kind === "photo" && i.src.startsWith("upload:") && !uploads.has(i.src.slice(7)))
+      if ((i.kind === "photo" || i.kind === "material") && i.src.startsWith("upload:") && !uploads.has(i.src.slice(7)))
         throw Error("Une photo ajoutée n'est plus disponible.");
   const json = JSON.stringify(state);
   await db.moodBoard.upsert({
@@ -85,11 +88,13 @@ export async function deleteUpload(quoteId: number, id: string) {
   // Les planches ne gardent pas une photo supprimée.
   const mood = await getMood(quoteId);
   const src = `upload:${id}`;
-  if (mood.boards.some((b) => b.items.some((i) => i.kind === "photo" && i.src === src)))
+  const uses = (i: (typeof mood.boards)[number]["items"][number]) =>
+    (i.kind === "photo" || i.kind === "material") && i.src === src;
+  if (mood.boards.some((b) => b.items.some(uses)))
     await saveMood(quoteId, {
       boards: mood.boards.map((b) => ({
         ...b,
-        items: b.items.filter((i) => !(i.kind === "photo" && i.src === src)),
+        items: b.items.filter((i) => !uses(i)),
       })),
     });
 }
@@ -135,14 +140,27 @@ export function imageSize(b: Uint8Array, mime: string) {
   return null;
 }
 
-/** Photos d'ambiance des produits du devis, par variante. */
+type Swatch = { name: string; image: string; color: string; maker: string };
+
+/** Photos d'ambiance et pastilles de finition (tissus, bois…) des produits du devis, par variante. */
 async function productPhotos(admin: Admin | null, variantIds: string[]) {
-  const out = new Map<string, { url: string; alt: string }[]>();
+  const out = new Map<string, { photos: { url: string; alt: string }[]; swatches: Swatch[] }>();
   if (!variantIds.length) return out;
   if (!admin) {
+    // Démonstration : les finitions deviennent des pastilles de couleur.
+    const tones = ["#b9a68a", "#6f7d72", "#3e4247", "#c8b9a6"];
     for (const p of demoProducts)
       for (const v of p.productVariants)
-        if (variantIds.includes(v.id)) out.set(v.id, p.images);
+        if (variantIds.includes(v.id))
+          out.set(v.id, {
+            photos: p.images,
+            swatches: p.productVariants.map((x, n) => ({
+              name: `${p.title}, ${x.title}`,
+              image: "",
+              color: tones[n % tones.length],
+              maker: p.vendor,
+            })),
+          });
     return out;
   }
   for (let start = 0; start < variantIds.length; start += 100) {
@@ -151,22 +169,40 @@ async function productPhotos(admin: Admin | null, variantIds: string[]) {
         id: string;
         product: {
           title: string;
+          vendor: string;
           media: { nodes: { image?: { url: string; altText: string | null } | null }[] };
+          options: {
+            name: string;
+            optionValues: {
+              name: string;
+              swatch: { color: string | null; image: { image: { url: string } | null } | null } | null;
+            }[];
+          }[];
         };
       } | null)[];
     }>(
       admin,
-      `query MoodPhotos($ids: [ID!]!) { nodes(ids: $ids) { ... on ProductVariant { id product { title media(first: 10) { nodes { ... on MediaImage { image { url altText } } } } } } } }`,
+      `query MoodPhotos($ids: [ID!]!) { nodes(ids: $ids) { ... on ProductVariant { id product { title vendor media(first: 10) { nodes { ... on MediaImage { image { url altText } } } } options { name optionValues { name swatch { color image { image { url } } } } } } } } }`,
       { ids: variantIds.slice(start, start + 100) },
     ).catch(() => ({ nodes: [] }));
     for (const n of data.nodes)
       if (n?.product)
-        out.set(
-          n.id,
-          n.product.media.nodes
+        out.set(n.id, {
+          photos: n.product.media.nodes
             .filter((m) => m.image?.url)
             .map((m) => ({ url: m.image!.url, alt: m.image!.altText || n.product.title })),
-        );
+          swatches: n.product.options.flatMap((o) =>
+            o.optionValues
+              .filter((v) => v.swatch?.image?.image?.url || v.swatch?.color)
+              .map((v) => ({
+                name: v.name,
+                image: v.swatch?.image?.image?.url || "",
+                color: /^#[0-9a-f]{6}$/i.test(v.swatch?.color || "") ? v.swatch!.color! : "",
+                maker: n.product.vendor,
+              }))
+              .filter((v) => v.image || v.color),
+          ),
+        });
   }
   return out;
 }
@@ -202,9 +238,14 @@ export async function boardSections(
       if (e.parent && groupIds.has(e.parent)) lines.push({ line: e, tag: "option" });
     for (const { line, tag } of lines) add({ src: line.image, alt: line.name, tag });
     for (const { line } of lines)
-      for (const a of (line.variantId && ambiance.get(line.variantId)) || [])
+      for (const a of (line.variantId && ambiance.get(line.variantId)?.photos) || [])
         add({ src: a.url, alt: a.alt, tag: "ambiance" });
-    return { key: section.id, title: section.title, photos };
+    const finishes: PaletteItem[] = [];
+    for (const { line } of lines)
+      for (const f of (line.variantId && ambiance.get(line.variantId)?.swatches) || [])
+        if (!finishes.some((x) => x.alt === f.name && x.maker === f.maker))
+          finishes.push({ src: f.image, alt: f.name, tag: "finition", maker: f.maker, color: f.color || undefined });
+    return { key: section.id, title: section.title, photos, finishes: finishes.slice(0, 40) };
   });
   if (result.length > 1)
     result.unshift({
@@ -213,6 +254,10 @@ export async function boardSections(
       photos: result.flatMap((s) => s.photos).filter(
         (p, i, all) => all.findIndex((x) => sameImage(x.src, p.src)) === i,
       ),
+      finishes: result
+        .flatMap((s) => s.finishes)
+        .filter((f, i, all) => all.findIndex((x) => x.alt === f.alt && x.maker === f.maker) === i)
+        .slice(0, 40),
     });
   return result;
 }
@@ -235,8 +280,9 @@ async function embed(quoteId: number, src: string, width: number) {
     const img = await getUpload(quoteId, src.slice(7));
     return img ? { mime: img.mime, data: Buffer.from(img.data) } : null;
   }
-  const u = new URL(sized(src, width));
-  if (u.protocol !== "https:" || u.hostname !== "cdn.shopify.com") return null;
+  // Hôtes admis : le CDN Shopify et les textures CC0 de Poly Haven.
+  const u = new URL(TEXTURE_SOURCE.test(src) ? src : sized(src, width));
+  if (u.protocol !== "https:" || !(u.hostname === "cdn.shopify.com" || TEXTURE_SOURCE.test(src))) return null;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
   try {
@@ -254,7 +300,7 @@ async function embed(quoteId: number, src: string, width: number) {
 
 async function embedAll(quoteId: number, boards: Board[], width: number) {
   const srcs = [
-    ...new Set(boards.flatMap((b) => b.items.flatMap((i) => (i.kind === "photo" ? [i.src] : [])))),
+    ...new Set(boards.flatMap((b) => b.items.flatMap((i) => (i.kind === "photo" || i.kind === "material" ? [i.src] : [])))),
   ];
   const out = new Map<string, { mime: string; data: Buffer }>();
   // Six téléchargements à la fois.
@@ -361,6 +407,37 @@ export async function moodPptx(
       if (item.kind === "photo") {
         const e = images.get(item.src);
         if (e) slide.addImage({ ...box, data: dataUrl(e), altText: item.alt });
+      } else if (item.kind === "material") {
+        const e = images.get(item.src);
+        // Recadré en carré comme à l'écran : l'image garde ses proportions, la
+        // diapositive n'en montre que le cadre.
+        if (e)
+          slide.addImage({
+            x: box.x,
+            y: box.y,
+            w: item.ratio,
+            h: 1,
+            data: dataUrl(e),
+            altText: item.name,
+            sizing: { type: "cover", w: box.w, h: box.h },
+          });
+        const caption = materialCaption(item);
+        const dark = isDark(board.background);
+        const lines = [
+          ...(item.name ? [{ text: item.name, options: { color: dark ? "FFFFFF" : "16181A", breakLine: !!caption } }] : []),
+          ...(caption ? [{ text: caption, options: { color: dark ? "D6D3CC" : "5F5D58" } }] : []),
+        ];
+        if (lines.length)
+          slide.addText(lines, {
+            x: box.x,
+            y: box.y + box.h + 0.03,
+            w: Math.max(box.w, 1.9),
+            h: 0.45,
+            fontFace: "Inter",
+            fontSize: pt(TEXT_STYLES.small.size),
+            margin: 0,
+            valign: "top",
+          });
       } else if (item.kind === "color") {
         slide.addShape("rect", {
           ...box,

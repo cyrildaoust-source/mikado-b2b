@@ -104,6 +104,19 @@ options.
   ouverte, pour Photoshop. Les exports tournent sur le serveur ; seules les photos de
   `cdn.shopify.com` et les photos ajoutées y entrent.
 
+### Matières
+
+L'onglet « Matières » de la colonne de gauche propose :
+
+- les finitions des produits du devis, quand la fiche Shopify a des pastilles d'option
+  (photo de tissu, de bois, ou couleur) ;
+- « Ajouter mon échantillon » : la photo d'un tissu (Dedar, Kvadrat…), d'un marbre ou d'un
+  bois, posée en carré avec son nom, son éditeur et sa référence (« Kvadrat · 130 ») ;
+- des textures génériques libres de droits (Poly Haven, CC0) : bois, pierre et carrelage,
+  tissus et cuirs, enduits et bétons, métal. Liste dans `app/domain/materials.ts`.
+
+Les images des sites d'éditeurs ne sont pas reprises : elles ne sont pas libres de droits.
+
 ## Les accès
 
 Pas d'envoi d'e-mail : Mikado Deco crée l'accès dans « Accès » et transmet lui-même le

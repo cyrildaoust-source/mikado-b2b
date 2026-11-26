@@ -2,6 +2,8 @@ import type { CSSProperties, ReactNode } from "react";
 import {
   BOARD_RATIO,
   TEXT_STYLES,
+  isDark,
+  materialCaption,
   type Board,
   type BoardItem,
 } from "../../domain/moodboard";
@@ -53,7 +55,9 @@ export function BoardView({
           width: `${item.w * 100}%`,
           height: `${item.h * 100}%`,
         };
-        const content = <ItemContent item={item} resolve={resolve} />;
+        const content = (
+          <ItemContent item={item} resolve={resolve} dark={isDark(board.background)} />
+        );
         return renderItem ? (
           renderItem(item, content, box)
         ) : (
@@ -70,10 +74,56 @@ export function BoardView({
 function ItemContent({
   item,
   resolve,
+  dark,
 }: {
   item: BoardItem;
   resolve: (src: string, item: BoardItem) => string;
+  dark: boolean;
 }) {
+  if (item.kind === "material") {
+    const caption = materialCaption(item);
+    return (
+      <>
+        <img
+          src={resolve(item.src, item)}
+          alt={item.name}
+          draggable={false}
+          style={{
+            display: "block",
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            userSelect: "none",
+            pointerEvents: "none",
+            boxShadow: "inset 0 0 0 1px rgba(22,24,26,0.08)",
+          }}
+        />
+        {(item.name || caption) && (
+          <div
+            style={{
+              position: "absolute",
+              top: "100%",
+              left: 0,
+              width: "max(100%, 14cqw)",
+              paddingTop: "0.4cqw",
+              fontSize: `${TEXT_STYLES.small.size}cqw`,
+              lineHeight: 1.3,
+              color: dark ? "#d6d3cc" : "#5f5d58",
+            }}
+          >
+            {item.name && (
+              <div style={{ color: dark ? "#ffffff" : "#16181a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {item.name}
+              </div>
+            )}
+            {caption && (
+              <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{caption}</div>
+            )}
+          </div>
+        )}
+      </>
+    );
+  }
   if (item.kind === "photo")
     return (
       <img

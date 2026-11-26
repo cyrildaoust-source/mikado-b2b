@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TEXTURE_SOURCE } from "./materials";
 
 /*
  * Mood board d'un devis : une planche par pièce (et une pour tout le projet
@@ -31,7 +32,7 @@ const fraction = z.number().min(-1).max(2);
 const size = z.number().min(0.02).max(1.5);
 const hex = z.string().regex(/^#[0-9a-f]{6}$/i);
 
-/** Photo : du catalogue Shopify, de la démonstration ou ajoutée par l'architecte. */
+/** Photo : du catalogue Shopify, de la démonstration, ajoutée par l'architecte ou texture CC0. */
 export const photoSource = z
   .string()
   .max(200000)
@@ -39,7 +40,8 @@ export const photoSource = z
     (s) =>
       /^https:\/\/cdn\.shopify\.com\//.test(s) ||
       /^upload:[a-z0-9]{10,40}$/.test(s) ||
-      /^data:image\/svg\+xml[;,]/.test(s),
+      /^data:image\/svg\+xml[;,]/.test(s) ||
+      TEXTURE_SOURCE.test(s),
     "Photo non reconnue.",
   );
 
@@ -67,6 +69,16 @@ export const itemSchema = z.discriminatedUnion("kind", [
     color: hex.default("#16181a"),
     align: z.enum(["left", "center", "right"]).default("left"),
   }),
+  // Échantillon de matière : photo recadrée en carré, nom, éditeur, référence.
+  z.object({
+    ...base,
+    kind: z.literal("material"),
+    src: photoSource,
+    ratio: z.number().min(0.1).max(10),
+    name: z.string().max(120).default(""),
+    maker: z.string().max(120).default(""),
+    reference: z.string().max(120).default(""),
+  }),
   z.object({
     ...base,
     kind: z.literal("color"),
@@ -78,6 +90,12 @@ export type BoardItem = z.infer<typeof itemSchema>;
 export type PhotoItem = Extract<BoardItem, { kind: "photo" }>;
 export type TextItem = Extract<BoardItem, { kind: "text" }>;
 export type ColorItem = Extract<BoardItem, { kind: "color" }>;
+export type MaterialItem = Extract<BoardItem, { kind: "material" }>;
+
+/** Légende d'un échantillon : « Kvadrat · Hallingdal 65 – 130 ». */
+export function materialCaption(m: { maker: string; reference: string }) {
+  return [m.maker, m.reference].filter(Boolean).join(" · ");
+}
 
 export const boardSchema = z.object({
   /** sectionId de la pièce, ou WHOLE_PROJECT. */
@@ -98,13 +116,18 @@ export type PaletteItem = {
   src: string;
   alt: string;
   /** Produit du devis (« produit »), alternative, option ou photo d'ambiance. */
-  tag: "produit" | "alternative" | "option" | "ambiance" | "ajout";
+  tag: "produit" | "alternative" | "option" | "ambiance" | "ajout" | "finition";
+  /** Finition Shopify : éditeur et couleur de pastille quand il n'y a pas de photo. */
+  maker?: string;
+  color?: string;
 };
 
 export type BoardSection = {
   key: string;
   title: string;
   photos: PaletteItem[];
+  /** Finitions des produits (pastilles Shopify : tissus, bois, couleurs). */
+  finishes: PaletteItem[];
 };
 
 /** Hauteur (fraction de la planche) d'une photo de largeur w et de proportion ratio. */
