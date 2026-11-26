@@ -29,7 +29,7 @@ import { money } from "../domain/quote";
 import { sized } from "../components/catalog/image";
 import { Picker } from "../components/catalog/Picker";
 import { chooseFinish } from "../components/catalog/FinishChooser";
-import { CataloguePrice } from "../components/ProPrice";
+import { CataloguePrice, usePriceView } from "../components/ProPrice";
 
 export const meta = () => [{ title: "Catalogue · Mikado Deco Pro" }];
 
@@ -262,6 +262,7 @@ export default function Catalogue() {
   // Rangées complètes : tant qu'il reste des produits, la dernière rangée
   // incomplète attend la page suivante.
   const grid = useRef<HTMLUListElement>(null);
+  const view = usePriceView();
   const [cols, setCols] = useState(1);
   useEffect(() => {
     const el = grid.current;
@@ -284,7 +285,13 @@ export default function Catalogue() {
     <main className="workspace catalogue">
       <header className="catalogue-head">
         <h1>Catalogue</h1>
-        <p>Prix publics HTVA</p>
+        <p>
+          {view === "tvac"
+            ? "Prix publics TVAC"
+            : view === "pro"
+              ? "Vos prix pro HTVA"
+              : "Prix publics HTVA"}
+        </p>
       </header>
       {demo && <p className="demo-ribbon">Démonstration · catalogue fictif</p>}
       <Form method="get" className="catalogue-filters">
