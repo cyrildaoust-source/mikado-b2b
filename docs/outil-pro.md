@@ -112,10 +112,23 @@ L'onglet « Matières » de la colonne de gauche propose :
   (photo de tissu, de bois, ou couleur) ;
 - « Ajouter mon échantillon » : la photo d'un tissu (Dedar, Kvadrat…), d'un marbre ou d'un
   bois, posée en carré avec son nom, son éditeur et sa référence (« Kvadrat · 130 ») ;
+- la bibliothèque Mikado Deco : les tissus en magasin (Kvadrat d'abord), par éditeur, avec
+  une recherche par collection ou coloris. La légende reprend la collection, l'éditeur et
+  le coloris ;
 - des textures génériques libres de droits (Poly Haven, CC0) : bois, pierre et carrelage,
   tissus et cuirs, enduits et bétons, métal. Liste dans `app/domain/materials.ts`.
 
-Les images des sites d'éditeurs ne sont pas reprises : elles ne sont pas libres de droits.
+Les images d'un éditeur n'entrent dans la bibliothèque qu'avec l'accord de Cyril, partenaire
+de la marque (Kvadrat, 26/11/2026).
+
+### Bibliothèque de matières (page « Matières », Mikado Deco seul)
+
+Cyril y dépose les photos d'échantillon fournies par l'éditeur : un dossier ou des photos,
+nommées « Collection - coloris.jpg » (« Hallingdal 65 - 130.jpg »). La liste se vérifie et se
+corrige avant l'envoi. Chaque photo est ramenée à 1 200 px dans le navigateur et rangée en
+base (`LibraryMaterial`). Une photo déjà présente pour le même éditeur, la même collection et
+le même coloris est remplacée. Une matière retirée disparaît des planches à leur prochaine
+ouverture. Sur la planche, une matière de la bibliothèque s'écrit `library:<id>`.
 
 ## Les accès
 

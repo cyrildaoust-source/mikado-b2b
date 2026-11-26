@@ -8,6 +8,7 @@ import {
   listUploads,
   quoteState,
 } from "../services/moodboard.server";
+import { listLibrary } from "../services/library.server";
 import { MoodBoardEditor } from "../components/moodboard/MoodBoardEditor";
 
 export const meta = ({ data }: { data?: { number?: string } }) => [
@@ -22,11 +23,22 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   if (q.status === "deleted")
     throw new Response("Ce devis est à la corbeille.", { status: 404 });
   const state = await quoteState(q.state);
-  const [sections, mood, uploads] = await Promise.all([
+  const [sections, saved, uploads, library] = await Promise.all([
     boardSections(state, c.admin),
     getMood(id),
     listUploads(id),
+    listLibrary(),
   ]);
+  // Une matière retirée de la bibliothèque disparaît des planches.
+  const known = new Set(library.map((m) => `library:${m.id}`));
+  const mood = {
+    boards: saved.boards.map((b) => ({
+      ...b,
+      items: b.items.filter(
+        (i) => !(i.kind === "material" && i.src.startsWith("library:") && !known.has(i.src)),
+      ),
+    })),
+  };
   return {
     id,
     number: q.number || reference(id, q.createdAt),
@@ -35,6 +47,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     sections,
     mood,
     uploads,
+    library,
   };
 }
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TEXTURE_SOURCE } from "./materials";
+import { LIBRARY_SOURCE } from "./library";
 
 /*
  * Mood board d'un devis : une planche par pièce (et une pour tout le projet
@@ -32,7 +33,7 @@ const fraction = z.number().min(-1).max(2);
 const size = z.number().min(0.02).max(1.5);
 const hex = z.string().regex(/^#[0-9a-f]{6}$/i);
 
-/** Photo : du catalogue Shopify, de la démonstration, ajoutée par l'architecte ou texture CC0. */
+/** Photo : catalogue Shopify, démonstration, ajout de l'architecte, texture CC0 ou bibliothèque Mikado. */
 export const photoSource = z
   .string()
   .max(200000)
@@ -41,7 +42,8 @@ export const photoSource = z
       /^https:\/\/cdn\.shopify\.com\//.test(s) ||
       /^upload:[a-z0-9]{10,40}$/.test(s) ||
       /^data:image\/svg\+xml[;,]/.test(s) ||
-      TEXTURE_SOURCE.test(s),
+      TEXTURE_SOURCE.test(s) ||
+      LIBRARY_SOURCE.test(s),
     "Photo non reconnue.",
   );
 
@@ -120,6 +122,9 @@ export type PaletteItem = {
   /** Finition Shopify : éditeur et couleur de pastille quand il n'y a pas de photo. */
   maker?: string;
   color?: string;
+  /** Matière de la bibliothèque : collection et coloris, repris dans la légende. */
+  name?: string;
+  reference?: string;
 };
 
 export type BoardSection = {

@@ -11,6 +11,7 @@ import { Link } from "react-router";
 import { Breadcrumb } from "../Breadcrumb";
 import { BoardView } from "./BoardView";
 import { TEXTURE_GROUPS, textureUrl } from "../../domain/materials";
+import { groupLibrary, libraryLabel, matchLibrary, type LibraryEntry } from "../../domain/library";
 import {
   BACKGROUNDS,
   BOARD_RATIO,
@@ -40,6 +41,8 @@ type Props = {
   sections: BoardSection[];
   mood: MoodState;
   uploads: Upload[];
+  /** Bibliothèque de matières de Mikado Deco (tissus en magasin). */
+  library?: LibraryEntry[];
 };
 type Gesture = {
   id: string;
@@ -135,6 +138,7 @@ export function MoodBoardEditor({
   sections,
   mood,
   uploads: initialUploads,
+  library = [],
 }: Props) {
   const [boards, setBoards] = useState<Board[]>(mood.boards);
   const [key, setKey] = useState(sections[0]?.key || "");
@@ -151,6 +155,7 @@ export function MoodBoardEditor({
   // Colonne de gauche : photos des produits, ou matières (finitions, textures, échantillons).
   const [shelf, setShelf] = useState<"photos" | "matieres">("photos");
   const materialInput = useRef<HTMLInputElement>(null);
+  const [libraryQuery, setLibraryQuery] = useState("");
   const boardRef = useRef<HTMLDivElement>(null);
   const gesture = useRef<Gesture | null>(null);
   const ratios = useRef(new Map<string, number>());
@@ -191,7 +196,9 @@ export function MoodBoardEditor({
     (src: string) =>
       src.startsWith("upload:")
         ? `/app/quotes/${id}/moodboard/image/${src.slice(7)}`
-        : sized(src, 1200),
+        : src.startsWith("library:")
+          ? `/app/matieres/image/${src.slice(8)}`
+          : sized(src, 1200),
     [id],
   );
 
@@ -294,8 +301,10 @@ export function MoodBoardEditor({
       new Promise<number>((done) => {
         const known = ratios.current.get(src);
         if (known) return done(known);
-        if (src.startsWith("upload:")) {
-          const u = uploads.find((x) => `upload:${x.id}` === src);
+        if (src.startsWith("upload:") || src.startsWith("library:")) {
+          const u =
+            uploads.find((x) => `upload:${x.id}` === src) ||
+            library.find((x) => `library:${x.id}` === src);
           if (u) {
             const r = u.width / u.height;
             ratios.current.set(src, r);
@@ -311,7 +320,7 @@ export function MoodBoardEditor({
         img.onerror = () => done(1);
         img.src = resolve(src);
       }),
-    [resolve, uploads],
+    [resolve, uploads, library],
   );
 
   const layoutFor = useCallback(
@@ -423,7 +432,8 @@ export function MoodBoardEditor({
   };
   /** Finition Shopify : sa photo d'échantillon, sinon sa couleur. */
   const addFinish = (f: PaletteItem, at?: { x: number; y: number }) => {
-    if (f.src) return void addMaterial({ src: f.src, name: f.alt, maker: f.maker }, at);
+    if (f.src)
+      return void addMaterial({ src: f.src, name: f.name ?? f.alt, maker: f.maker, reference: f.reference }, at);
     if (f.color)
       addItem({
         id: newId(),
@@ -975,7 +985,7 @@ export function MoodBoardEditor({
                     }}
                   />
                   <p className="muted mood-hint">
-                    Tissu Dedar ou Kvadrat, marbre, bois : photographiez l'échantillon, puis indiquez
+                    Un tissu, un marbre ou un bois absent de la liste : photographiez l'échantillon, puis indiquez
                     son nom, l'éditeur et la référence.
                   </p>
                   {(section?.finishes.length || 0) > 0 && (
@@ -997,6 +1007,16 @@ export function MoodBoardEditor({
                         tag: "ajout" as const,
                       }))}
                       onAdd={(f) => void addMaterial({ src: f.src, name: f.alt })}
+                      thumb={(f) => resolve(f.src)}
+                      disabled={preparing}
+                    />
+                  )}
+                  {library.length > 0 && (
+                    <LibraryShelf
+                      library={library}
+                      query={libraryQuery}
+                      onQuery={setLibraryQuery}
+                      onAdd={(f) => addFinish(f)}
                       thumb={(f) => resolve(f.src)}
                       disabled={preparing}
                     />
@@ -1234,6 +1254,67 @@ export function MoodBoardEditor({
   );
 }
 
+/** Vignettes affichées par éditeur avant de demander une recherche plus précise. */
+const LIBRARY_SHOWN = 36;
+
+/** Bibliothèque Mikado : tissus en magasin, par éditeur, avec recherche. */
+function LibraryShelf({
+  library,
+  query,
+  onQuery,
+  onAdd,
+  thumb,
+  disabled,
+}: {
+  library: LibraryEntry[];
+  query: string;
+  onQuery: (q: string) => void;
+  onAdd: (item: PaletteItem) => void;
+  thumb: (item: PaletteItem) => string;
+  disabled?: boolean;
+}) {
+  const found = query.trim() ? library.filter((m) => matchLibrary(m, query)) : library;
+  const groups = groupLibrary(found);
+  return (
+    <div className="mood-library">
+      <label className="mood-material-field mood-library-search">
+        <span>Bibliothèque Mikado Deco</span>
+        <input
+          type="search"
+          value={query}
+          placeholder="Ex. Hallingdal 130"
+          onChange={(e) => onQuery(e.target.value)}
+        />
+      </label>
+      {groups.length === 0 && <p className="muted mood-hint">Aucune matière ne correspond.</p>}
+      {groups.map((g) => (
+        <div key={g.maker}>
+          <MaterialGroup
+            label={`${g.maker} (${g.items.length})`}
+            items={g.items.slice(0, LIBRARY_SHOWN).map((m) => ({
+              key: m.id,
+              src: `library:${m.id}`,
+              alt: libraryLabel(m),
+              name: m.collection,
+              reference: m.colour,
+              maker: m.maker,
+              tag: "finition" as const,
+            }))}
+            onAdd={onAdd}
+            thumb={thumb}
+            disabled={disabled}
+          />
+          {g.items.length > LIBRARY_SHOWN && (
+            <p className="muted mood-hint">
+              {g.items.length - LIBRARY_SHOWN} autres : précisez la recherche.
+            </p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Groupe de matières dans la colonne : vignettes carrées, toucher ou glisser. */
 function MaterialGroup({
   label,
@@ -1283,7 +1364,8 @@ function MaterialGroup({
                 ) : (
                   <span className="mood-material-color" style={{ background: m.color }} />
                 )}
-                <span className="mood-photo-name">{m.alt}</span>
+                <span className="mood-photo-name">{m.name ?? m.alt}</span>
+                {m.reference && <span className="mood-photo-name mood-material-colour">{m.reference}</span>}
               </button>
             </li>
           );

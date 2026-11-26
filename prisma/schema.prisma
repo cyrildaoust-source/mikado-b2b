@@ -195,3 +195,18 @@ model MoodImage {
   createdAt DateTime @default(now())
   @@index([quoteId])
 }
+
+// Bibliothèque de matières de Mikado Deco (tissus Kvadrat en magasin…),
+// tenue par Cyril, proposée à tous les architectes dans le mood board.
+model LibraryMaterial {
+  id         String   @id @default(cuid())
+  maker      String
+  collection String
+  colour     String   @default("")
+  mime       String
+  data       Bytes
+  width      Int
+  height     Int
+  createdAt  DateTime @default(now())
+  @@index([maker, collection])
+}

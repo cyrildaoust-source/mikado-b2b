@@ -85,6 +85,7 @@ function ProNav({ demo, user }: { demo: boolean; user: NavUser }) {
         {user?.role === "admin" && (
           <>
             <NavLink to="/app/marques">Marques</NavLink>
+            <NavLink to="/app/matieres">Matières</NavLink>
             <NavLink to="/app/utilisateurs">Accès</NavLink>
           </>
         )}
