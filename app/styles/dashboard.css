@@ -412,7 +412,7 @@ s-badge[tone="info"] {
   font-size: var(--t-body);
   color: var(--ink-2);
 }
-.dash-tier-next p {
+.dash-tier-next > p:first-child {
   margin: 0 0 10px;
   font-size: var(--t-name);
   color: var(--ink);
@@ -425,6 +425,14 @@ s-badge[tone="info"] {
   margin-top: 8px;
   font-size: var(--t-small);
   color: var(--ink-2);
+}
+.dash-tier-note {
+  margin: 8px 0 0;
+  font-size: var(--t-small);
+  color: var(--ink-2);
+}
+.dash-tier-soon {
+  color: var(--warn);
 }
 .dash-tier-bar {
   height: 8px;

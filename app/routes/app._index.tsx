@@ -6,11 +6,11 @@ import {
 import { context, ownerScope } from "../services/context.server";
 import { loadDashboard } from "../services/dashboard.server";
 import {
-  acceptedVolumes,
+  acceptedHistory,
   architectStatus,
   listClasses,
 } from "../services/classes.server";
-import { classStatus } from "../domain/dashboard";
+import { loyaltyStatus } from "../domain/dashboard";
 import { firstName } from "../domain/dashboard";
 import { DashboardView } from "../components/dashboard/Dashboard";
 import Quotes, { loader as quotesLoader, action } from "./app.devis";
@@ -44,12 +44,9 @@ export async function loader(args: LoaderFunctionArgs) {
 async function demoStatus(shop: string) {
   const classes = await listClasses();
   if (!classes.length) return null;
-  let volume = 0;
-  for (const v of (
-    await acceptedVolumes(shop, null, new Date(), true)
-  ).values())
-    volume += v;
-  return classStatus(classes, null, volume);
+  const now = new Date();
+  const all = [...(await acceptedHistory(shop, null, now, true)).values()].flat();
+  return loyaltyStatus(classes, null, all, null, now);
 }
 
 export default function Home() {
