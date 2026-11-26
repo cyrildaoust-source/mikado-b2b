@@ -198,7 +198,29 @@ export async function importDedarProduct(slug: string, dry = false) {
     // Contrôle : la première vignette se lit comme à l'affichage.
     const probe = swatches[0] ? await remoteImage(swatches[0].src) : null;
     const size = probe ? imageSize(probe.data, probe.mime) : null;
-    return { ...report, probe: probe ? { mime: probe.mime, bytes: probe.data.length, size } : null, colours: swatches.map((s) => s.colour), allSwatchIds: ids.length, missing: other || null, trace };
+    // Diagnostic : tailles servies selon les paramètres, et voisins de la vignette dans la charge.
+    const variants: Record<string, unknown> = {};
+    if (swatches[0]) {
+      for (const q of ["", "?width=1200", "?format=auto&width=1200", "?w=1200"]) {
+        try {
+          const r = await fetch(`${swatches[0].src}${q}`, { headers: UA, signal: AbortSignal.timeout(15_000) });
+          const mime = r.headers.get("content-type")?.split(";")[0] || "";
+          const b = new Uint8Array(await r.arrayBuffer());
+          variants[q || "brut"] = { status: r.status, mime, bytes: b.length, size: imageSize(b, mime) };
+        } catch (e) {
+          variants[q || "brut"] = String(e);
+        }
+      }
+    }
+    let first: unknown = null;
+    try {
+      const id = swatches[0]?.src.match(/bc-swatch-\d+-[a-f0-9]+/)?.[0];
+      first = id ? dedarPayloadTrace(html, id) : null;
+    } catch (e) {
+      first = String(e);
+    }
+    const big = [...new Set(html.match(/https:\\?\/\\?\/cdn\.dedar\.com\\?\/bc-(?:variant|gallery)-[0-9a-f-]+\.jpe?g/gi) || [])].slice(0, 6);
+    return { ...report, probe: probe ? { mime: probe.mime, bytes: probe.data.length, size } : null, variants, first, big, colours: swatches.map((s) => s.colour), allSwatchIds: ids.length, missing: other || null, trace };
   }
   for (const s of swatches) {
     try {
