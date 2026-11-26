@@ -5,6 +5,10 @@ import documentCss from "./styles/document.css?url";
 import refonteCss from "./styles/refonte.css?url";
 import proCss from "./styles/pro.css?url";
 import outilCss from "./styles/outil.css?url";
+import finitionCatalogueCss from "./styles/finition-catalogue.css?url";
+import finitionDevisCss from "./styles/finition-devis.css?url";
+import finitionMoodboardCss from "./styles/finition-moodboard.css?url";
+import finitionPagesCss from "./styles/finition-pages.css?url";
 import {
   Links,
   Meta,
@@ -22,7 +26,14 @@ export const meta = () => [{ title: "Mikado Deco Pro" }];
 // sienne, outil.css ; l'app intégrée à l'admin Shopify garde les anciennes.
 // document.css habille le devis (aperçu), le PDF l'embarque à part.
 const STYLES = {
-  pro: [documentCss, outilCss],
+  pro: [
+    documentCss,
+    outilCss,
+    finitionPagesCss,
+    finitionCatalogueCss,
+    finitionDevisCss,
+    finitionMoodboardCss,
+  ],
   admin: [appCss, documentCss, refonteCss, proCss],
 };
 
