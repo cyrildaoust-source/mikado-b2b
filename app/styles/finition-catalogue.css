@@ -1,0 +1,263 @@
+/* Finition catalogue : passe de finition du 26/11 sur cette zone, chargée après outil.css. */
+
+/* ---------- Grille : filtres ---------- */
+
+/* « Tout effacer » a la taille d'un bouton discret, à côté des listes. */
+.catalogue .catalogue-filters .catalogue-reset {
+  min-height: var(--control);
+  border-radius: var(--radius);
+  font-weight: 500;
+}
+@media (pointer: coarse) {
+  .catalogue .catalogue-filters .catalogue-reset {
+    min-height: var(--touch);
+  }
+}
+
+/* Une liste de filtres ouverte passe devant la barre du devis. */
+.catalogue:has(.catalogue-filters .brand-picker[open]) .catalogue-dock {
+  visibility: hidden;
+}
+
+@media (max-width: 700px) {
+  /* Marques et familles côte à côte, « Tout effacer » sur sa ligne. */
+  .catalogue .catalogue-filters .brand-picker {
+    flex: 1 1 calc(50% - 4px);
+  }
+  .catalogue .catalogue-filters .catalogue-reset {
+    flex: 1 1 100%;
+    justify-content: center;
+    border: 1px solid var(--line);
+  }
+}
+/* Petit téléphone : un filtre par ligne, le libellé reste entier. */
+@media (max-width: 374px) {
+  .catalogue .catalogue-filters .brand-picker {
+    flex-basis: 100%;
+  }
+  .catalogue .catalogue-filters .brand-picker + .brand-picker .brand-picker-list {
+    left: 0;
+    right: auto;
+  }
+  .catalogue .catalogue-filters .brand-picker-list {
+    width: 100%;
+  }
+}
+
+/* ---------- Grille : état vide ---------- */
+.catalogue .empty-state .button {
+  margin-top: 4px;
+}
+
+/* ---------- Barre du devis en cours ---------- */
+
+/* « Ouvrir le devis » : une espace normale entre les deux mots. */
+.dock-actions .button.primary {
+  gap: 0.28em;
+}
+.dock-actions .action-menu > summary,
+.dock-actions .button.primary {
+  min-height: var(--control);
+}
+@media (pointer: coarse) {
+  .dock-actions .action-menu > summary,
+  .dock-actions .button.primary {
+    min-height: var(--touch);
+  }
+}
+.dock-hint b {
+  color: var(--ink);
+  font-weight: 500;
+}
+/* Le menu « Changer » s'ouvre au-dessus de la barre, calé à droite. */
+.catalogue-dock .dock-menu {
+  position: static;
+}
+.dock-menu > div,
+.dock-menu > div.flip {
+  right: 8px;
+  left: auto;
+  min-width: min(240px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+}
+.dock-menu > div button {
+  justify-content: flex-start;
+  text-align: left;
+  white-space: normal;
+}
+
+.dock-quote .dock-quote-total {
+  display: none;
+  color: var(--ink-2);
+  font-size: var(--t-small);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Téléphone : une seule rangée, sans le texte d'aide (le glisser n'existe pas au doigt). */
+@media (max-width: 700px) {
+  .catalogue:has(.catalogue-dock) {
+    padding-bottom: 104px;
+  }
+  .catalogue-dock {
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    padding: 8px 8px 8px 14px;
+  }
+  .dock-quote {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .dock-status:has(.dock-hint) {
+    display: none;
+  }
+  .dock-total {
+    display: none;
+  }
+  .dock-quote .dock-quote-total {
+    display: block;
+  }
+}
+
+/* Panneau de dépôt : l'option reste visible en bas, même avec une longue liste. */
+.drop-panel .drop-option {
+  position: sticky;
+  bottom: -16px;
+  background: var(--surface);
+  box-shadow: 0 -8px 12px var(--surface);
+}
+.drop-panel .drop-option.over {
+  background: var(--brass-bg);
+}
+
+/* ---------- Fiche produit : panneau du devis ouvert ---------- */
+
+/* Le pied (« Ouvrir le devis », « Fermer ») reste visible quand la liste défile. */
+.quote-panel footer {
+  position: sticky;
+  bottom: -18px;
+  margin: 14px -18px -18px;
+  padding: 8px 18px;
+  background: var(--surface);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.quote-panel footer a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (pointer: coarse) {
+  .quote-panel footer a,
+  .quote-panel footer button.text-button {
+    min-height: var(--touch);
+  }
+}
+@media (min-width: 701px) and (max-width: 1100px) {
+  .quote-panel footer {
+    bottom: -14px;
+    margin: 14px -14px -14px;
+    padding: 8px 14px;
+  }
+}
+.quote-panel header .quote-panel-total {
+  font-variant-numeric: tabular-nums;
+}
+/* Actions d'une ligne : même hauteur, alignées sous le nom. */
+.quote-panel-actions {
+  grid-column: 2;
+  gap: 0 12px;
+}
+/* Sous la fiche (iPad vertical, téléphone) : les lignes sur deux colonnes si la place le permet. */
+@media (min-width: 701px) and (max-width: 1100px) and (orientation: portrait),
+  (min-width: 701px) and (max-width: 899px) {
+  .product-layout.with-quote .quote-panel ul {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+  .product-layout.with-quote .quote-panel footer {
+    position: static;
+  }
+}
+@media (max-width: 700px) {
+  .product-layout .quote-panel footer {
+    position: static;
+  }
+}
+
+/* ---------- Fiche produit : bloc d'ajout ---------- */
+.product-add select {
+  text-overflow: ellipsis;
+}
+.product-add .success {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+.product-add .success a {
+  color: var(--ink);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Modèles 3D : boutons et notes alignés, sur une ligne quand c'est possible. */
+.product-models ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.product-models p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+.product-models p .muted {
+  flex: 1 1 200px;
+  font-size: var(--t-small);
+}
+@media (pointer: coarse) {
+  .product-models .button {
+    min-height: var(--touch);
+  }
+}
+
+/* ---------- Fenêtre de choix de finition ---------- */
+.finish-dialog .finish-loading {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+  gap: 24px;
+}
+.finish-dialog .finish-loading > span {
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius);
+  background: var(--ground);
+}
+.finish-dialog .finish-loading p {
+  margin: 0;
+  color: var(--ink-3);
+}
+.finish-dialog .modal-actions > span {
+  color: var(--ink-2);
+}
+.finish-dialog .modal-actions > span strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+@media (max-width: 700px) {
+  .finish-dialog .finish-loading {
+    grid-template-columns: 140px minmax(0, 1fr);
+    gap: 16px;
+  }
+  .finish-photo {
+    width: 100%;
+    max-width: 200px;
+  }
+  .finish-dialog .modal-actions {
+    flex-wrap: wrap;
+  }
+  .finish-dialog .modal-actions .primary {
+    flex: 1 1 auto;
+  }
+}

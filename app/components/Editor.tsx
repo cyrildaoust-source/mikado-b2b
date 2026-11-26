@@ -1083,7 +1083,7 @@ export default function Editor({
             </s-section>
   );
   const historySection = showHistory && (
-            <s-section heading="Historique">
+            <s-section heading="Historique" id="historique">
               <div className="timeline">
                 {q.revisions
                   .filter((r) => r.publishedNumber)
@@ -1327,7 +1327,14 @@ export default function Editor({
           )}
           <details className="action-menu">
             <summary>Autres actions</summary>
-            <div>
+            {/* Un choix fait, le menu se referme. */}
+            <div
+              onClick={(e) => {
+                if ((e.target as HTMLElement).closest("button"))
+                  (e.currentTarget.parentElement as HTMLDetailsElement).open =
+                    false;
+              }}
+            >
               <button
                 disabled={busy || dirty}
                 onClick={() => send("duplicate")}
@@ -1347,8 +1354,18 @@ export default function Editor({
                   Compléter les photos Shopify
                 </button>
               )}
-              <button onClick={() => setShowHistory(!showHistory)}>
-                Afficher l’historique
+              <button
+                onClick={() => {
+                  setShowHistory(!showHistory);
+                  if (!showHistory)
+                    requestAnimationFrame(() =>
+                      document
+                        .getElementById("historique")
+                        ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+                    );
+                }}
+              >
+                {showHistory ? "Masquer l’historique" : "Afficher l’historique"}
               </button>
               {q.status === "deleted" ? (
                 <button
@@ -1812,6 +1829,9 @@ export default function Editor({
               Article à livrer
             </label>
             <footer className="modal-actions">
+              <button type="button" onClick={() => setCustom(null)}>
+                Annuler
+              </button>
               <button className="primary">Ajouter</button>
             </footer>
           </form>
@@ -1843,6 +1863,9 @@ export default function Editor({
               />
             </label>
             <footer className="modal-actions">
+              <button type="button" onClick={() => setNewLot(false)}>
+                Annuler
+              </button>
               <button className="primary">Choisir les produits</button>
             </footer>
           </form>
@@ -1912,15 +1935,18 @@ export default function Editor({
             Avant : {money(fiscalTotals(s).gross)} TVAC · Après :{" "}
             {money(fiscalTotals(policy).gross)} TVAC
           </p>
-          <button
-            className="primary"
-            onClick={() => {
-              change(policy, true);
-              setModal(null);
-            }}
-          >
-            Appliquer au brouillon
-          </button>
+          <footer className="modal-actions">
+            <button onClick={() => setModal(null)}>Annuler</button>
+            <button
+              className="primary"
+              onClick={() => {
+                change(policy, true);
+                setModal(null);
+              }}
+            >
+              Appliquer au brouillon
+            </button>
+          </footer>
         </Modal>
       )}
       {modal === "leave" && (
@@ -1935,6 +1961,7 @@ export default function Editor({
           <footer className="modal-actions">
             <button onClick={() => setModal(null)}>Continuer le devis</button>
             <button
+              className="danger"
               onClick={() => {
                 draft.discard();
                 navigate(leaveTo);
@@ -1954,15 +1981,31 @@ export default function Editor({
             Le devis disparaîtra de la liste active. Vous pourrez le restaurer
             depuis la corbeille, avec ses PDF et son historique.
           </p>
-          <button disabled={busy} onClick={() => send("trash")}>
-            Mettre à la corbeille
-          </button>
+          <footer className="modal-actions">
+            <button onClick={() => setModal(null)}>Annuler</button>
+            <button
+              className="danger"
+              disabled={busy}
+              onClick={() => send("trash")}
+            >
+              Mettre à la corbeille
+            </button>
+          </footer>
         </Modal>
       )}
       {modal === "archive" && (
         <Modal title="Archiver ce devis ?" onClose={() => setModal(null)}>
           <p>Vous pourrez le retrouver et le restaurer depuis les archives.</p>
-          <button onClick={() => send("archive")}>Archiver</button>
+          <footer className="modal-actions">
+            <button onClick={() => setModal(null)}>Annuler</button>
+            <button
+              className="primary"
+              disabled={busy}
+              onClick={() => send("archive")}
+            >
+              Archiver
+            </button>
+          </footer>
         </Modal>
       )}
       {modal === "convert" && (
@@ -1974,16 +2017,19 @@ export default function Editor({
             {s.client} · {money(fiscal.gross)} TVAC. Seuls les produits et
             options retenus seront transférés. Aucun paiement ne sera déclenché.
           </p>
-          <button
-            className="primary"
-            disabled={busy}
-            onClick={() => {
-              send("convert");
-              setModal(null);
-            }}
-          >
-            Créer la commande provisoire
-          </button>
+          <footer className="modal-actions">
+            <button onClick={() => setModal(null)}>Annuler</button>
+            <button
+              className="primary"
+              disabled={busy}
+              onClick={() => {
+                send("convert");
+                setModal(null);
+              }}
+            >
+              Créer la commande provisoire
+            </button>
+          </footer>
         </Modal>
       )}
     </main>

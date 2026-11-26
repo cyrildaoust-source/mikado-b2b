@@ -15,6 +15,8 @@ import {
   startSession,
 } from "../services/auth.server";
 
+export const meta = () => [{ title: "Invitation · Mikado Deco Pro" }];
+
 export async function loader({ params }: LoaderFunctionArgs) {
   if (!isStandalone()) throw redirect("/app");
   const invite = await findInvite(String(params.token));
@@ -79,16 +81,20 @@ export default function Invitation() {
               </p>
             )}
             <button className="primary" disabled={busy}>
-              Ouvrir mon accès
+              {busy ? "Ouverture…" : "Ouvrir mon accès"}
             </button>
           </Form>
         ) : (
           <>
             <h1>Lien expiré</h1>
-            <p>
+            <p className="muted">
               Ce lien a déjà servi ou n'est plus valable. Demandez-en un nouveau
-              à Mikado Deco.
+              à Mikado Deco. Si vous avez déjà choisi votre mot de passe,
+              connectez-vous.
             </p>
+            <a className="button primary" href="/connexion">
+              Aller à la connexion
+            </a>
           </>
         )}
       </div>

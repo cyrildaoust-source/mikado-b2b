@@ -67,9 +67,9 @@ export default function Connexion() {
           </p>
         )}
         <button className="primary" disabled={busy}>
-          Se connecter
+          {busy ? "Connexion…" : "Se connecter"}
         </button>
-        <p className="muted">
+        <p className="muted auth-help">
           Mot de passe oublié ? Demandez un nouveau lien à Mikado Deco.
         </p>
       </Form>

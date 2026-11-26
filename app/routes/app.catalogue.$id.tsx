@@ -403,7 +403,7 @@ export default function Product() {
             <header>
               <small>Devis ouvert</small>
               <strong>{panel.title}</strong>
-              <span>Total {money(panel.total)} HTVA</span>
+              <span className="quote-panel-total">Total {money(panel.total)} HTVA</span>
             </header>
             {here && (busy || result?.ok || result?.error) && (
               <p

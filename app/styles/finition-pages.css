@@ -1,0 +1,376 @@
+/* Finition pages : passe de finition du 26/11 sur cette zone, chargée après outil.css.
+ * Barre du haut, liste des devis, Marques, Accès, connexion, invitation, erreurs. */
+
+/* ------------------------------------------------------------------ */
+/* Barre du haut                                                       */
+/* ------------------------------------------------------------------ */
+.pro-nav-scrim {
+  display: none;
+}
+.pro-nav .pro-user {
+  max-width: 220px;
+}
+@media (max-width: 700px) {
+  /* Le bouton garde sa largeur entre « Menu » et « Fermer » */
+  .pro-nav-toggle {
+    justify-content: center;
+    min-width: 76px;
+  }
+  .pro-nav.menu-open .pro-nav-toggle {
+    background: var(--ground);
+    border-color: var(--line-hover);
+  }
+  /* Le menu s'ouvre sous la barre, par-dessus la page, sans la pousser */
+  .pro-nav.menu-open .pro-nav-links {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    order: 0;
+    display: grid;
+    gap: 2px;
+    max-height: calc(100dvh - 64px);
+    overflow-y: auto;
+    padding: 8px var(--gutter) 16px;
+    border-top: 0;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    box-shadow: var(--shadow-float);
+  }
+  .pro-nav.menu-open .pro-nav-links a {
+    padding: 0 12px;
+    font-size: var(--t-name);
+  }
+  .pro-nav.menu-open .pro-nav-account {
+    display: grid;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 12px 12px 0;
+    border-top: 1px solid var(--line);
+  }
+  .pro-nav.menu-open .pro-nav-account .muted {
+    font-size: var(--t-small);
+  }
+  .pro-nav.menu-open .pro-nav-account form {
+    margin: 0;
+  }
+  .pro-nav.menu-open .pro-nav-account button {
+    width: 100%;
+    min-height: var(--touch);
+  }
+  .pro-nav.menu-open .pro-nav-scrim {
+    display: block;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    height: 100dvh;
+    z-index: 1;
+    background: rgba(22, 24, 26, 0.35);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Listes : barre de recherche, pagination, états vides               */
+/* ------------------------------------------------------------------ */
+.list-toolbar {
+  align-items: center;
+}
+.list-toolbar input:not([type="checkbox"]):not([type="radio"]),
+.list-toolbar select {
+  margin: 0;
+  min-height: var(--control);
+  height: var(--control);
+}
+.list-toolbar select {
+  min-width: 220px;
+}
+@media (max-width: 700px) {
+  .list-toolbar select {
+    min-width: 0;
+  }
+}
+.pagination {
+  border-top: 1px solid var(--line);
+}
+.pagination .button {
+  min-height: var(--compact);
+}
+.empty-state {
+  padding: 56px 16px;
+}
+.empty-state h2 {
+  color: var(--ink);
+  font-size: var(--t-section);
+}
+.empty-state p {
+  font-size: var(--t-body);
+}
+.empty-state form {
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Accès                                                               */
+/* ------------------------------------------------------------------ */
+.user-table .user-name {
+  display: block;
+  font-weight: 500;
+}
+.user-table td small {
+  overflow-wrap: anywhere;
+}
+.user-table td,
+.user-table th {
+  vertical-align: middle;
+}
+.user-table td {
+  height: 64px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.quote-table.user-table td:nth-child(4),
+.user-table th:nth-child(4) {
+  text-align: right;
+}
+.quote-table.user-table td:nth-child(2) {
+  white-space: nowrap;
+}
+.user-table tr.is-off td:first-child,
+.user-table tr.is-off td:nth-child(2) {
+  color: var(--ink-3);
+}
+.user-table s-badge {
+  white-space: nowrap;
+}
+/* Actions de ligne : boutons cadrés, de même taille côte à côte */
+.user-table .row-actions form {
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.user-table .row-actions button {
+  border-color: var(--line-strong);
+  background: var(--surface);
+  box-shadow: var(--shadow-control);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.user-table .row-actions button[value="toggle"] {
+  color: var(--ink-2);
+}
+.user-form {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(160px, 0.7fr) auto;
+}
+.user-form button.primary {
+  white-space: nowrap;
+}
+.user-form-help {
+  grid-column: 1 / -1;
+  margin: -4px 0 0;
+  color: var(--ink-3);
+  font-size: var(--t-small);
+}
+/* Lien d'invitation : message et champ bien séparés */
+.success:has(.invite-link) {
+  display: block;
+}
+.success:has(.invite-link) p {
+  margin: 0 0 6px;
+}
+.success:has(.invite-link) p:first-child {
+  font-weight: 500;
+}
+.invite-link {
+  margin-top: 10px;
+}
+.invite-link input:not([type="checkbox"]) {
+  min-height: var(--control);
+  text-overflow: ellipsis;
+}
+.invite-link button {
+  flex: none;
+}
+
+/* Tablette : la table d'Accès passe en cartes dès qu'elle est à l'étroit */
+@media (max-width: 900px) {
+  .user-table thead {
+    display: none;
+  }
+  .user-table,
+  .user-table tbody {
+    display: block;
+  }
+  .user-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .user-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+  .user-table td,
+  .quote-table.user-table td {
+    display: block;
+    height: auto;
+    padding: 0;
+    border: 0;
+    text-align: left;
+  }
+  .quote-table.user-table td:nth-child(1) {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  .quote-table.user-table td:nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+    color: var(--ink-2);
+  }
+  .quote-table.user-table td:nth-child(3) {
+    grid-column: 2;
+    grid-row: 2;
+    text-align: right;
+  }
+  .quote-table.user-table td:nth-child(4) {
+    display: block;
+    grid-column: 1 / -1;
+    grid-row: 3;
+    text-align: left;
+  }
+  .quote-table.user-table td:nth-child(4):empty {
+    display: none;
+  }
+  .user-table .row-actions form {
+    justify-content: flex-start;
+    margin-top: 6px;
+  }
+}
+@media (max-width: 700px) {
+  .user-table .row-actions form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  }
+  .user-table .row-actions button {
+    min-height: var(--touch);
+  }
+}
+@media (max-width: 1100px) {
+  .user-form {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .user-form button.primary {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+@media (max-width: 700px) {
+  .user-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .user-form button.primary {
+    justify-self: stretch;
+    min-height: var(--touch);
+  }
+  .invite-link {
+    flex-wrap: wrap;
+  }
+  .invite-link button {
+    flex: 1 1 100%;
+    min-height: var(--touch);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Marques                                                             */
+/* ------------------------------------------------------------------ */
+.brand-table td:first-child {
+  font-weight: 500;
+}
+
+/* ------------------------------------------------------------------ */
+/* Connexion et invitation                                             */
+/* ------------------------------------------------------------------ */
+.auth-brand {
+  font-weight: 500;
+}
+.auth-card h1 {
+  margin: 0;
+  font-size: var(--t-title);
+}
+.auth-card label {
+  margin: 0;
+}
+.auth-card input:not([type="checkbox"]):not([type="radio"]),
+.auth-card .button.primary {
+  min-height: var(--touch);
+}
+.auth-card .button.primary {
+  width: 100%;
+}
+.auth-card .error {
+  margin: 0;
+}
+.auth-help {
+  font-size: var(--t-small);
+}
+@media (max-width: 700px) {
+  .auth-page {
+    align-items: start;
+    padding: 48px var(--gutter) 24px;
+  }
+  .auth-card {
+    padding: 24px 20px;
+  }
+  /* 16 px : iOS ne zoome pas sur le champ */
+  .auth-card input:not([type="checkbox"]):not([type="radio"]) {
+    font-size: 16px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Pages d'erreur                                                      */
+/* ------------------------------------------------------------------ */
+.error-page {
+  display: grid;
+  justify-items: center;
+  padding-top: 72px;
+}
+.error-card {
+  width: min(520px, 100%);
+  padding: 32px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.error-card h1 {
+  margin: 0 0 8px;
+}
+.error-card p {
+  margin: 0 0 8px;
+  color: var(--ink-2);
+}
+.error-code {
+  color: var(--ink-3);
+  font-size: var(--t-small);
+}
+.error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+@media (max-width: 700px) {
+  .error-page {
+    padding-top: 32px;
+  }
+  .error-card {
+    padding: 24px 20px;
+  }
+  .error-actions .button {
+    flex: 1 1 100%;
+    min-height: var(--touch);
+  }
+}
