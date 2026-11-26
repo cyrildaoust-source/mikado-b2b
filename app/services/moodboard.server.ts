@@ -18,6 +18,7 @@ import {
 } from "../domain/moodboard";
 import { BoardView } from "../components/moodboard/BoardView";
 import { TEXTURE_SOURCE } from "../domain/materials";
+import { LIBRARY_SOURCE } from "../domain/library";
 import { demoProducts } from "./catalog.server";
 import { gql, type Admin } from "./shopify-api.server";
 import { launchBrowser } from "./pdf.server";
@@ -268,7 +269,7 @@ export async function quoteState(quoteState: string) {
 
 // ——— Exports ———
 
-/** Photo en données intégrées : Shopify (seul hôte permis), démo ou photo ajoutée. */
+/** Photo en données intégrées : Shopify, texture CC0, démo, photo ajoutée ou bibliothèque Mikado. */
 async function embed(quoteId: number, src: string, width: number) {
   if (src.startsWith("data:image/svg+xml")) {
     const svg = src.includes(";base64,")
@@ -278,6 +279,13 @@ async function embed(quoteId: number, src: string, width: number) {
   }
   if (src.startsWith("upload:")) {
     const img = await getUpload(quoteId, src.slice(7));
+    return img ? { mime: img.mime, data: Buffer.from(img.data) } : null;
+  }
+  if (LIBRARY_SOURCE.test(src)) {
+    const img = await db.libraryMaterial.findUnique({
+      where: { id: src.slice(8) },
+      select: { mime: true, data: true },
+    });
     return img ? { mime: img.mime, data: Buffer.from(img.data) } : null;
   }
   // Hôtes admis : le CDN Shopify et les textures CC0 de Poly Haven.

@@ -506,3 +506,111 @@ button.mood-material:hover:not(:disabled) .mood-material-color {
     grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
   }
 }
+
+/* ——— Bibliothèque de matières (page Matières et onglet du mood board) ——— */
+.mood-library {
+  display: grid;
+  gap: 8px;
+}
+.mood-library-search input {
+  width: 100%;
+}
+.library-page .list-card {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+.library-page h2,
+.library-page h3 {
+  margin: 0;
+}
+.library-import-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+.library-field {
+  display: grid;
+  gap: 4px;
+  min-width: 200px;
+}
+.library-field span {
+  font-size: var(--t-small, 13px);
+  color: var(--muted, #5f5d58);
+}
+.library-pick {
+  position: relative;
+}
+.library-table input {
+  width: 100%;
+  min-width: 0;
+}
+.library-thumb {
+  display: block;
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.library-error {
+  display: block;
+  margin-top: 4px;
+  color: var(--danger, #b42318);
+}
+.library-list-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.library-list-head input {
+  width: min(320px, 100%);
+}
+.library-maker {
+  display: grid;
+  gap: 10px;
+}
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.library-grid li {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  font-size: var(--t-small, 13px);
+}
+.library-grid img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 4px;
+  background: var(--ground, #f4f1ea);
+  box-shadow: inset 0 0 0 1px rgba(22, 24, 26, 0.08);
+}
+.library-grid form {
+  display: grid;
+  gap: 4px;
+}
+.library-grid form input {
+  min-height: 32px;
+  width: 100%;
+}
+.library-grid li > div,
+.library-grid form > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-left: -8px;
+}
+.mood-material .mood-material-colour {
+  margin-top: -2px;
+  color: var(--muted, #5f5d58);
+}
