@@ -1,4 +1,4 @@
-name = "Mikado Devis"
+name = "Mikado Pro"
 roles = ["frontend", "backend"]
 webhooks_path = "/webhooks/app/uninstalled"
 [commands]
