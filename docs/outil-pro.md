@@ -49,6 +49,20 @@ haute entre la classe choisie (un minimum) et celle que son chiffre ouvre : devi
 (commande créée), HTVA, sur les 12 derniers mois glissants. Une classe à palier 0 est
 ouverte dès l'inscription. La remise est affichée, pas appliquée aux prix du devis.
 
+Grille de départ (décision de Cyril du 26/11/2026), posée par la migration
+`20261126180000_architect_classes_seed` si aucune classe n'existe encore : Esquisse 10 %
+dès l'inscription, Plan 12 % dès 15 000 €, Projet 14 % dès 35 000 €, Signature 16 % dès
+75 000 € HTVA sur 12 mois. Pas de plafond par marque.
+
+Leviers de fidélité (`loyaltyStatus`, `app/domain/dashboard.ts`) :
+
+- Garantie de 12 mois : une classe atteinte reste acquise 12 mois après le devis accepté
+  qui l'a ouverte ou confirmée, même si le chiffre glissant baisse. L'accueil donne la date
+  de fin et, à 60 jours de cette date, le montant à accepter pour la garder.
+- Bienvenue : le premier devis accepté dans les 60 jours qui suivent l'ouverture du compte
+  compte double dans le chiffre.
+- « Accès » montre la date de fin de garantie à côté de la remise actuelle.
+
 ## Le catalogue
 
 Les fiches sont lues dans Shopify côté serveur. Rien n'est publié ni modifié.

@@ -11,8 +11,8 @@ import db from "../db.server";
 import { context, requireAdmin } from "../services/context.server";
 import { createInvite, normalizeEmail } from "../services/auth.server";
 import { readForm } from "../services/form.server";
-import { acceptedVolumes, listClasses } from "../services/classes.server";
-import { classStatus, percent } from "../domain/dashboard";
+import { acceptedHistory, listClasses } from "../services/classes.server";
+import { loyaltyStatus, percent } from "../domain/dashboard";
 import { money } from "../domain/quote";
 
 export const meta = () => [{ title: "Accès · Mikado Deco Pro" }];
@@ -31,20 +31,29 @@ export async function loader({ request }: LoaderFunctionArgs) {
       lastLoginAt: true,
       passwordHash: true,
       classId: true,
+      createdAt: true,
     },
   });
-  const [classes, volumes] = await Promise.all([
+  const now = new Date();
+  const [classes, history] = await Promise.all([
     listClasses(),
-    acceptedVolumes(c.shop),
+    acceptedHistory(c.shop, null, now),
   ]);
   return {
-    users: users.map(({ passwordHash, ...u }) => {
-      const volume = volumes.get(u.id) || 0;
+    users: users.map(({ passwordHash, createdAt, ...u }) => {
+      const status = loyaltyStatus(
+        classes,
+        u.classId,
+        history.get(u.id) || [],
+        createdAt,
+        now,
+      );
       return {
         ...u,
         ready: !!passwordHash,
-        volume,
-        current: classStatus(classes, u.classId, volume).current,
+        volume: status.volume,
+        current: status.current,
+        guarantee: status.guarantee,
       };
     }),
     classes,
@@ -354,6 +363,13 @@ type ClassRow = {
 };
 
 /** Classes d'architectes et classe de chacun. */
+const shortDate = (iso: string) =>
+  new Date(`${iso}T12:00:00Z`).toLocaleDateString("fr-BE", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
 function Classes({
   classes,
   architects,
@@ -365,6 +381,7 @@ function Classes({
     classId: number | null;
     volume: number;
     current: ClassRow | null;
+    guarantee: { until: string; keep: number; soon: boolean } | null;
   }[];
 }) {
   const euros = (c: number) => String(Math.round(c / 100));
@@ -534,6 +551,11 @@ function Classes({
                       </s-badge>
                     ) : (
                       <span className="muted">Aucune</span>
+                    )}
+                    {u.guarantee && (
+                      <small className="class-guarantee">
+                        Garantie jusqu'au {shortDate(u.guarantee.until)}
+                      </small>
                     )}
                   </td>
                 </tr>

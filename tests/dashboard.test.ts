@@ -215,3 +215,71 @@ test("classes d'architectes : remise actuelle et suivante", async () => {
   assert.equal(s.remaining, 1000000);
   assert.equal(classStatus([], null, 0).current, null);
 });
+
+test("fidélité : garantie de 12 mois et premier devis double", async () => {
+  const { loyaltyStatus, rollingVolume } = await import(
+    "../app/domain/dashboard"
+  );
+  const classes = [
+    { id: 1, name: "Esquisse", discount: 10, threshold: 0 },
+    { id: 2, name: "Plan", discount: 12, threshold: 1500000 },
+    { id: 3, name: "Projet", discount: 14, threshold: 3500000 },
+    { id: 4, name: "Signature", discount: 16, threshold: 7500000 },
+  ];
+  const d = (s: string) => new Date(`${s}T10:00:00Z`);
+  const old = d("2024-01-01");
+  // 20 000 € le 1er mars 2026 et 20 000 € le 1er juin 2026 : Projet (40 000).
+  const items = [
+    { at: d("2026-03-01"), amount: 2000000 },
+    { at: d("2026-06-01"), amount: 2000000 },
+  ];
+  assert.equal(rollingVolume(items, d("2026-11-26")), 4000000);
+  // En mars 2027, le devis de mars 2026 est sorti du chiffre glissant :
+  // 20 000 €, mais Projet reste acquis jusqu'au 1er juin 2027.
+  let s = loyaltyStatus(classes, null, items, old, d("2027-03-15"));
+  assert.equal(s.volume, 2000000);
+  assert.equal(s.current?.name, "Projet");
+  assert.equal(s.next?.name, "Signature");
+  assert.equal(s.remaining, 5500000);
+  assert.deepEqual(s.guarantee, {
+    until: "2027-06-01",
+    keep: 1500000,
+    soon: false,
+  });
+  // À 60 jours de la fin, l'accueil prévient.
+  s = loyaltyStatus(classes, null, items, old, d("2027-04-10"));
+  assert.equal(s.guarantee?.soon, true);
+  // Après la fin, retour à la classe du chiffre.
+  s = loyaltyStatus(classes, null, items, old, d("2027-06-02"));
+  assert.equal(s.current?.name, "Esquisse");
+  assert.equal(s.volume, 0);
+  assert.equal(s.guarantee, null);
+  // Chiffre au-dessus du palier : pas d'échéance à afficher.
+  s = loyaltyStatus(classes, null, items, old, d("2026-11-26"));
+  assert.equal(s.current?.name, "Projet");
+  assert.equal(s.guarantee, null);
+  assert.equal(s.welcome, null);
+  // Un choix de Mikado Deco plus haut l'emporte, sans garantie à afficher.
+  s = loyaltyStatus(classes, 4, items, old, d("2027-03-15"));
+  assert.equal(s.current?.name, "Signature");
+  assert.equal(s.guarantee, null);
+
+  // Bienvenue : compte ouvert le 1er octobre, premier devis de 10 000 € le
+  // 20 novembre, compté 20 000 € : Plan.
+  const created = d("2026-10-01");
+  const first = [{ at: d("2026-11-20"), amount: 1000000 }];
+  s = loyaltyStatus(classes, null, first, created, d("2026-11-26"));
+  assert.equal(s.welcome, "counted");
+  assert.equal(s.volume, 2000000);
+  assert.equal(s.current?.name, "Plan");
+  // Après 60 jours, le premier devis compte simple.
+  const late = [{ at: d("2026-12-15"), amount: 1000000 }];
+  s = loyaltyStatus(classes, null, late, created, d("2026-12-20"));
+  assert.equal(s.welcome, null);
+  assert.equal(s.volume, 1000000);
+  // Pas encore de devis accepté, compte récent : l'offre est ouverte.
+  s = loyaltyStatus(classes, null, [], created, d("2026-11-26"));
+  assert.equal(s.welcome, "open");
+  s = loyaltyStatus(classes, null, [], created, d("2027-01-15"));
+  assert.equal(s.welcome, null);
+});

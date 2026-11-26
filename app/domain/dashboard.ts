@@ -230,6 +230,17 @@ export type ClassStatus = {
   volume: number;
   /** La classe vient du chiffre (et non du seul choix de Mikado Deco). */
   earned: boolean;
+  /**
+   * Classe gardée par la garantie de 12 mois alors que le chiffre actuel est
+   * passé sous son palier : date de fin (AAAA-MM-JJ) et centimes HTVA à
+   * accepter d'ici là pour la garder. Null sinon.
+   */
+  guarantee: { until: string; keep: number; soon: boolean } | null;
+  /**
+   * Bienvenue : « open » tant que le compte a moins de 60 jours et aucun devis
+   * accepté (le premier comptera double), « counted » quand il a compté double.
+   */
+  welcome: "open" | "counted" | null;
 };
 
 /** Classes de la plus basse à la plus haute : palier, puis remise. */
@@ -248,10 +259,14 @@ export function classStatus(
   classes: ArchitectClass[],
   assignedId: number | null,
   volume: number,
+  // Plus haut chiffre atteint sur l'année (garantie de 12 mois) : il fixe la
+  // classe gagnée, le chiffre actuel fixe ce qui reste à faire.
+  peak = volume,
 ): ClassStatus {
   const sorted = sortClasses(classes);
+  const reached = Math.max(volume, peak);
   const earnedIndex = sorted.reduce(
-    (best, c, i) => (c.threshold <= volume ? i : best),
+    (best, c, i) => (c.threshold <= reached ? i : best),
     -1,
   );
   const assignedIndex = sorted.findIndex((c) => c.id === assignedId);
@@ -261,7 +276,7 @@ export function classStatus(
     sorted
       .slice(index + 1)
       .find(
-        (c) => c.discount > (current?.discount ?? -1) && c.threshold > volume,
+        (c) => c.discount > (current?.discount ?? -1) && c.threshold > reached,
       ) || null;
   const remaining = next ? Math.max(0, next.threshold - volume) : 0;
   const progress = next
@@ -276,6 +291,91 @@ export function classStatus(
     progress,
     volume,
     earned: index >= 0 && index === earnedIndex && earnedIndex >= assignedIndex,
+    guarantee: null,
+    welcome: null,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Fidélité : garantie de 12 mois et premier devis de bienvenue        */
+/* ------------------------------------------------------------------ */
+
+/** Un devis accepté : sa date et son montant HTVA en centimes. */
+export type Accepted = { at: Date; amount: number };
+
+/** Une classe atteinte reste acquise 12 mois après le devis qui l'a ouverte. */
+export const GUARANTEE_DAYS = 365;
+/** L'accueil prévient ce nombre de jours avant la fin de la garantie. */
+export const GUARANTEE_ALERT_DAYS = 60;
+/** Le premier devis accepté compte double s'il l'est dans ces jours. */
+export const WELCOME_DAYS = 60;
+
+const days = (d: Date, n: number) => new Date(d.getTime() + n * DAY);
+
+/** Chiffre des 12 mois qui finissent au jour `at`, inclus. */
+export function rollingVolume(items: Accepted[], at: Date) {
+  const since = days(at, -GUARANTEE_DAYS).getTime();
+  return items.reduce(
+    (sum, i) =>
+      i.at.getTime() > since && i.at.getTime() <= at.getTime()
+        ? sum + i.amount
+        : sum,
+    0,
+  );
+}
+
+/**
+ * Classe d'un architecte avec les leviers de fidélité :
+ * - le premier devis accepté dans les 60 jours qui suivent l'ouverture du
+ *   compte compte double ;
+ * - une classe atteinte reste acquise 12 mois après le devis accepté qui l'a
+ *   ouverte ou confirmée, même si le chiffre glissant baisse ensuite.
+ */
+export function loyaltyStatus(
+  classes: ArchitectClass[],
+  assignedId: number | null,
+  accepted: Accepted[],
+  createdAt: Date | null,
+  now: Date,
+): ClassStatus {
+  const sorted = [...accepted].sort((a, b) => a.at.getTime() - b.at.getTime());
+  const first = sorted[0];
+  const welcome =
+    !!first &&
+    !!createdAt &&
+    first.at.getTime() - createdAt.getTime() <= WELCOME_DAYS * DAY &&
+    first.at.getTime() >= createdAt.getTime() - DAY;
+  const items = sorted.map((i, n) =>
+    n === 0 && welcome ? { ...i, amount: i.amount * 2 } : i,
+  );
+  const volume = rollingVolume(items, now);
+  const since = days(now, -GUARANTEE_DAYS).getTime();
+  const points = items
+    .filter((i) => i.at.getTime() > since && i.at.getTime() <= now.getTime())
+    .map((i) => ({ at: i.at, volume: rollingVolume(items, i.at) }));
+  const peak = points.reduce((m, p) => Math.max(m, p.volume), volume);
+  const status = classStatus(classes, assignedId, volume, peak);
+  const c = status.current;
+  let guarantee: ClassStatus["guarantee"] = null;
+  if (status.earned && c && volume < c.threshold) {
+    const last = points.filter((p) => p.volume >= c.threshold).pop();
+    if (last) {
+      const until = days(last.at, GUARANTEE_DAYS);
+      guarantee = {
+        until: until.toISOString().slice(0, 10),
+        keep: c.threshold - volume,
+        soon: daysBetween(now, until) <= GUARANTEE_ALERT_DAYS,
+      };
+    }
+  }
+  const open =
+    !first &&
+    !!createdAt &&
+    now.getTime() - createdAt.getTime() <= WELCOME_DAYS * DAY;
+  return {
+    ...status,
+    guarantee,
+    welcome: welcome ? "counted" : open ? "open" : null,
   };
 }
 

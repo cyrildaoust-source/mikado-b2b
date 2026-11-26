@@ -124,3 +124,10 @@
     width: 100%;
   }
 }
+
+.class-guarantee {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--t-small);
+  color: var(--ink-3);
+}

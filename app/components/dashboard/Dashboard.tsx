@@ -133,6 +133,51 @@ function Project({ q }: { q: DashboardQuote }) {
 }
 
 /** Classe de l'architecte : sa remise, et ce qui ouvre la suivante. */
+const longDate = (iso: string) =>
+  new Date(`${iso}T12:00:00Z`).toLocaleDateString("fr-BE", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+/** Garantie de 12 mois et premier devis de bienvenue, en une ou deux phrases. */
+function TierPromise({ tier }: { tier: ClassStatus }) {
+  const { current, guarantee } = tier;
+  return (
+    <>
+      {current && guarantee ? (
+        <p
+          className={
+            guarantee.soon ? "dash-tier-note dash-tier-soon" : "dash-tier-note"
+          }
+        >
+          Votre remise de {percent(current.discount)} est garantie jusqu'au{" "}
+          {longDate(guarantee.until)}.{" "}
+          {guarantee.soon
+            ? `Encore ${money(guarantee.keep)} HTVA de devis acceptés d'ici là pour la garder.`
+            : "Une classe atteinte reste acquise 12 mois."}
+        </p>
+      ) : current && tier.earned ? (
+        <p className="dash-tier-note">
+          Une classe atteinte reste acquise 12 mois, même si votre chiffre
+          baisse ensuite.
+        </p>
+      ) : null}
+      {tier.welcome === "counted" ? (
+        <p className="dash-tier-note">
+          Votre premier devis accepté a compté double. Bienvenue chez Mikado
+          Deco.
+        </p>
+      ) : tier.welcome === "open" ? (
+        <p className="dash-tier-note">
+          Bienvenue : votre premier devis accepté d'ici 60 jours compte
+          double.
+        </p>
+      ) : null}
+    </>
+  );
+}
+
 function TierCard({ tier }: { tier: ClassStatus }) {
   const { current, next } = tier;
   return (
@@ -165,6 +210,7 @@ function TierCard({ tier }: { tier: ClassStatus }) {
               Encore {money(tier.remaining)} HTVA de devis acceptés. Vous en
               êtes à {money(tier.volume)} sur les 12 derniers mois.
             </small>
+            <TierPromise tier={tier} />
           </>
         ) : (
           <>
@@ -173,6 +219,7 @@ function TierCard({ tier }: { tier: ClassStatus }) {
               {money(tier.volume)} HTVA de devis acceptés sur les 12 derniers
               mois. Merci pour votre confiance.
             </small>
+            <TierPromise tier={tier} />
           </>
         )}
       </div>

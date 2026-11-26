@@ -1,16 +1,19 @@
 import db from "../db.server";
 import { quoteSchema, totals } from "../domain/quote";
 import {
-  classStatus,
+  GUARANTEE_DAYS,
+  loyaltyStatus,
   sortClasses,
+  type Accepted,
   type ArchitectClass,
 } from "../domain/dashboard";
 
 // Classes d'architectes : remise et palier de chiffre, réglés dans « Accès ».
 // Le chiffre compte les devis acceptés (commande créée) des 12 derniers mois,
-// HTVA, d'après la date de la commande.
+// HTVA, d'après la date de la commande. La garantie de 12 mois relit l'année
+// d'avant : l'historique remonte donc à deux ans.
 
-const YEAR = 365 * 86400000;
+const HISTORY = 2 * GUARANTEE_DAYS * 86400000;
 
 export async function listClasses(): Promise<ArchitectClass[]> {
   const rows = await db.architectClass.findMany({
@@ -19,15 +22,15 @@ export async function listClasses(): Promise<ArchitectClass[]> {
   return sortClasses(rows);
 }
 
-/** Chiffre accepté HTVA par architecte sur 12 mois glissants, en centimes. */
-export async function acceptedVolumes(
+/** Devis acceptés par architecte sur deux ans : date et montant HTVA en centimes. */
+export async function acceptedHistory(
   shop: string,
   owner: number | null = null,
   now = new Date(),
   // Démo : les devis sans propriétaire comptent, sous l'identifiant 0.
   unowned = false,
 ) {
-  const since = new Date(now.getTime() - YEAR);
+  const since = new Date(now.getTime() - HISTORY);
   const rows = await db.quote.findMany({
     where: {
       shop,
@@ -40,29 +43,47 @@ export async function acceptedVolumes(
         ],
       },
     },
-    select: { ownerId: true, state: true },
+    select: {
+      ownerId: true,
+      state: true,
+      conversion: { select: { acceptedAt: true, updatedAt: true } },
+    },
   });
-  const volumes = new Map<number, number>();
+  const history = new Map<number, Accepted[]>();
   for (const r of rows) {
     const key = r.ownerId ?? (unowned ? 0 : null);
-    if (key === null) continue;
+    const at = r.conversion?.acceptedAt || r.conversion?.updatedAt;
+    if (key === null || !at) continue;
     try {
-      const total = totals(quoteSchema.parse(JSON.parse(r.state))).total;
-      volumes.set(key, (volumes.get(key) || 0) + total);
+      const amount = totals(quoteSchema.parse(JSON.parse(r.state))).total;
+      history.set(key, [...(history.get(key) || []), { at, amount }]);
     } catch {
       // Un devis illisible ne compte pas : il reste visible dans la liste.
     }
   }
-  return volumes;
+  return history;
 }
 
 /** Classe d'un architecte pour son tableau de bord. Null si aucune classe n'existe. */
-export async function architectStatus(shop: string, userId: number) {
+export async function architectStatus(
+  shop: string,
+  userId: number,
+  now = new Date(),
+) {
   const [classes, user] = await Promise.all([
     listClasses(),
-    db.user.findUnique({ where: { id: userId }, select: { classId: true } }),
+    db.user.findUnique({
+      where: { id: userId },
+      select: { classId: true, createdAt: true },
+    }),
   ]);
   if (!classes.length) return null;
-  const volume = (await acceptedVolumes(shop, userId)).get(userId) || 0;
-  return classStatus(classes, user?.classId ?? null, volume);
+  const accepted = (await acceptedHistory(shop, userId, now)).get(userId) || [];
+  return loyaltyStatus(
+    classes,
+    user?.classId ?? null,
+    accepted,
+    user?.createdAt ?? null,
+    now,
+  );
 }
