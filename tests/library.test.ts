@@ -51,6 +51,8 @@ test("Kvadrat : produit saisi et coloris du pack d'images", async () => {
   assert.deepEqual(parseKvadratProduct("https://kvadrat.dk/products/1000?colorway=0130"), { number: "1000", collection: "" });
   assert.equal(parseKvadratProduct("Hallingdal"), null);
   assert.equal(kvadratColour("Hallingdal 65/1000_0130.jpg", "1000"), "0130");
+  assert.equal(kvadratColour("F_1000_C0130_W24_HIGH_CMYK.jpg", "1000"), "0130");
+  assert.equal(kvadratColour("F_600699_C0451_W24_HIGH_CMYK.jpg", "600699"), "0451");
   assert.equal(kvadratColour("1000-130-hallingdal.jpg", "1000"), "130");
   assert.equal(kvadratColour("hallingdal-ambiance.jpg", "1000"), "");
 });
