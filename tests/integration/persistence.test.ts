@@ -886,3 +886,68 @@ test("devis sans livraison : publication possible, commande toujours protégée"
     await db.quote.deleteMany({ where: { shop: tenant } });
   }
 });
+
+test("« À relancer » : la liste suit la règle du tableau de bord", async () => {
+  const { needsFollowUp, stage } = await import("../../app/domain/dashboard");
+  const tenant = `${shop}-relance`;
+  const DAY = 86400000;
+  const now = new Date();
+  const sentDaysAgo = async (days: number, title: string) => {
+    const q = await createQuote(tenant, { ...state(), project: title });
+    await db.quote.update({ where: { id: q.id }, data: { title } });
+    await db.revision.update({
+      where: { quoteId_version: { quoteId: q.id, version: 1 } },
+      data: {
+        publishedNumber: 1,
+        pdfGeneratedAt: new Date(),
+        pdf: Buffer.from("pdf"),
+        sentAt: new Date(now.getTime() - days * DAY),
+      },
+    });
+    return q.id;
+  };
+  try {
+    const ids = {
+      j2: await sentDaysAgo(2, "J2"),
+      j9: await sentDaysAgo(9, "J9"),
+      j10: await sentDaysAgo(10, "J10"),
+      j11: await sentDaysAgo(11, "J11"),
+      accepted: await sentDaysAgo(20, "Accepté"),
+      archived: await sentDaysAgo(20, "Archivé"),
+      draft: (await createQuote(tenant, state())).id,
+    };
+    await db.quote.update({
+      where: { id: ids.accepted },
+      data: { status: "converted" },
+    });
+    await db.quote.update({
+      where: { id: ids.archived },
+      data: { status: "archived" },
+    });
+    const listed = (await listQuotes(tenant, "", "relance")).quotes
+      .map((q) => q.id)
+      .sort();
+    assert.deepEqual(listed, [ids.j10, ids.j11].sort());
+    assert.equal((await listQuotes(tenant, "", "sent")).total, 4);
+    // Même résultat par la règle du tableau de bord, devis par devis.
+    const rows = await db.quote.findMany({
+      where: { shop: tenant },
+      include: { conversion: true, revisions: { orderBy: { version: "desc" } } },
+    });
+    const dash = rows
+      .filter((q) => {
+        const sentAt = q.revisions.find((r) => r.version === q.version)?.sentAt;
+        return needsFollowUp(stage(q), sentAt || null, now);
+      })
+      .map((q) => q.id)
+      .sort();
+    assert.deepEqual(dash, listed);
+    // « Devis ouverts » : brouillons et PDF prêts, sans les envoyés.
+    assert.deepEqual(
+      (await listQuotes(tenant, "", "open")).quotes.map((q) => q.id),
+      [ids.draft],
+    );
+  } finally {
+    await db.quote.deleteMany({ where: { shop: tenant } });
+  }
+});

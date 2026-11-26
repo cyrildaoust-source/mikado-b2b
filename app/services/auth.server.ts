@@ -144,7 +144,7 @@ export async function logout(request: Request) {
 }
 
 export function safeNext(next: string) {
-  return /^\/app(\/|\?|$)/.test(next) ? next : "/app/catalogue";
+  return /^\/app(\/|\?|$)/.test(next) ? next : "/app";
 }
 
 const tokenHash = (t: string) => createHash("sha256").update(t).digest("hex");

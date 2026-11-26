@@ -176,9 +176,10 @@ fieldset.unframed {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+/* Repère clavier en contour : aucune ombre de bouton ou de champ ne le masque. */
 :focus-visible {
-  outline: none;
-  box-shadow: var(--focus);
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
 }
 
 /* ================================================================== */

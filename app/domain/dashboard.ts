@@ -164,6 +164,27 @@ export const FOLLOW_UP_DAYS = 10;
 
 const DAY = 86400000;
 
+/**
+ * Un devis envoyé est à relancer à partir de FOLLOW_UP_DAYS jours entiers
+ * depuis l'envoi de sa révision en cours. Le tableau de bord et le filtre
+ * « À relancer » de la liste suivent cette seule règle.
+ */
+export function needsFollowUp(
+  st: Stage | null,
+  sentAt: Date | null,
+  now: Date,
+) {
+  return st === "sent" && !!sentAt && daysBetween(sentAt, now) >= FOLLOW_UP_DAYS;
+}
+
+/** Limite d'envoi équivalente pour la liste : envoyé avant ce moment = à relancer. */
+export function followUpCutoff(now: Date) {
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) -
+      (FOLLOW_UP_DAYS - 1) * DAY,
+  );
+}
+
 /** Jours entiers écoulés entre deux dates (au jour près, heure de Bruxelles ignorée). */
 export function daysBetween(a: Date, b: Date) {
   const day = (d: Date) =>

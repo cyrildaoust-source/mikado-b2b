@@ -17,15 +17,19 @@ réglage par marque.
 
 ## L'accueil : le tableau de bord
 
-À la connexion, `/app` ouvre le tableau de bord du compte (tous les devis pour Mikado
-Deco, les siens pour une architecte). La liste complète des devis est sous `/app/devis`.
+À la connexion et à l'activation d'une invitation, `/app` ouvre le tableau de bord du
+compte (tous les devis pour Mikado Deco, les siens pour une architecte), avec « Créer un
+devis » en premier et « Parcourir le catalogue » à côté. Un lien direct vers un devis
+ramène à ce devis après la connexion. La liste complète des devis est sous `/app/devis`.
 Dans l'admin Shopify, `/app` reste la liste des devis.
 
 - « Bonjour » avec le prénom du compte, en grand, et une phrase sur ce qui attend.
 - Pour une architecte : sa remise Mikado Deco (classe actuelle), la remise suivante et ce
   qu'il reste de chiffre à faire pour l'obtenir (voir « Classes et remises »).
-- Quatre chiffres, chacun ouvre la liste filtrée : devis ouverts, en attente du client
-  (avec le total HTVA), acceptés, à relancer.
+- Quatre chiffres, chacun ouvre la liste filtrée : devis ouverts (brouillons et PDF
+  prêts), en attente du client (avec le total HTVA), acceptés, à relancer. « À relancer »
+  et le filtre du même nom suivent une seule règle (`needsFollowUp`,
+  `app/domain/dashboard.ts`) : révision en cours envoyée depuis 10 jours entiers ou plus.
 - À faire : validité dépassée ou proche (7 jours), devis envoyé sans réponse depuis
   10 jours, PDF prêt à envoyer, commande à vérifier.
 - En attente du client : date d'envoi, validité, délai le plus long des produits retenus.

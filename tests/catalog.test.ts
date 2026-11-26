@@ -108,9 +108,9 @@ test("mot de passe haché et vérifié", async () => {
 test("la redirection après connexion reste dans l'outil", () => {
   assert.equal(safeNext("/app/quotes/3"), "/app/quotes/3");
   assert.equal(safeNext("/app"), "/app");
-  assert.equal(safeNext("//evil.example/app"), "/app/catalogue");
-  assert.equal(safeNext("https://evil.example"), "/app/catalogue");
-  assert.equal(safeNext("/application"), "/app/catalogue");
+  assert.equal(safeNext("//evil.example/app"), "/app");
+  assert.equal(safeNext("https://evil.example"), "/app");
+  assert.equal(safeNext("/application"), "/app");
 });
 
 test("les photos Shopify sont demandées à la bonne taille", () => {

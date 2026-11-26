@@ -35,7 +35,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     return { error: "Les deux mots de passe ne sont pas identiques." };
   try {
     const userId = await acceptInvite(String(params.token), password);
-    return startSession(request, userId, "/app/catalogue");
+    return startSession(request, userId, "/app");
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Lien invalide." };
   }

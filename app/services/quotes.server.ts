@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import db from "../db.server";
 import { quoteSchema, emptyQuote, type QuoteState } from "../domain/quote";
+import { followUpCutoff } from "../domain/dashboard";
 export async function listQuotes(
   shop: string,
   search = "",
@@ -16,6 +17,12 @@ export async function listQuotes(
     draft: Prisma.sql`q.status = 'draft' AND NOT EXISTS(SELECT 1 FROM "Revision" r WHERE r."quoteId"=q.id AND r.version=q.version AND r."pdfGeneratedAt" IS NOT NULL)`,
     ready: Prisma.sql`q.status = 'draft' AND EXISTS(SELECT 1 FROM "Revision" r WHERE r."quoteId"=q.id AND r.version=q.version AND r."pdfGeneratedAt" IS NOT NULL AND r."sentAt" IS NULL)`,
     sent: Prisma.sql`q.status = 'draft' AND EXISTS(SELECT 1 FROM "Revision" r WHERE r."quoteId"=q.id AND r.version=q.version AND r."pdfGeneratedAt" IS NOT NULL AND r."sentAt" IS NOT NULL)`,
+    // « Devis ouverts » du tableau de bord : brouillons et PDF prêts, pas encore envoyés.
+    open: Prisma.sql`q.status = 'draft' AND NOT EXISTS(SELECT 1 FROM "Revision" r WHERE r."quoteId"=q.id AND r.version=q.version AND r."pdfGeneratedAt" IS NOT NULL AND r."sentAt" IS NOT NULL)`,
+    // Même règle que le compteur « À relancer » du tableau de bord
+    // (domain/dashboard.ts, needsFollowUp) : révision en cours envoyée depuis
+    // FOLLOW_UP_DAYS jours ou plus, sans commande en cours de vérification.
+    relance: Prisma.sql`q.status = 'draft' AND EXISTS(SELECT 1 FROM "Revision" r WHERE r."quoteId"=q.id AND r.version=q.version AND r."publishedNumber" IS NOT NULL AND r."pdfGeneratedAt" IS NOT NULL AND r."sentAt" < ${followUpCutoff(new Date())}) AND NOT EXISTS(SELECT 1 FROM "Conversion" c WHERE c."quoteId"=q.id AND (c.status IN ('creating', 'uncertain') OR c."orderStatus" IN ('creating', 'uncertain')))`,
   };
   const ownerSql =
     owner === null ? Prisma.sql`1=1` : Prisma.sql`q."ownerId"=${owner}`;

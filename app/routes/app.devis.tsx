@@ -21,6 +21,7 @@ import {
   commercialStatus,
 } from "../domain/quote";
 import { shopInfo } from "../services/shopify-api.server";
+import { FOLLOW_UP_DAYS } from "../domain/dashboard";
 
 export const meta = () => [{ title: "Devis · Mikado Deco Pro" }];
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -117,9 +118,11 @@ export default function Quotes() {
             onChange={(e) => apply(e.currentTarget.form)}
           >
             <option value="all">Tous les devis actifs</option>
+            <option value="open">Ouverts · non envoyés</option>
             <option value="draft">Brouillons et modifications</option>
             <option value="ready">Prêts à envoyer · non envoyés</option>
             <option value="sent">Envoyés</option>
+            <option value="relance">À relancer · {FOLLOW_UP_DAYS} jours sans réponse</option>
             <option value="ordered">Commandes créées</option>
             <option value="archived">Archives</option>
             <option value="deleted">Corbeille</option>

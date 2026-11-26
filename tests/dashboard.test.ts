@@ -6,6 +6,8 @@ import {
   deliveryLabel,
   editingAfterRelease,
   firstName,
+  followUpCutoff,
+  needsFollowUp,
   longest,
   parseLeadTime,
   quoteLeadTime,
@@ -282,4 +284,20 @@ test("fidélité : garantie de 12 mois et premier devis double", async () => {
   assert.equal(s.welcome, "open");
   s = loyaltyStatus(classes, null, [], created, d("2027-01-15"));
   assert.equal(s.welcome, null);
+});
+
+test("à relancer : dix jours entiers depuis l'envoi, seuil compris", () => {
+  const now = new Date("2026-11-26T15:00:00Z");
+  const ago = (d: number, h = 0) =>
+    new Date(Date.UTC(2026, 10, 26 - d, h));
+  assert.equal(needsFollowUp("sent", ago(2), now), false);
+  assert.equal(needsFollowUp("sent", ago(9, 23), now), false);
+  assert.equal(needsFollowUp("sent", ago(10, 23), now), true);
+  assert.equal(needsFollowUp("sent", ago(11), now), true);
+  assert.equal(needsFollowUp("ordered", ago(20), now), false);
+  assert.equal(needsFollowUp("sent", null, now), false);
+  // La limite de la liste tombe au même endroit que le compteur.
+  const cut = followUpCutoff(now);
+  for (const d of [ago(9), ago(10, 23), ago(10), ago(11)])
+    assert.equal(d < cut, needsFollowUp("sent", d, now));
 });

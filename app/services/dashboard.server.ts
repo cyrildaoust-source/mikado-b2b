@@ -6,7 +6,7 @@ import {
   totals,
 } from "../domain/quote";
 import {
-  FOLLOW_UP_DAYS,
+  needsFollowUp,
   arrivalWindow,
   daysBetween,
   deliveryLabel,
@@ -229,7 +229,7 @@ export async function loadDashboard(
     const sentDays = sentAt ? daysBetween(sentAt, now) : null;
     if (st === "sent") {
       sentTotal += total;
-      if ((sentDays ?? 0) >= FOLLOW_UP_DAYS) followUps++;
+      if (needsFollowUp(st, sentAt, now)) followUps++;
     }
     const c = q.conversion;
     const order = c?.orderId ? orderMap.get(c.orderId) : undefined;

@@ -285,12 +285,12 @@ export function DashboardView({
           </p>
         </div>
         <div className="dash-actions">
+          <Form method="post" action="/app/devis">
+            <button className="primary">Créer un devis</button>
+          </Form>
           <Link className="button" to="/app/catalogue">
             Parcourir le catalogue
           </Link>
-          <Form method="post" action="/app/devis">
-            <button className="primary">Nouveau devis</button>
-          </Form>
         </div>
       </header>
       {demo && (
@@ -326,7 +326,10 @@ export function DashboardView({
       ) : (
         <>
           <nav className="dash-stats" aria-label="Vos devis par statut">
-            <Link to="/app/devis?status=draft" className="dash-stat">
+            <Link
+              to={`/app/devis?status=${counts.ready ? "open" : "draft"}`}
+              className="dash-stat"
+            >
               <span>Devis ouverts</span>
               <strong>{counts.draft}</strong>
               <small>
@@ -354,7 +357,7 @@ export function DashboardView({
               </small>
             </Link>
             <Link
-              to="/app/devis?status=sent"
+              to="/app/devis?status=relance"
               className={`dash-stat${data.followUps ? " dash-stat-alert" : ""}`}
             >
               <span>À relancer</span>
