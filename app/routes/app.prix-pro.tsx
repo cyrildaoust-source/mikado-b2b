@@ -1,20 +1,29 @@
 import { redirect, type ActionFunctionArgs } from "react-router";
 import { context } from "../services/context.server";
 import { safeNext } from "../services/auth.server";
-import { PRO_COOKIE } from "../domain/pro";
+import { PRICE_VIEW_COOKIE, PRICE_VIEWS, PRO_COOKIE, type PriceView } from "../domain/pro";
 
-/** Bascule « Afficher mes prix pro » : un cookie de l'appareil, un an. */
+/** Prix affiché (HTVA, pro, TVAC) : un cookie de l'appareil, un an. */
 export async function action({ request }: ActionFunctionArgs) {
   await context(request);
   const form = await request.formData();
-  const on = form.get("show") === "1";
+  const raw = String(form.get("view") || "");
+  const view: PriceView = (PRICE_VIEWS as string[]).includes(raw)
+    ? (raw as PriceView)
+    : "htva";
   const next = safeNext(String(form.get("next") || "/app"));
   const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
-  return redirect(next, {
-    headers: {
-      "Set-Cookie": `${PRO_COOKIE}=${on ? "1" : "0"}; Path=/; Max-Age=31536000; SameSite=Lax; HttpOnly${secure}`,
-    },
-  });
+  const headers = new Headers();
+  headers.append(
+    "Set-Cookie",
+    `${PRICE_VIEW_COOKIE}=${view}; Path=/; Max-Age=31536000; SameSite=Lax; HttpOnly${secure}`,
+  );
+  // L'ancien interrupteur ne doit plus décider à la place du sélecteur.
+  headers.append(
+    "Set-Cookie",
+    `${PRO_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax; HttpOnly${secure}`,
+  );
+  return redirect(next, { headers });
 }
 export function loader() {
   return redirect("/app");

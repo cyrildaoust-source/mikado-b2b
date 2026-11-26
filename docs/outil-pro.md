@@ -60,13 +60,17 @@ réduction du portail pro : ni promotion ni autre remise (Cyril, 26/11/2026). Un
 pourcentage donne le même résultat HTVA ou TVAC. La livraison (5 % ou 3 %) et les
 prestations ne prennent pas la remise.
 
-« Afficher mes prix pro », dans la barre du haut (dans le menu sur téléphone), montre le
-prix pro sous le prix public : cartes du catalogue, fiche, choix de finition, lignes du
-devis et récapitulatif (« Marchandise au prix pro » : produits retenus et options cochées).
-C'est un réglage de l'appareil (cookie `prix_pro`), propre à l'architecte. Il ne change ni
-le devis, ni son PDF, ni la commande. Sans classe attribuée, la page indique « Prix pro à
-confirmer ». Mikado Deco ne voit pas ce réglage. Code : `app/domain/pro.ts`,
-`app/services/pro-price.server.ts`, `app/components/ProPrice.tsx`.
+Le sélecteur « Prix affichés » de la barre du haut (dans le menu sur téléphone) choisit le
+prix des cartes du catalogue, de la fiche et du choix de finition : « Prix HTVA » (public),
+« Prix pro HTVA » (architecte seul) ou « Prix TVAC » (public, TVA de 21 %). C'est un
+réglage de l'appareil (cookie `prix_affiche`, l'ancien `prix_pro=1` vaut « Prix pro »). Il
+ne change ni le devis, ni son PDF, ni la commande. Dans l'éditeur de devis, l'architecte
+voit toujours son prix pro sous chaque ligne et dans le récapitulatif (« Marchandise au
+prix pro »), jamais repris dans le PDF ni sur la page du client. Sans classe attribuée,
+la page indique « Prix pro à confirmer ». Le devis montre toujours les remises que
+l'architecte accorde à son client : la version « sans remises » a été retirée (Cyril,
+26/11/2026). Code : `app/domain/pro.ts`, `app/services/pro-price.server.ts`,
+`app/components/ProPrice.tsx`.
 
 L'architecte ne change pas les prix du catalogue : la ligne montre le prix public, et le
 serveur le rétablit à chaque enregistrement (`lockPrices`). La colonne « Remise client % »

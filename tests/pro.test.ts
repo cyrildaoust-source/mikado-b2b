@@ -6,7 +6,27 @@ import {
   publicUnitPrice,
   shownProPrice,
   lockPrices,
+  readPriceView,
+  viewPrice,
 } from "../app/domain/pro";
+
+test("prix affiché : cookie du sélecteur, puis ancien interrupteur, puis HTVA", () => {
+  assert.equal(readPriceView(null), "htva");
+  assert.equal(readPriceView("a=1; prix_affiche=tvac"), "tvac");
+  assert.equal(readPriceView("prix_pro=1"), "pro");
+  assert.equal(readPriceView("prix_pro=1; prix_affiche=htva"), "htva");
+  assert.equal(readPriceView("prix_affiche=autre"), "htva");
+});
+
+test("prix affiché : HTVA, pro moins la classe, TVAC à 21 %", () => {
+  const pro = { discount: 10, className: "A", show: true };
+  assert.deepEqual(viewPrice(10000, "htva", pro), { cents: 10000, kind: "HTVA" });
+  assert.equal(viewPrice(10000, "pro", pro).cents, 9000);
+  assert.equal(viewPrice(10000, "tvac", pro).cents, 12100);
+  assert.equal(viewPrice(10000, "pro", { ...pro, discount: null }).pending, true);
+  // Mikado Deco (pas de remise) : la vue pro retombe sur le prix public.
+  assert.deepEqual(viewPrice(10000, "pro", null), { cents: 10000, kind: "HTVA" });
+});
 
 test("prix pro : prix public moins la remise de classe, HTVA comme TVAC", () => {
   assert.equal(proPrice(100000, 10), 90000);

@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { money } from "../../domain/quote";
 import { sized } from "./image";
 import { FinishPicker } from "./FinishPicker";
-import { ProPrice } from "../ProPrice";
+import { CataloguePrice } from "../ProPrice";
 
 /** Ce qu'il faut pour choisir la finition d'une carte du catalogue. */
 export type FinishRequest = {
@@ -163,8 +162,7 @@ export function FinishChooserHost() {
               ) : (
                 variant && (
                   <>
-                    <strong>{money(variant.price)}</strong> HTVA{" "}
-                    <ProPrice cents={variant.price} />
+                    <CataloguePrice cents={variant.price} className="inline" />
                   </>
                 )
               )}

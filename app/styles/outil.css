@@ -4851,3 +4851,35 @@ label.cp-line {
     height: 72px;
   }
 }
+
+/* Prix affiché choisi dans la barre du haut : HTVA, pro ou TVAC.
+   Le montant et sa nature occupent toujours deux lignes, la grille ne bouge pas. */
+.shown-price {
+  display: inline-grid;
+  justify-items: end;
+  line-height: 1.25;
+}
+.shown-price-kind {
+  color: var(--ink-3);
+  font-size: var(--t-small, 0.8125rem);
+  font-weight: 400;
+}
+.shown-price.inline {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.pro-price-toggle select {
+  min-height: 36px;
+  padding: 0 28px 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background-color: var(--surface, #fff);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--t-small, 0.8125rem);
+}
+.pro-nav-account .pro-price-toggle select {
+  width: 100%;
+  min-height: 44px;
+}

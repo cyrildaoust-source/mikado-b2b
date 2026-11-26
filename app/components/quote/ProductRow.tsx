@@ -181,7 +181,7 @@ export function ProductRow({
         <span>Total HTVA</span>
         <strong>{money(lineTotal(i))}</strong>
         {i.sourcePrice !== null && (
-          <ProPrice cents={publicUnitPrice(i) * i.qty} />
+          <ProPrice always cents={publicUnitPrice(i) * i.qty} />
         )}
       </div>
       <button

@@ -177,7 +177,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
         ? (await getQuote(c.shop, id)).state
         : String(form.get("state"));
       if (raw.length > 1000000) throw Error("Devis trop volumineux.");
-      const parsed = quoteSchema.parse(JSON.parse(raw));
+      // Plus de version client sans remises (Cyril, 26/11/2026).
+      const parsed = {
+        ...quoteSchema.parse(JSON.parse(raw)),
+        hideDiscounts: false,
+      };
       const state = c.user?.role === "architect" ? lockPrices(parsed) : parsed;
       if (!state.client.trim())
         throw Error("Choisissez un client avant de préparer le PDF.");
@@ -210,7 +214,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
     if (intent === "save") {
       const raw = String(form.get("state"));
       if (raw.length > 1000000) throw Error("Devis trop volumineux.");
-      const parsed = quoteSchema.parse(JSON.parse(raw));
+      const parsed = {
+        ...quoteSchema.parse(JSON.parse(raw)),
+        hideDiscounts: false,
+      };
       await saveQuote(
         c.shop,
         id,

@@ -8,13 +8,14 @@ import {
   useLoaderData,
   useRouteError,
   useRouteLoaderData,
+  useSubmit,
 } from "react-router";
 import { useEffect, useRef, useState } from "react";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { context } from "../services/context.server";
-import { proPricing } from "../services/pro-price.server";
-import type { ProPricing } from "../domain/pro";
+import { priceView, proPricing } from "../services/pro-price.server";
+import type { PriceView, ProPricing } from "../domain/pro";
 import { FinishChooserHost } from "../components/catalog/FinishChooser";
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -25,10 +26,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
     embedded: c.embedded,
     user: c.user,
     pro: await proPricing(request, c),
+    view: c.embedded ? ("htva" as PriceView) : priceView(request),
   };
 }
 export default function App() {
-  const { apiKey, demo, embedded, user, pro } = useLoaderData<typeof loader>();
+  const { apiKey, demo, embedded, user, pro, view } =
+    useLoaderData<typeof loader>();
   if (embedded)
     return (
       <AppProvider embedded apiKey={apiKey}>
@@ -38,15 +41,26 @@ export default function App() {
     );
   return (
     <div className="pro-app">
-      <ProNav demo={demo} user={user} pro={pro} />
+      <ProNav demo={demo} user={user} pro={pro} view={view} />
       <Outlet />
       <FinishChooserHost />
     </div>
   );
 }
 
-/** « Afficher mes prix pro » : un réglage de l'appareil, sans effet sur les devis. */
-function PriceToggle({ pro, next }: { pro: ProPricing; next: string }) {
+/** Prix affiché : HTVA, pro (classe de l'architecte) ou TVAC. Un réglage de
+ * l'appareil, sans effet sur les devis ni les PDF. */
+function PriceViewPicker({
+  pro,
+  view,
+  next,
+}: {
+  pro: ProPricing | null;
+  view: PriceView;
+  next: string;
+}) {
+  const submit = useSubmit();
+  const current = !pro && view === "pro" ? "htva" : view;
   return (
     <Form
       method="post"
@@ -55,19 +69,28 @@ function PriceToggle({ pro, next }: { pro: ProPricing; next: string }) {
       preventScrollReset
     >
       <input type="hidden" name="next" value={next} />
-      <input type="hidden" name="show" value={pro.show ? "0" : "1"} />
-      <button
-        className="text-button"
-        aria-pressed={pro.show}
-        title={
-          pro.discount === null
-            ? "Aucune classe attribuée : prix pro à confirmer"
-            : `${pro.className} · remise de ${pro.discount} %`
-        }
-      >
-        <span className="pro-switch" aria-hidden="true" />
-        Mes prix pro
-      </button>
+      <select
+          name="view"
+          aria-label="Prix affichés"
+          value={current}
+          title={
+            pro
+              ? pro.discount === null
+                ? "Aucune classe attribuée : prix pro à confirmer"
+                : `${pro.className} · remise de ${pro.discount} %`
+              : undefined
+          }
+          onChange={(e) =>
+            submit(e.currentTarget.form, { preventScrollReset: true })
+          }
+        >
+          <option value="htva">Prix HTVA</option>
+          {pro && <option value="pro">Prix pro HTVA</option>}
+          <option value="tvac">Prix TVAC</option>
+        </select>
+      <noscript>
+        <button>Afficher</button>
+      </noscript>
     </Form>
   );
 }
@@ -81,10 +104,12 @@ function ProNav({
   demo,
   user,
   pro,
+  view,
 }: {
   demo: boolean;
   user: NavUser;
   pro: ProPricing | null;
+  view: PriceView;
 }) {
   const [open, setOpen] = useState(false);
   const { pathname, search } = useLocation();
@@ -134,7 +159,7 @@ function ProNav({
         {open && (
           <div className="pro-nav-account">
             <span className="muted">{account}</span>
-            {pro && <PriceToggle pro={pro} next={pathname + search} />}
+            <PriceViewPicker pro={pro} view={view} next={pathname + search} />
             {!demo && (
               <Form method="post" action="/deconnexion">
                 <button>Se déconnecter</button>
@@ -151,7 +176,7 @@ function ProNav({
             </span>
           </button>
         </Form>
-        {pro && <PriceToggle pro={pro} next={pathname + search} />}
+        <PriceViewPicker pro={pro} view={view} next={pathname + search} />
         <span className="pro-user" title={account}>
           {account}
         </span>
@@ -280,7 +305,7 @@ function ErrorPage({ error }: { error: unknown }) {
   if (!app || app.embedded) return body;
   return (
     <div className="pro-app">
-      <ProNav demo={app.demo} user={app.user} pro={null} />
+      <ProNav demo={app.demo} user={app.user} pro={null} view="htva" />
       {body}
     </div>
   );

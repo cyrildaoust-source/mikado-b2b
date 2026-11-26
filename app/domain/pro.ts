@@ -9,11 +9,53 @@ export type ProPricing = {
   /** Remise de la classe en pour cent ; null quand l'architecte n'a pas de classe. */
   discount: number | null;
   className: string | null;
-  /** L'architecte a choisi d'afficher ses prix pro. */
+  /** L'architecte a choisi d'afficher ses prix pro (vue « pro »). */
   show: boolean;
 };
 
+/**
+ * Prix affiché dans le portail, choisi dans la barre du haut (Cyril,
+ * 26/11/2026) : prix public HTVA, prix pro HTVA, ou prix public TVAC. Un
+ * réglage de l'appareil : le devis et le PDF ne changent pas.
+ */
+export type PriceView = "htva" | "pro" | "tvac";
+export const PRICE_VIEWS: PriceView[] = ["htva", "pro", "tvac"];
+export const PRICE_VIEW_COOKIE = "prix_affiche";
+/** Ancien interrupteur « Mes prix pro », relu pour ne pas perdre le choix. */
 export const PRO_COOKIE = "prix_pro";
+/** TVA du prix public affiché TVAC : le taux belge des meubles et luminaires. */
+export const DISPLAY_VAT = 21;
+
+export function readPriceView(cookieHeader: string | null): PriceView {
+  const parts = (cookieHeader || "").split(/;\s*/);
+  const raw = parts
+    .find((p) => p.startsWith(`${PRICE_VIEW_COOKIE}=`))
+    ?.slice(PRICE_VIEW_COOKIE.length + 1);
+  if (raw && (PRICE_VIEWS as string[]).includes(raw)) return raw as PriceView;
+  return parts.includes(`${PRO_COOKIE}=1`) ? "pro" : "htva";
+}
+
+export function withTax(cents: number, rate = DISPLAY_VAT) {
+  return Math.round((cents * (100 + rate)) / 100);
+}
+
+/**
+ * Prix catalogue (public HTVA) dans la vue choisie. Sans remise connue, la
+ * vue pro garde le prix public et le dit.
+ */
+export function viewPrice(
+  cents: number,
+  view: PriceView,
+  pro: ProPricing | null | undefined,
+): { cents: number; kind: string; pending?: boolean } {
+  if (view === "tvac") return { cents: withTax(cents), kind: "TVAC" };
+  if (view === "pro" && pro) {
+    if (pro.discount === null)
+      return { cents, kind: "HTVA · prix pro à confirmer", pending: true };
+    return { cents: proPrice(cents, pro.discount), kind: "HTVA · prix pro" };
+  }
+  return { cents, kind: "HTVA" };
+}
 
 export function proPrice(cents: number, discount: number) {
   return Math.round((cents * (100 - discount)) / 100);

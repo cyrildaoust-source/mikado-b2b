@@ -1427,14 +1427,26 @@ export default function Editor({
           canSign={canSign}
         />
       )}
-      {!embedded && q.status === "draft" && ready && !dirty && (
-        <SharePanel
-          version={q.version}
-          publishedNumber={current?.publishedNumber ?? null}
-          share={share}
-          disabled={busy}
-        />
-      )}
+      {q.status === "draft" &&
+        (ready && !dirty ? (
+          <SharePanel
+            version={q.version}
+            publishedNumber={current?.publishedNumber ?? null}
+            share={share}
+            disabled={busy}
+          />
+        ) : (
+          <section className="share-panel" aria-label="Proposition en ligne">
+            <div className="share-head">
+              <strong>Proposition en ligne</strong>
+              <span className="muted">
+                {dirty
+                  ? "Enregistrez puis préparez le PDF : le bouton « Créer le lien » apparaîtra ici."
+                  : "Préparez le PDF : le bouton « Créer le lien » apparaîtra ici."}
+              </span>
+            </div>
+          </section>
+        ))}
       {demo && (
         <div className="demo-ribbon">
           Démonstration · catalogue fictif · aucune commande réelle
@@ -1602,6 +1614,7 @@ export default function Editor({
             <strong>{money(fiscal.net)}</strong>
             <span className="total-bar-gross">TVAC {money(fiscal.gross)}</span>
             <ProPrice
+              always
               cents={publicMerchandise(s)}
               className="total-bar-pro"
               label="Marchandise au prix pro"
@@ -1869,21 +1882,6 @@ export default function Editor({
             Vérifiez le client, les produits retenus et les conditions. Une
             nouvelle version sera conservée après validation des montants.
           </p>
-          <label className="check-row">
-            <input
-              type="checkbox"
-              disabled={locked}
-              checked={!s.hideDiscounts}
-              onChange={(e) => field("hideDiscounts", !e.target.checked)}
-            />
-            Montrer les remises au client
-          </label>
-          {s.hideDiscounts && (
-            <p className="muted">
-              Version client : prix publics sans remise, totaux recalculés. Le
-              devis garde vos remises pour la commande.
-            </p>
-          )}
           {(error || result?.error) && (
             <p role="alert" className="error">
               {error || result?.error}

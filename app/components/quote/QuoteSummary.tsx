@@ -45,6 +45,7 @@ export function QuoteSummary({ state: s }: { state: QuoteState }) {
       </div>
       {/* Vue privée de l'architecte : jamais reprise dans le PDF. */}
       <ProPrice
+        always
         cents={publicMerchandise(s)}
         label="Marchandise au prix pro, HTVA :"
         className="summary-pro"

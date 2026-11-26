@@ -29,7 +29,7 @@ import { money } from "../domain/quote";
 import { sized } from "../components/catalog/image";
 import { Picker } from "../components/catalog/Picker";
 import { chooseFinish } from "../components/catalog/FinishChooser";
-import { ProPrice } from "../components/ProPrice";
+import { CataloguePrice } from "../components/ProPrice";
 
 export const meta = () => [{ title: "Catalogue · Mikado Deco Pro" }];
 
@@ -391,8 +391,7 @@ export default function Catalogue() {
                       {p.variants > 1 ? `${p.variants} finitions` : p.variantTitle}
                     </span>
                     <span className="catalogue-price">
-                      {p.maxPrice > p.minPrice ? `dès ${money(p.minPrice)}` : money(p.minPrice)}
-                      <ProPrice cents={p.minPrice} from={p.maxPrice > p.minPrice} />
+                      <CataloguePrice cents={p.minPrice} from={p.maxPrice > p.minPrice} />
                     </span>
                   </span>
                 </div>

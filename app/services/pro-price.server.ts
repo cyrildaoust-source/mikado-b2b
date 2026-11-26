@@ -1,11 +1,14 @@
 import type { Context } from "./context.server";
 import { architectStatus, listClasses } from "./classes.server";
 import { memo } from "./memo.server";
-import { PRO_COOKIE, type ProPricing } from "../domain/pro";
+import { readPriceView, type ProPricing } from "../domain/pro";
 
-export function showProCookie(request: Request) {
-  const raw = request.headers.get("cookie") || "";
-  return raw.split(/;\s*/).includes(`${PRO_COOKIE}=1`);
+export function priceView(request: Request) {
+  return readPriceView(request.headers.get("cookie"));
+}
+
+function showProCookie(request: Request) {
+  return priceView(request) === "pro";
 }
 
 /**
