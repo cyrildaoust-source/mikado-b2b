@@ -1,3 +1,4 @@
+import { lockPrices } from "../domain/pro";
 import {
   data,
   redirect,
@@ -143,7 +144,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
         ? (await getQuote(c.shop, id)).state
         : String(form.get("state"));
       if (raw.length > 1000000) throw Error("Devis trop volumineux.");
-      const state = quoteSchema.parse(JSON.parse(raw));
+      const parsed = quoteSchema.parse(JSON.parse(raw));
+      const state = c.user?.role === "architect" ? lockPrices(parsed) : parsed;
       if (!state.client.trim())
         throw Error("Choisissez un client avant de préparer le PDF.");
       const v = await saveQuote(c.shop, id, version, state, intent === "refresh-pdf");
@@ -175,7 +177,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
     if (intent === "save") {
       const raw = String(form.get("state"));
       if (raw.length > 1000000) throw Error("Devis trop volumineux.");
-      await saveQuote(c.shop, id, version, JSON.parse(raw));
+      const parsed = quoteSchema.parse(JSON.parse(raw));
+      await saveQuote(
+        c.shop,
+        id,
+        version,
+        c.user?.role === "architect" ? lockPrices(parsed) : parsed,
+      );
       return { ok: "Devis enregistré." };
     }
     if (intent === "duplicate") {

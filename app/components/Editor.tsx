@@ -680,8 +680,8 @@ export default function Editor({
                     <div className="line-head" aria-hidden="true">
                       <span>Produit</span>
                       <span>Qté</span>
-                      <span>Prix HTVA</span>
-                      <span>Remise %</span>
+                      <span>{admin ? "Prix HTVA" : "Prix public HTVA"}</span>
+                      <span>{admin ? "Remise %" : "Remise client %"}</span>
                       <span>Total HTVA</span>
                     </div>
                   )}
@@ -709,6 +709,7 @@ export default function Editor({
                             i.name,
                           )}
                           <ProductRow
+                            priceLocked={!admin}
                             line={i}
                             base={n ? g.items[0] : undefined}
                             selected={g.items.length > 1 && g.selected === i.id}
@@ -733,6 +734,7 @@ export default function Editor({
                       {optionsOf(s, g.id).map((e) => (
                         <div className="drag-row option-line" key={e.id}>
                           <ProductRow
+                            priceLocked={!admin}
                             line={e}
                             selected={e.selected}
                             option={{

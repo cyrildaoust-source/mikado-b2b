@@ -48,7 +48,12 @@ export default function App() {
 /** « Afficher mes prix pro » : un réglage de l'appareil, sans effet sur les devis. */
 function PriceToggle({ pro, next }: { pro: ProPricing; next: string }) {
   return (
-    <Form method="post" action="/app/prix-pro" className="pro-price-toggle">
+    <Form
+      method="post"
+      action="/app/prix-pro"
+      className="pro-price-toggle"
+      preventScrollReset
+    >
       <input type="hidden" name="next" value={next} />
       <input type="hidden" name="show" value={pro.show ? "0" : "1"} />
       <button
@@ -60,7 +65,8 @@ function PriceToggle({ pro, next }: { pro: ProPricing; next: string }) {
             : `${pro.className} · remise de ${pro.discount} %`
         }
       >
-        {pro.show ? "Masquer mes prix pro" : "Afficher mes prix pro"}
+        <span className="pro-switch" aria-hidden="true" />
+        Mes prix pro
       </button>
     </Form>
   );

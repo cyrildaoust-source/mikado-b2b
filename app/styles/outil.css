@@ -1932,7 +1932,8 @@ s-section > small {
 .product-row > label {
   margin: 0;
 }
-.product-row > label > .field-label {
+.product-row > label > .field-label,
+.product-row > .line-fixed-price > .field-label {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -3056,6 +3057,7 @@ dialog > p {
     grid-column: 1 / -1;
   }
   .product-row > label > .field-label,
+  .product-row > .line-fixed-price > .field-label,
   .product-row > .line-amount > span {
     position: static;
     width: auto;
@@ -4234,4 +4236,48 @@ button.mood-swatch.active:hover:not(:disabled) {
   .total-bar .pro-price {
     display: none;
   }
+}
+.pro-price.placeholder {
+  visibility: hidden;
+}
+/* Interrupteur : même largeur affiché ou masqué */
+.pro-price-toggle button {
+  gap: 8px;
+}
+.pro-switch {
+  position: relative;
+  width: 26px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--line-strong);
+  transition: background-color 0.12s;
+  flex: none;
+}
+.pro-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.12s;
+}
+[aria-pressed="true"] > .pro-switch {
+  background: var(--brass);
+}
+[aria-pressed="true"] > .pro-switch::after {
+  transform: translateX(10px);
+}
+.line-fixed-price {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+.line-fixed-price > span:last-child {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
 }

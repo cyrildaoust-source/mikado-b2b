@@ -460,3 +460,23 @@ s-badge[tone="info"] {
     font-size: 30px;
   }
 }
+
+/* Bonus de bienvenue : bien visible, sous la remise */
+.dash-welcome {
+  display: grid;
+  gap: 4px;
+  margin: 14px 0 0;
+  padding: 14px 16px;
+  border: 1px solid var(--brass);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--brass) 8%, var(--surface));
+}
+.dash-welcome strong {
+  font-size: 1.25rem;
+  line-height: 1.25;
+  color: var(--ink);
+}
+.dash-welcome span {
+  font-size: var(--t-small);
+  color: var(--ink-2);
+}

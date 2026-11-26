@@ -29,7 +29,6 @@ import { money } from "../domain/quote";
 import { sized } from "../components/catalog/image";
 import { Picker } from "../components/catalog/Picker";
 import { chooseFinish } from "../components/catalog/FinishChooser";
-import { Breadcrumb } from "../components/Breadcrumb";
 import { ProPrice } from "../components/ProPrice";
 
 export const meta = () => [{ title: "Catalogue · Mikado Deco Pro" }];
@@ -283,29 +282,6 @@ export default function Catalogue() {
   }, [items, extra.items, cursor, cols]);
   return (
     <main className="workspace catalogue">
-      {filtered && (
-        <Breadcrumb
-          items={[
-            { label: "Catalogue", to: "/app/catalogue" },
-            ...(filters.vendors.length === 1
-              ? [
-                  {
-                    label: filters.vendors[0],
-                    to: `/app/catalogue?marque=${encodeURIComponent(filters.vendors[0])}`,
-                  },
-                ]
-              : filters.vendors.length > 1
-                ? [{ label: `${filters.vendors.length} marques` }]
-                : []),
-            ...(filters.types.length === 1
-              ? [{ label: filters.types[0] }]
-              : filters.types.length > 1
-                ? [{ label: `${filters.types.length} familles` }]
-                : []),
-            ...(filters.q ? [{ label: `« ${filters.q} »` }] : []),
-          ]}
-        />
-      )}
       <header className="catalogue-head">
         <h1>Catalogue</h1>
         <p>Prix publics HTVA</p>

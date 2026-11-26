@@ -2,7 +2,7 @@ import { NumberField } from "./NumberField";
 import { lineTotal, money, signedMoney, type Line } from "../../domain/quote";
 import { safeImage } from "../QuoteDocument";
 import { ProPrice } from "../ProPrice";
-import { publicUnitPrice } from "../../domain/pro";
+import { isCataloguePrice, publicUnitPrice } from "../../domain/pro";
 export function ProductRow({
   line: i,
   base,
@@ -11,7 +11,10 @@ export function ProductRow({
   onChange,
   onRemove,
   option,
+  priceLocked = false,
 }: {
+  /** Compte architecte : prix du catalogue, sans remise ni saisie libre. */
+  priceLocked?: boolean;
   /** Option rattachée à un produit : case « inclure », hors total sinon. */
   option?: { of: string; onToggle: (included: boolean) => void };
   line: Line;
@@ -90,35 +93,90 @@ export function ProductRow({
           onChange={(e) => onChange({ qty: Number(e.target.value) })}
         />
       </label>
-      <label>
-        <span className="field-label">Prix HTVA</span>
-        <NumberField
-          aria-label={`Prix ${i.name}`}
-          type="number"
-          min={0}
-          max={1000000}
-          step=".01"
-          value={i.price / 100}
-          onChange={(e) =>
-            onChange({
-              price: Math.round(Number(e.target.value) * 100),
-              priceConfirmed: true,
-            })
-          }
-        />
-      </label>
-      <label>
-        <span className="field-label">Remise %</span>
-        <NumberField
-          aria-label={`Remise ${i.name}`}
-          type="number"
-          min={0}
-          max={100}
-          step={1}
-          value={i.discount}
-          onChange={(e) => onChange({ discount: Number(e.target.value) })}
-        />
-      </label>
+      {priceLocked && isCataloguePrice(i) ? (
+        <>
+          <div className="line-fixed-price">
+            <span className="field-label">Prix HTVA</span>
+            <span>{money(i.price)}</span>
+          </div>
+          <label>
+            <span className="field-label">Remise client %</span>
+            <NumberField
+              aria-label={`Remise ${i.name}`}
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={i.discount}
+              onChange={(e) => onChange({ discount: Number(e.target.value) })}
+            />
+          </label>
+        </>
+      ) : priceLocked ? (
+        <>
+          <label>
+            <span className="field-label">Prix HTVA</span>
+            <NumberField
+              aria-label={`Prix ${i.name}`}
+              type="number"
+              min={0}
+              max={1000000}
+              step=".01"
+              value={i.price / 100}
+              onChange={(e) =>
+                onChange({
+                  price: Math.round(Number(e.target.value) * 100),
+                  priceConfirmed: true,
+                })
+              }
+            />
+          </label>
+          <label>
+            <span className="field-label">Remise client %</span>
+            <NumberField
+              aria-label={`Remise ${i.name}`}
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={i.discount}
+              onChange={(e) => onChange({ discount: Number(e.target.value) })}
+            />
+          </label>
+        </>
+      ) : (
+        <>
+          <label>
+            <span className="field-label">Prix HTVA</span>
+            <NumberField
+              aria-label={`Prix ${i.name}`}
+              type="number"
+              min={0}
+              max={1000000}
+              step=".01"
+              value={i.price / 100}
+              onChange={(e) =>
+                onChange({
+                  price: Math.round(Number(e.target.value) * 100),
+                  priceConfirmed: true,
+                })
+              }
+            />
+          </label>
+          <label>
+            <span className="field-label">Remise %</span>
+            <NumberField
+              aria-label={`Remise ${i.name}`}
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={i.discount}
+              onChange={(e) => onChange({ discount: Number(e.target.value) })}
+            />
+          </label>
+        </>
+      )}
       <div className="line-amount">
         <span>Total HTVA</span>
         <strong>{money(lineTotal(i))}</strong>

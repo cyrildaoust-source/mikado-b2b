@@ -5,6 +5,7 @@ import {
   publicMerchandise,
   publicUnitPrice,
   shownProPrice,
+  lockPrices,
 } from "../app/domain/pro";
 
 test("prix pro : prix public moins la remise de classe, HTVA comme TVAC", () => {
@@ -55,4 +56,29 @@ test("marchandise : produits retenus et options cochées, sans livraison ni pres
   };
   assert.equal(publicMerchandise(s), 100000 + 40000 + 10000);
   assert.equal(proPrice(publicMerchandise(s), 10), 135000);
+});
+
+test("architecte : prix du catalogue rétabli, remise client conservée", () => {
+  const cat = (price: number, discount: number) => ({
+    ...line("c", 100000),
+    price,
+    discount,
+    variantId: "gid://shopify/ProductVariant/1",
+    priceConfirmed: true,
+  });
+  const custom = {
+    ...line("p", 30000),
+    sourcePrice: null,
+    variantId: null,
+    discount: 15,
+    priceConfirmed: true,
+  };
+  const s = lockPrices({
+    groups: [{ items: [cat(150000, 10)] }],
+    extras: [custom],
+  });
+  assert.equal(s.groups[0].items[0].price, 100000);
+  assert.equal(s.groups[0].items[0].discount, 10);
+  assert.equal(s.extras[0].price, 30000);
+  assert.equal(s.extras[0].discount, 15);
 });

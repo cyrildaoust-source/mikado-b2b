@@ -127,6 +127,9 @@ export async function lineFor(
       detail: "",
       qty: 1,
       price: variant.price,
+      // Démo : prix public HTVA du catalogue fictif, comme une ligne Shopify.
+      sourcePrice: variant.price,
+      sourceIncludesTax: false,
       discount: 0,
       variantId: null,
       image: product.image,

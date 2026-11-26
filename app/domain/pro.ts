@@ -69,3 +69,43 @@ export function publicMerchandise(s: {
       .reduce((n, e) => n + unit(e), 0)
   );
 }
+
+/** Ligne dont le prix vient du catalogue (prix Shopify connu et lisible). */
+export function isCataloguePrice(l: Parameters<typeof publicUnitPrice>[0]) {
+  return (
+    l.sourcePrice !== null && (!l.sourceIncludesTax || l.sourceVatRate !== null)
+  );
+}
+
+type PricedLine = Parameters<typeof publicUnitPrice>[0] & {
+  discount: number;
+  variantId: string | null;
+  priceConfirmed: boolean;
+};
+
+/**
+ * Compte architecte : il ne choisit pas les prix du catalogue (Cyril,
+ * 26/11/2026). Les produits gardent le prix public de Shopify. La remise par
+ * ligne reste : c'est la remise que l'architecte fait à son client, à lui de
+ * voir, distincte de la remise de palier de Mikado Deco. Appliqué par le
+ * serveur à chaque enregistrement.
+ */
+export function lockPrices<
+  S extends { groups: { items: L[] }[]; extras: L[] },
+  L extends PricedLine,
+>(s: S): S {
+  const lock = (l: L): L => {
+    const catalogue = isCataloguePrice(l);
+    return {
+      ...l,
+      ...(catalogue
+        ? { price: publicUnitPrice(l), priceConfirmed: true }
+        : {}),
+    };
+  };
+  return {
+    ...s,
+    groups: s.groups.map((g) => ({ ...g, items: g.items.map(lock) })),
+    extras: s.extras.map(lock),
+  };
+}

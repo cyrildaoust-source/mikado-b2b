@@ -68,6 +68,11 @@ le devis, ni son PDF, ni la commande. Sans classe attribuée, la page indique «
 confirmer ». Mikado Deco ne voit pas ce réglage. Code : `app/domain/pro.ts`,
 `app/services/pro-price.server.ts`, `app/components/ProPrice.tsx`.
 
+L'architecte ne change pas les prix du catalogue : la ligne montre le prix public, et le
+serveur le rétablit à chaque enregistrement (`lockPrices`). La colonne « Remise client % »
+reste à lui : c'est la remise qu'il fait à son client, s'il le veut, distincte de la
+remise de palier de Mikado Deco. Ses lignes personnalisées gardent un prix libre.
+
 Grille de départ (décision de Cyril du 26/11/2026), posée par la migration
 `20261126180000_architect_classes_seed` si aucune classe n'existe encore : Esquisse 10 %
 dès l'inscription, Plan 12 % dès 15 000 €, Projet 14 % dès 35 000 €, Signature 16 % dès

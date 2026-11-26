@@ -26,7 +26,15 @@ export function ProPrice({
   label?: string;
 }) {
   const pro = useProPricing();
-  if (!pro?.show) return null;
+  if (!pro) return null;
+  // Option coupée : la place reste réservée, la page ne bouge pas à la bascule.
+  if (!pro.show)
+    return (
+      <small className={`pro-price placeholder ${className}`} aria-hidden="true">
+        {label} {from ? "dès " : ""}
+        {money(cents)}
+      </small>
+    );
   if (pro.discount === null)
     return (
       <small className={`pro-price pending ${className}`}>Prix pro à confirmer</small>

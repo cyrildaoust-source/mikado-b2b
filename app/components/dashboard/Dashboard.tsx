@@ -169,9 +169,12 @@ function TierPromise({ tier }: { tier: ClassStatus }) {
           Deco.
         </p>
       ) : tier.welcome === "open" ? (
-        <p className="dash-tier-note">
-          Bienvenue : votre premier devis accepté d'ici 60 jours compte
-          double.
+        <p className="dash-welcome">
+          <strong>Bonus de bienvenue : votre premier devis accepté compte double</strong>
+          <span>
+            S'il est accepté dans les 60 jours suivant votre inscription, son
+            montant compte deux fois pour atteindre le palier suivant.
+          </span>
         </p>
       ) : null}
     </>
