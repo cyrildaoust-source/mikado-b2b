@@ -102,3 +102,46 @@ export async function importKvadratProduct(product: string, collection: string, 
   }
   return report;
 }
+
+// ——— Import des coloris Dedar (fiches publiques de dedar.com) ———
+
+const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const UA = { "User-Agent": "MikadoDecoPro/1.0 (bibliotheque de matieres)" };
+
+export async function dedarSlugs() {
+  const { DEDAR_SITE, dedarProductSlugs } = await import("../domain/dedar");
+  const r = await fetch(`${DEDAR_SITE}/__sitemap__/products.xml`, { headers: UA, signal: AbortSignal.timeout(30_000) });
+  if (!r.ok) throw Error(`Dedar répond ${r.status} pour le plan du site.`);
+  return dedarProductSlugs(await r.text());
+}
+
+/**
+ * Coloris d'une fiche Dedar : la page, puis chaque vignette en 800 px, une
+ * requête par seconde au plus.
+ */
+export async function importDedarProduct(slug: string, dry = false) {
+  const { DEDAR_SITE, dedarSwatches, dedarCollection } = await import("../domain/dedar");
+  const r = await fetch(`${DEDAR_SITE}/products/${slug}/`, { headers: UA, signal: AbortSignal.timeout(30_000) });
+  if (!r.ok) throw Error(`Dedar répond ${r.status} pour ${slug}.`);
+  const swatches = dedarSwatches(await r.text());
+  const collection = dedarCollection(swatches, slug);
+  const report = { product: slug, collection, swatches: swatches.length, imported: 0, skipped: [] as string[], sample: swatches.slice(0, 5) };
+  if (dry) return report;
+  for (const s of swatches) {
+    await pause(1000);
+    try {
+      const img = await fetch(`${s.src}?format=jpg&width=800`, {
+        headers: { ...UA, Accept: "image/jpeg,image/webp;q=0.9,image/png;q=0.8" },
+        signal: AbortSignal.timeout(30_000),
+      });
+      const mime = img.headers.get("content-type")?.split(";")[0] || "";
+      if (!img.ok) throw Error(`HTTP ${img.status}`);
+      const data = new Uint8Array(await img.arrayBuffer());
+      await addLibrary({ maker: "Dedar", collection, colour: s.colour, file: new File([data], `${slug}-${s.colour}.jpg`, { type: mime }) });
+      report.imported++;
+    } catch (err) {
+      report.skipped.push(`${s.colour} (${err instanceof Error ? err.message : "erreur"})`);
+    }
+  }
+  return report;
+}
