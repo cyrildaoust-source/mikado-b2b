@@ -48,22 +48,22 @@ export function libraryLabel(m: { collection: string; colour: string }) {
 
 /** Matières regroupées par éditeur puis par collection, dans l'ordre alphabétique. */
 export function groupLibrary<T extends LibraryEntry>(items: T[]) {
+  // Un comparateur partagé : localeCompare avec options recrée le sien à chaque appel.
+  const cmp = COLLATOR.compare;
   const sorted = [...items].sort(
-    (a, b) =>
-      a.maker.localeCompare(b.maker, "fr") ||
-      a.collection.localeCompare(b.collection, "fr", { numeric: true }) ||
-      a.colour.localeCompare(b.colour, "fr", { numeric: true }),
+    (a, b) => cmp(a.maker, b.maker) || cmp(a.collection, b.collection) || cmp(a.colour, b.colour),
   );
-  const groups: { maker: string; items: T[] }[] = [];
+  const byMaker = new Map<string, T[]>();
   for (const m of sorted) {
-    const g = groups.find((x) => x.maker === m.maker);
-    if (g) g.items.push(m);
-    else groups.push({ maker: m.maker, items: [m] });
+    const list = byMaker.get(m.maker);
+    if (list) list.push(m);
+    else byMaker.set(m.maker, [m]);
   }
-  return groups;
+  return [...byMaker].map(([maker, items]) => ({ maker, items }));
 }
 
-/** Recherche sans accents ni casse dans l'éditeur, la collection et le coloris. */
+const COLLATOR = new Intl.Collator("fr", { numeric: true });
+
 export function matchLibrary(m: LibraryEntry, query: string) {
   const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   const hay = fold(`${m.maker} ${m.collection} ${m.colour}`);

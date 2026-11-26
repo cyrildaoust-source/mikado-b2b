@@ -1,6 +1,8 @@
 import {
+  memo,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -197,7 +199,7 @@ export function MoodBoardEditor({
       src.startsWith("upload:")
         ? `/app/quotes/${id}/moodboard/image/${src.slice(7)}`
         : src.startsWith("library:")
-          ? `/app/matieres/image/${src.slice(8)}`
+          ? `/app/matieres/image/${src.slice(8)}?w=800`
           : sized(src, 1200),
     [id],
   );
@@ -431,6 +433,10 @@ export function MoodBoardEditor({
     });
   };
   /** Finition Shopify : sa photo d'échantillon, sinon sa couleur. */
+  // Étagère de la bibliothèque : rappels stables, pour qu'elle ne se redessine pas à chaque geste.
+  const addFinishRef = useRef<(f: PaletteItem) => void>(() => {});
+  const onLibraryAdd = useCallback((f: PaletteItem) => addFinishRef.current(f), []);
+  const libraryThumb = useCallback((f: PaletteItem) => `/app/matieres/image/${f.src.slice(8)}?w=240`, []);
   const addFinish = (f: PaletteItem, at?: { x: number; y: number }) => {
     if (f.src)
       return void addMaterial({ src: f.src, name: f.name ?? f.alt, maker: f.maker, reference: f.reference }, at);
@@ -452,6 +458,7 @@ export function MoodBoardEditor({
     setSelected(null);
     setEditing(null);
   };
+  addFinishRef.current = (f) => addFinish(f);
   const reorder = (front: boolean) => {
     if (!item) return;
     updateBoard((b) => {
@@ -471,6 +478,8 @@ export function MoodBoardEditor({
   };
 
   // ——— Glisser dans la planche (souris, doigt, stylet)
+  const frame = useRef(0);
+  const pendingMove = useRef<BoardItem | null>(null);
   const onItemDown = (e: ReactPointerEvent, it: BoardItem, mode: Gesture["mode"]) => {
     if (editing === it.id && mode === "move") return;
     if (e.button !== 0) return;
@@ -502,13 +511,27 @@ export function MoodBoardEditor({
       g.mode === "move"
         ? keepInside({ ...g.item, x: g.item.x + dx, y: g.item.y + dy })
         : resize(g.item, g.item.w + dx, g.item.h + dy);
-    setBoards((cur) =>
-      cur.map((b) =>
-        b.key === key ? { ...b, items: b.items.map((i) => (i.id === g.id ? next : i)) } : b,
-      ),
-    );
+    // Une mise à jour par image affichée, pas par événement du pointeur.
+    pendingMove.current = next;
+    if (frame.current) return;
+    frame.current = requestAnimationFrame(() => {
+      frame.current = 0;
+      const moved = pendingMove.current;
+      pendingMove.current = null;
+      if (!moved) return;
+      setBoards((cur) =>
+        cur.map((b) =>
+          b.key === key ? { ...b, items: b.items.map((i) => (i.id === moved.id ? moved : i)) } : b,
+        ),
+      );
+    });
   };
   const onItemUp = () => {
+    if (frame.current) cancelAnimationFrame(frame.current);
+    frame.current = 0;
+    const last = pendingMove.current;
+    pendingMove.current = null;
+    if (last) setBoards((cur) => cur.map((b) => (b.key === key ? { ...b, items: b.items.map((i) => (i.id === last.id ? last : i)) } : b)));
     const g = gesture.current;
     gesture.current = null;
     if (!g) return;
@@ -1016,8 +1039,8 @@ export function MoodBoardEditor({
                       library={library}
                       query={libraryQuery}
                       onQuery={setLibraryQuery}
-                      onAdd={(f) => addFinish(f)}
-                      thumb={(f) => resolve(f.src)}
+                      onAdd={onLibraryAdd}
+                      thumb={libraryThumb}
                       disabled={preparing}
                     />
                   )}
@@ -1258,7 +1281,7 @@ export function MoodBoardEditor({
 const LIBRARY_SHOWN = 36;
 
 /** Bibliothèque Mikado : tissus en magasin, par éditeur, avec recherche. */
-function LibraryShelf({
+const LibraryShelf = memo(function LibraryShelf({
   library,
   query,
   onQuery,
@@ -1273,8 +1296,11 @@ function LibraryShelf({
   thumb: (item: PaletteItem) => string;
   disabled?: boolean;
 }) {
-  const found = query.trim() ? library.filter((m) => matchLibrary(m, query)) : library;
-  const groups = groupLibrary(found);
+  // 18 000 coloris : le tri ne se refait que si la recherche change.
+  const groups = useMemo(
+    () => groupLibrary(query.trim() ? library.filter((m) => matchLibrary(m, query)) : library),
+    [library, query],
+  );
   return (
     <div className="mood-library">
       <label className="mood-material-field mood-library-search">
@@ -1313,7 +1339,7 @@ function LibraryShelf({
       ))}
     </div>
   );
-}
+});
 
 /** Groupe de matières dans la colonne : vignettes carrées, toucher ou glisser. */
 function MaterialGroup({
