@@ -73,6 +73,13 @@
 *::after {
   box-sizing: border-box;
 }
+/* L'écran ne glisse jamais de côté : rien ne dépasse à droite ou à gauche,
+   et un geste horizontal ne fait pas bouger la page. */
+html,
+body {
+  overflow-x: clip;
+  overscroll-behavior-x: none;
+}
 html {
   background: var(--paper);
   scrollbar-gutter: stable;
@@ -403,13 +410,15 @@ button:disabled {
   cursor: not-allowed;
   box-shadow: none;
 }
-button.primary {
+button.primary,
+.button.primary {
   background: var(--ink);
   border-color: var(--ink);
   color: #fff;
   box-shadow: 0 1px 2px rgba(22, 24, 26, 0.2);
 }
-button.primary:hover:not(:disabled) {
+button.primary:hover:not(:disabled),
+.button.primary:hover {
   background: var(--ink-hover);
   border-color: var(--ink-hover);
 }
@@ -1143,6 +1152,127 @@ button.catalogue-add:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.12);
 }
 
+/* Catalogue : barre du devis en cours, toujours visible en bas */
+.catalogue:has(.catalogue-dock) {
+  padding-bottom: 120px;
+}
+.catalogue-dock {
+  position: fixed;
+  z-index: 60;
+  left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: min(960px, calc(100vw - 32px));
+  padding: 10px 10px 10px 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow-float);
+  transition:
+    border-color 0.12s,
+    background-color 0.12s;
+}
+.catalogue-dock.dragging {
+  border: 1px dashed var(--brass);
+  background: var(--brass-bg);
+}
+.catalogue-dock.over {
+  border-style: solid;
+  box-shadow:
+    var(--shadow-float),
+    0 0 0 3px var(--brass-bg);
+}
+.dock-quote {
+  display: grid;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 280px;
+}
+.dock-quote small {
+  overflow: hidden;
+  color: var(--ink-3);
+  font-size: var(--t-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dock-quote strong {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dock-status {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 12px;
+  min-width: 0;
+  padding-left: 16px;
+  border-left: 1px solid var(--line);
+  color: var(--ink-2);
+}
+.dock-status .text-button {
+  min-height: var(--compact);
+  padding: 0;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.dock-added {
+  color: var(--ok);
+  font-weight: 500;
+}
+.dock-error {
+  color: var(--error);
+}
+.dock-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+.dock-actions .button.primary {
+  min-height: var(--control);
+}
+/* Le menu s'ouvre vers le haut, au-dessus de la barre */
+.dock-menu > div {
+  top: auto;
+  bottom: calc(100% + 6px);
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+}
+.dock-menu > div button {
+  min-height: 44px;
+}
+.dock-menu > div button > span {
+  display: grid;
+}
+.dock-menu > div button small {
+  color: var(--ink-3);
+}
+.hint-coarse {
+  display: none;
+}
+@media (pointer: coarse) {
+  .hint-fine {
+    display: none;
+  }
+  .hint-coarse {
+    display: inline;
+  }
+}
+.catalogue-grid.can-drag .catalogue-photo,
+.catalogue-pane .catalogue-item[draggable="true"] .catalogue-photo {
+  cursor: grab;
+}
+.catalogue:has(.catalogue-dock) .drop-panel {
+  bottom: 96px;
+}
+
 /* ================================================================== */
 /* Fiche produit                                                       */
 /* ================================================================== */
@@ -1377,6 +1507,66 @@ button.catalogue-add:hover:not(:disabled) {
 .product-description p {
   margin: 0 0 10px;
 }
+.product-specs {
+  display: grid;
+  gap: 20px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+.product-specs h2 {
+  margin: 0;
+  font-size: var(--t-section);
+  font-weight: 600;
+}
+.spec-group {
+  display: grid;
+  gap: 8px;
+}
+.spec-group h3 {
+  margin: 0;
+  font-size: var(--t-small);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.spec-group dl {
+  margin: 0;
+}
+.spec-group dl > div {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.spec-group dl > div:last-child {
+  border-bottom: 0;
+}
+.spec-group dt {
+  color: var(--ink-2);
+}
+.spec-group dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.spec-group dd a {
+  position: relative;
+  color: var(--ink);
+  text-underline-offset: 3px;
+}
+/* Zone de clic de 44 px autour du lien, sans changer la ligne */
+.spec-group dd a::after {
+  content: "";
+  position: absolute;
+  inset: -14px -12px;
+}
+.product-add .success {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
 .product-ref {
   margin: 0;
   font-family: var(--mono);
@@ -1461,9 +1651,28 @@ button.catalogue-add:hover:not(:disabled) {
   background: var(--surface);
   border: 1px solid var(--line);
 }
+.quote-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 16px;
+}
+.quote-panel > .success,
+.quote-panel > .error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 0 0 8px;
+}
+.quote-panel > .success .text-button,
+.product-add .success .text-button {
+  margin-left: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .quote-panel button.text-button {
   justify-self: start;
-  min-height: 28px;
+  min-height: var(--compact);
   padding: 0 8px;
   margin-left: -8px;
   color: var(--ink-2);
@@ -2131,9 +2340,16 @@ html:has(dialog[open]) {
   margin-right: auto;
   font-size: var(--t-small);
 }
-dialog form {
+dialog form,
+dialog fieldset.unframed {
   display: grid;
   gap: 16px;
+}
+/* Sous-parties d'un formulaire : même respiration partout. */
+dialog form h3 {
+  margin-top: 8px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
 }
 dialog > button,
 dialog > p {
@@ -2359,15 +2575,15 @@ dialog > p {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
   align-items: end;
-  gap: 12px;
+  gap: 16px;
   padding: 24px;
 }
 .user-form h2 {
   grid-column: 1 / -1;
+  margin-bottom: 4px;
 }
 .user-form label {
   margin: 0;
-  font-size: var(--t-body);
 }
 .invite-link {
   display: flex;
@@ -3389,5 +3605,50 @@ html:has(.quote-workspace) {
     content: "";
     position: absolute;
     inset: 0 -8px;
+  }
+}
+
+/* Barre du devis et caractéristiques sur téléphone */
+@media (max-width: 700px) {
+  .catalogue:has(.catalogue-dock) {
+    padding-bottom: 160px;
+  }
+  .catalogue-dock {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    width: calc(100vw - 16px);
+    bottom: max(8px, env(safe-area-inset-bottom));
+    padding: 10px 12px;
+  }
+  .dock-quote {
+    flex: 1 1 0;
+    max-width: none;
+  }
+  .dock-status {
+    order: 3;
+    flex-basis: 100%;
+    padding: 8px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    font-size: var(--t-small);
+  }
+  .dock-actions .button.primary {
+    padding: 0 12px;
+  }
+  .dock-number,
+  .dock-suffix {
+    display: none;
+  }
+}
+@media (max-width: 420px) {
+  .spec-group dl > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+  .dock-actions .action-menu > summary {
+    padding: 0 10px;
+  }
+  .dock-label {
+    display: none;
   }
 }

@@ -2,15 +2,23 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Form,
   Link,
+  data,
   useFetcher,
   useLoaderData,
   useLocation,
   useNavigation,
   useSubmit,
+  type ActionFunctionArgs,
   type LoaderFunctionArgs,
 } from "react-router";
 import { context, ownerScope } from "../services/context.server";
-import { currentQuoteId, quotePanel } from "../services/current-quote.server";
+import {
+  currentQuoteId,
+  quotePanel,
+  rememberQuote,
+} from "../services/current-quote.server";
+import { openQuotes } from "../services/catalog-quote.server";
+import { readForm } from "../services/form.server";
 import {
   brandFamilies,
   catalogFacets,
@@ -44,12 +52,22 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const openQuote = await currentQuoteId(request)
       .then((id) => quotePanel(c.shop, id, ownerScope(c)))
       .catch(() => null);
-    const [list, facets, families] = await Promise.all([
+    const [list, facets, families, quotes] = await Promise.all([
       listCatalog(c.admin, filters),
       catalogFacets(c.admin),
       brandFamilies(c.admin, filters.vendors).catch(() => []),
+      openQuotes(c.shop, ownerScope(c)).catch(() => []),
     ]);
-    return { ...list, facets, families, filters, openQuote, demo: c.demo, error: null };
+    return {
+      ...list,
+      facets,
+      families,
+      filters,
+      openQuote,
+      quotes: quotes.slice(0, 8),
+      demo: c.demo,
+      error: null,
+    };
   } catch {
     return {
       items: [],
@@ -58,15 +76,37 @@ export async function loader({ request }: LoaderFunctionArgs) {
       families: [] as { type: string; count: number }[],
       filters,
       openQuote: null,
+      quotes: [] as { id: number; title: string; customer: string; number: string }[],
       demo: c.demo,
       error: "Catalogue indisponible pour le moment. Réessayez dans un instant.",
     };
   }
 }
 
+// Choisir le devis sur lequel on travaille depuis le catalogue (ou le fermer).
+export async function action({ request }: ActionFunctionArgs) {
+  const c = await context(request);
+  const form = await readForm(request);
+  if (form.get("intent") === "close")
+    return data({ ok: true }, { headers: { "Set-Cookie": await rememberQuote(null) } });
+  const id = Number(form.get("quote"));
+  const panel = Number.isSafeInteger(id)
+    ? await quotePanel(c.shop, id, ownerScope(c))
+    : null;
+  if (!panel) return { ok: false, error: "Ce devis n'est plus modifiable." };
+  return data({ ok: true }, { headers: { "Set-Cookie": await rememberQuote(panel.id) } });
+}
+
 export default function Catalogue() {
-  const { items, next, facets, families, filters, openQuote, demo, error } =
+  const { items, next, facets, families, filters, openQuote, quotes, demo, error } =
     useLoaderData<typeof loader>();
+  const chooser = useFetcher<{ ok: boolean; error?: string }>();
+  const chooseQuote = (id: number | null) =>
+    chooser.submit(
+      id === null ? { intent: "close" } : { intent: "use", quote: String(id) },
+      { method: "post", action: "/app/catalogue?index" },
+    );
+  const otherQuotes = quotes.filter((q) => q.id !== openQuote?.id);
   // Ajout rapide au devis ouvert (dernière pièce), puis « Annuler ».
   const adder = useFetcher<{ ok?: string; error?: string; quote?: number; line?: string }>();
   const undoer = useFetcher<{ ok?: string; error?: string }>();
@@ -224,13 +264,6 @@ export default function Catalogue() {
       <header className="catalogue-head">
         <h1>Catalogue</h1>
         <p>Prix publics HTVA</p>
-        {openQuote && (
-          <Link to={`/app/quotes/${openQuote.id}`} className="catalogue-open-quote">
-            <small>Devis ouvert</small>
-            <strong>{openQuote.title}</strong>
-            <span>{money(openQuote.total)}</span>
-          </Link>
-        )}
       </header>
       {demo && <p className="demo-ribbon">Démonstration · catalogue fictif</p>}
       <Form method="get" className="catalogue-filters">
@@ -278,7 +311,11 @@ export default function Catalogue() {
         </p>
       )}
       {items.length ? (
-        <ul className="catalogue-grid" aria-busy={busy} ref={grid}>
+        <ul
+          className={`catalogue-grid${openQuote ? " can-drag" : ""}`}
+          aria-busy={busy}
+          ref={grid}
+        >
           {shown.map((p) => (
             <li
               key={p.id}
@@ -400,35 +437,105 @@ export default function Catalogue() {
           </section>
         </aside>
       )}
-      {added && (
-        <div className="catalogue-toast" role="status">
-          {adder.state !== "idle" ? (
-            <span>Ajout de {added.title}…</span>
-          ) : adder.data?.error ? (
-            <span>{adder.data.error}</span>
-          ) : undoer.state !== "idle" ? (
-            <span>Annulation…</span>
+      {(openQuote || quotes.length > 0) && (
+        <div
+          className={`catalogue-dock${dragCard ? " dragging" : ""}${dropKey === "dock" ? " over" : ""}`}
+          role="region"
+          aria-label="Devis en cours"
+          {...(openQuote ? dropZone("dock", "end", lastRoom ? `à ${lastRoom}` : "au devis") : {})}
+        >
+          {openQuote ? (
+            <span className="dock-quote">
+              <small>
+                <span className="dock-label">Devis ouvert · </span>
+                <span className="dock-number">{openQuote.number} · </span>
+                {money(openQuote.total)}
+              </small>
+              <strong>{openQuote.title}</strong>
+            </span>
           ) : (
-            <>
-              <span>
-                {added.title} ajouté{added.where ? ` ${added.where}` : ""}
-              </span>
-              <button type="button" className="text-button" onClick={undo}>
-                Annuler
-              </button>
-              {openQuote && (
-                <Link to={`/app/quotes/${openQuote.id}`}>Voir le devis</Link>
-              )}
-            </>
+            <span className="dock-quote">
+              <small>Aucun devis ouvert</small>
+              <strong>Ajouter des produits à un devis</strong>
+            </span>
           )}
-          <button
-            type="button"
-            className="catalogue-toast-close"
-            aria-label="Fermer"
-            onClick={() => setAdded(null)}
-          >
-            ×
-          </button>
+          <span className="dock-status" role="status">
+            {added ? (
+              adder.state !== "idle" ? (
+                <>Ajout de {added.title}…</>
+              ) : adder.data?.error ? (
+                <span className="dock-error">{adder.data.error}</span>
+              ) : undoer.state !== "idle" ? (
+                <>Annulation…</>
+              ) : (
+                <>
+                  <span className="dock-added">
+                    {added.title} ajouté{added.where ? ` ${added.where}` : ""}
+                  </span>
+                  <button type="button" className="text-button" onClick={undo}>
+                    Annuler
+                  </button>
+                </>
+              )
+            ) : chooser.data?.error ? (
+              <span className="dock-error">{chooser.data.error}</span>
+            ) : openQuote ? (
+              <span className="dock-hint">
+                <span className="hint-fine">Glissez un produit sur cette barre ou cliquez sur + : </span>
+                <span className="hint-coarse">Touchez + sur un produit : </span>
+                il s'ajoute {lastRoom ? `à ${lastRoom}` : "au devis"}.
+              </span>
+            ) : (
+              <span className="dock-hint">
+                Choisissez le devis sur lequel vous travaillez pour y ajouter des produits en un geste.
+              </span>
+            )}
+          </span>
+          <span className="dock-actions">
+            {(otherQuotes.length > 0 || openQuote) && (
+              <details className="action-menu dock-menu">
+                <summary>
+                  {openQuote ? "Changer" : "Choisir un devis"}
+                </summary>
+                <div>
+                  {otherQuotes.map((q) => (
+                    <button
+                      key={q.id}
+                      type="button"
+                      onClick={(e) => {
+                        e.currentTarget.closest("details")!.open = false;
+                        chooseQuote(q.id);
+                      }}
+                    >
+                      <span>
+                        {q.title}
+                        <small>
+                          {q.number}
+                          {q.customer ? ` · ${q.customer}` : ""}
+                        </small>
+                      </span>
+                    </button>
+                  ))}
+                  {openQuote && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.currentTarget.closest("details")!.open = false;
+                        chooseQuote(null);
+                      }}
+                    >
+                      Ne plus ajouter à ce devis
+                    </button>
+                  )}
+                </div>
+              </details>
+            )}
+            {openQuote && (
+              <Link to={`/app/quotes/${openQuote.id}`} className="button primary">
+                Ouvrir<span className="dock-suffix"> le devis</span>
+              </Link>
+            )}
+          </span>
         </div>
       )}
       {cursor && (

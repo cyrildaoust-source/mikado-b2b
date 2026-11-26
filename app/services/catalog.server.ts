@@ -1,6 +1,7 @@
 import db from "../db.server";
 import { cents } from "../domain/quote";
 import { gql, searchPrefix, shopInfo, type Admin } from "./shopify-api.server";
+import { productSpecs, type RawMetafield, type SpecGroup } from "../domain/specs";
 
 // Catalogue pro : lecture côté serveur des fiches Shopify, actives et en brouillon
 // (gold ou non), avec les marques que Mikado Deco masque. Rien n'est publié.
@@ -39,6 +40,8 @@ export type CatalogVariant = {
 };
 export type CatalogProduct = CatalogCard & {
   description: string;
+  /** Dimensions, matériaux et autres caractéristiques, groupées. */
+  specs: SpecGroup[];
   images: { url: string; alt: string }[];
   options: { name: string; values: string[] }[];
   productVariants: CatalogVariant[];
@@ -297,7 +300,21 @@ export async function getCatalogProduct(
     const p = demoProducts.find((x) => x.numericId === numericId);
     return p && isVisible(p, rules) ? p : null;
   }
-  const info = await shopInfo(admin);
+  const [info, specs] = await Promise.all([
+    shopInfo(admin),
+    gql<{ product: { metafields: { nodes: RawMetafield[] } } | null }>(
+      admin,
+      `query CatalogSpecs($id: ID!) {
+        product(id: $id) {
+          metafields(first: 80) {
+            nodes { namespace key type value definition { name }
+              references(first: 8) { nodes { ... on Metaobject { displayName } } } }
+          }
+        }
+      }`,
+      { id: `gid://shopify/Product/${numericId}` },
+    ).catch(() => ({ product: null })),
+  ]);
   const data = await gql<{
     product:
       | (RawCard & {
@@ -336,6 +353,7 @@ export async function getCatalogProduct(
   return {
     ...card(p, info.taxesIncluded),
     description: p.description,
+    specs: productSpecs(specs.product?.metafields.nodes || []),
     images: p.media.nodes
       .filter((m) => m.image?.url)
       .map((m) => ({ url: m.image!.url, alt: m.image!.altText || p.title })),
@@ -391,6 +409,7 @@ function demo(
     maxPrice: Math.max(...prices),
     variants: productVariants.length,
     description: `${title} de ${vendor}. Fiche fictive pour la démonstration : dimensions, matières et finitions viennent de Shopify en réel.`,
+    specs: productSpecs(demoSpecs(n)),
     images: [
       { url: swatch(color, title), alt: title },
       { url: swatch("#8a8577", "Détail"), alt: `${title}, détail` },
@@ -398,6 +417,26 @@ function demo(
     options: [{ name: "Finition", values: variants.map(([t]) => t) }],
     productVariants,
   };
+}
+
+function demoSpecs(n: number): RawMetafield[] {
+  const f = (key: string, name: string, value: string, type = "single_line_text_field"): RawMetafield => ({
+    namespace: "custom",
+    key,
+    type,
+    value,
+    definition: { name },
+  });
+  return [
+    f("width_cm", "Largeur (cm)", String(40 + (n % 5) * 10), "number_decimal"),
+    f("depth_cm", "Profondeur (cm)", "52", "number_decimal"),
+    f("height_cm", "Hauteur totale (cm)", "78.5", "number_decimal"),
+    f("material", "Matériaux / Finitions", "Bois massif huilé ; assise tapissée"),
+    f("designer", "Designer", "Studio fictif"),
+    f("origin", "Fabrication / Origine", "Fabriqué au Danemark"),
+    f("warranty", "Garantie", "2 ans"),
+    f("product_fact_sheet_url", "Fiche technique", "https://example.com/fiche.pdf"),
+  ];
 }
 
 export const demoProducts: CatalogProduct[] = [
@@ -421,7 +460,7 @@ function demoList(
       .filter((p) => isVisible(p, rules))
       .filter((p) => !filters.vendors?.length || filters.vendors.includes(p.vendor))
       .filter((p) => !types.length || types.includes(p.productType))
-      .flatMap(({ description: _d, images: _i, options: _o, productVariants, ...c }) =>
+      .flatMap(({ description: _d, images: _i, options: _o, specs: _s, productVariants, ...c }) =>
         productVariants.map(
           (v): CatalogVariantCard => ({
             ...c,

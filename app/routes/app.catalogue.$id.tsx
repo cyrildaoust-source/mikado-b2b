@@ -8,6 +8,7 @@ import {
   useActionData,
   useLoaderData,
   useNavigation,
+  useSubmit,
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
 } from "react-router";
@@ -106,7 +107,22 @@ export default function Product() {
   const [placement, setPlacement] = useState("end");
   const inPanel = panel !== null && quoteId === String(panel.id);
   const result = useActionData<typeof action>();
-  const busy = useNavigation().state !== "idle";
+  const nav = useNavigation();
+  const busy = nav.state !== "idle";
+  const undoing = busy && nav.formData?.get("intent") === "undo";
+  const submit = useSubmit();
+  // Un clic dans le devis ouvert ajoute tout de suite le produit à cet endroit.
+  const [here, setHere] = useState("");
+  const addHere = (where: string, label: string) => {
+    if (!panel || !variant || busy) return;
+    setHere(label);
+    setQuoteId(String(panel.id));
+    setPlacement(where);
+    submit(
+      { variant: variant.id, qty: String(qty), quote: String(panel.id), placement: where },
+      { method: "post", preventScrollReset: true },
+    );
+  };
   const [variantId, setVariantId] = useState(initial);
   const [qty, setQty] = useState(1);
   const [allValues, setAllValues] = useState<string[]>([]);
@@ -210,6 +226,22 @@ export default function Product() {
       { quote: "new", placement: "end", label: "Nouveau devis", button: "Créer un devis avec ce produit" },
     ],
   });
+  const undo = result && "line" in result && result.line && (
+    <button
+      type="button"
+      className="text-button"
+      disabled={busy}
+      onClick={() => {
+        setHere("");
+        submit(
+          { intent: "undo", quote: String(result.quote), line: String(result.line) },
+          { method: "post", preventScrollReset: true },
+        );
+      }}
+    >
+      Annuler
+    </button>
+  );
   const key = (t: { quote: string; placement: string }) => `${t.quote}|${t.placement}`;
   const all = targets.flatMap((g) => g.items);
   const chosen =
@@ -318,7 +350,7 @@ export default function Product() {
               </fieldset>
             );
           })}
-          <Form method="post" className="product-add">
+          <Form method="post" className="product-add" onSubmit={() => setHere("")}>
             <input type="hidden" name="variant" value={variant?.id} />
             <input type="hidden" name="quote" value={chosen.quote} />
             <input type="hidden" name="placement" value={chosen.placement} />
@@ -367,9 +399,10 @@ export default function Product() {
                 {chosen.button}
               </button>
             </div>
-            {result?.ok && (
+            {result?.ok && !here && (
               <p role="status" className="success">
                 {result.ok}
+                {undo}
               </p>
             )}
             {result?.error && (
@@ -385,6 +418,32 @@ export default function Product() {
               ))}
             </div>
           )}
+          {product.specs.length > 0 && (
+            <section className="product-specs" aria-label="Caractéristiques">
+              <h2>Caractéristiques</h2>
+              {product.specs.map((g) => (
+                <div key={g.title} className="spec-group">
+                  <h3>{g.title}</h3>
+                  <dl>
+                    {g.specs.map((s) => (
+                      <div key={`${s.label}-${s.value}`}>
+                        <dt>{s.label}</dt>
+                        <dd>
+                          {s.url ? (
+                            <a href={s.url} target="_blank" rel="noreferrer noopener">
+                              {s.value}
+                            </a>
+                          ) : (
+                            s.value
+                          )}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              ))}
+            </section>
+          )}
           {variant?.sku && <p className="product-ref">Référence {variant.sku}</p>}
         </section>
         {panel && (
@@ -394,6 +453,15 @@ export default function Product() {
               <strong>{panel.title}</strong>
               <span>{money(panel.total)} HTVA</span>
             </header>
+            {here && (busy || result?.ok || result?.error) && (
+              <p
+                role={result?.error && !busy ? "alert" : "status"}
+                className={result?.error && !busy ? "error" : "success"}
+              >
+                {busy ? (undoing ? "Annulation…" : "Ajout en cours…") : result?.error || here}
+                {!busy && !result?.error && undo}
+              </p>
+            )}
             {panel.sections.length === 0 && (
               <p className="muted">Ce devis est encore vide.</p>
             )}
@@ -404,12 +472,11 @@ export default function Product() {
                   <button
                     type="button"
                     className="text-button"
-                    onClick={() => {
-                      setQuoteId(String(panel.id));
-                      setPlacement(`section:${section.id}`);
-                    }}
+                    disabled={busy || !variant}
+                    aria-label={`Ajouter ce produit dans ${section.title}`}
+                    onClick={() => addHere(`section:${section.id}`, `Ajouté dans ${section.title}.`)}
                   >
-                    + ici
+                    + Ajouter ici
                   </button>
                 </div>
                 <ul>
@@ -431,40 +498,38 @@ export default function Product() {
                       )}
                       <span>
                         {g.name}
-                        {g.alternatives > 0 && (
+                        {(g.alternatives > 0 || g.options > 0) && (
                           <small>
-                            {" "}
-                            · {g.alternatives} alternative
-                            {g.alternatives > 1 ? "s" : ""}
-                          </small>
-                        )}
-                        {g.options > 0 && (
-                          <small>
-                            {" "}
-                            · {g.options} option{g.options > 1 ? "s" : ""}
+                            {[
+                              g.alternatives > 0 &&
+                                `${g.alternatives} alternative${g.alternatives > 1 ? "s" : ""}`,
+                              g.options > 0 && `${g.options} option${g.options > 1 ? "s" : ""}`,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
                           </small>
                         )}
                       </span>
-                      <button
-                        type="button"
-                        className="text-button"
-                        onClick={() => {
-                          setQuoteId(String(panel.id));
-                          setPlacement(`alternative:${g.id}`);
-                        }}
-                      >
-                        + alternative
-                      </button>
-                      <button
-                        type="button"
-                        className="text-button"
-                        onClick={() => {
-                          setQuoteId(String(panel.id));
-                          setPlacement(`option:${g.id}`);
-                        }}
-                      >
-                        + option
-                      </button>
+                      <span className="quote-panel-actions">
+                        <button
+                          type="button"
+                          className="text-button"
+                          disabled={busy || !variant}
+                          aria-label={`Ajouter en alternative à ${g.name}`}
+                          onClick={() => addHere(`alternative:${g.id}`, `Ajouté en alternative à ${g.name}.`)}
+                        >
+                          + alternative
+                        </button>
+                        <button
+                          type="button"
+                          className="text-button"
+                          disabled={busy || !variant}
+                          aria-label={`Ajouter en option de ${g.name}`}
+                          onClick={() => addHere(`option:${g.id}`, `Ajouté en option de ${g.name}, hors total.`)}
+                        >
+                          + option
+                        </button>
+                      </span>
                     </li>
                   ))}
                 </ul>
