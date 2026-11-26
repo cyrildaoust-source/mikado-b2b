@@ -175,6 +175,14 @@ Premier accès admin, sur le serveur :
 npm run user:invite -- --email cyril@exemple.be --name "Cyril" --role admin
 ```
 
+### Mon cabinet
+
+Chaque architecte remplit sa fiche cabinet dans « Mon cabinet » : nom, adresse,
+numéro de TVA, téléphone, e-mail, site et logo (PNG, JPEG ou WebP, 1 Mo au plus ;
+le type est lu dans le fichier, pas dans son nom). Le nom, l'adresse et la TVA
+sont requis pour partager une proposition en ligne au nom du cabinet. Mikado
+Deco ouvre la fiche d'un architecte par « Fiche cabinet » dans « Accès ».
+
 ## Configuration
 
 Variables en plus de celles de Mikado Devis (voir `.env.production.example`) :

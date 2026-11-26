@@ -93,7 +93,7 @@ async function generatePdf(shop: string, id: number, version: number) {
         seller?.name || "Mikado Deco",
         seller?.address || "Rue du Doyenné 75",
         seller?.email || "shop@mikadodeco.be",
-        seller?.website || "shop.mikadodeco.be",
+        seller?.website || "www.mikadodeco.be",
       ]
         .map((value) => escapeHtml(String(value)))
         .join(" · ")}</span><span><span class="pageNumber"></span> sur <span class="totalPages"></span></span></div>`,

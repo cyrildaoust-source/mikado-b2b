@@ -205,7 +205,7 @@ export function LegacyQuoteDocument({
         <br />
         shop@mikadodeco.be
         <br />
-        https://shop.mikadodeco.be
+        https://www.mikadodeco.be
         {demo && <p>EXEMPLE - données fictives, sans valeur commerciale.</p>}
       </footer>
     </article>

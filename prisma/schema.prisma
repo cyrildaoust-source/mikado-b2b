@@ -141,6 +141,22 @@ model User {
   // Classe choisie par Mikado Deco : un minimum, le chiffre peut la dépasser.
   classId      Int?
   class        ArchitectClass? @relation(fields: [classId], references: [id], onDelete: SetNull)
+  firm         FirmProfile?
+}
+
+// Fiche du cabinet de l'architecte : l'identité de ses propositions client.
+model FirmProfile {
+  userId    Int      @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String   @default("")
+  address   String   @default("")
+  vat       String   @default("")
+  phone     String   @default("")
+  email     String   @default("")
+  website   String   @default("")
+  logoMime  String?
+  logo      Bytes?
+  updatedAt DateTime @updatedAt
 }
 
 // Classe d'architecte : une remise et le chiffre annuel qui l'ouvre.

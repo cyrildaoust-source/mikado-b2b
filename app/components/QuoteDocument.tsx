@@ -376,7 +376,7 @@ export function QuoteDocument({
         <strong>{seller?.name || "Mikado Deco"}</strong>
         <div className="preline">{seller?.address || "Rue du Doyenné 75"}</div>
         {seller?.email || "shop@mikadodeco.be"} ·{" "}
-        {seller?.website || "shop.mikadodeco.be"}
+        {seller?.website || "www.mikadodeco.be"}
         {seller?.vat && <div>TVA : {seller.vat}</div>}
       </footer>
     </article>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   Form,
+  Link,
   useActionData,
   useLoaderData,
   type ActionFunctionArgs,
@@ -246,7 +247,20 @@ export default function Users() {
                     </span>
                     <small>{u.email}</small>
                   </td>
-                  <td>{u.role === "admin" ? "Mikado Deco" : "Architecte"}</td>
+                  <td>
+                    {u.role === "admin" ? (
+                      "Mikado Deco"
+                    ) : (
+                      <>
+                        Architecte
+                        <small>
+                          <Link to={`/app/cabinet?compte=${u.id}`}>
+                            Fiche cabinet
+                          </Link>
+                        </small>
+                      </>
+                    )}
+                  </td>
                   <td>
                     <UserState user={u} />
                   </td>

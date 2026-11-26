@@ -3,7 +3,7 @@ export function sellerSnapshot() {
     name: process.env.SELLER_NAME || "Mikado Deco",
     address: process.env.SELLER_ADDRESS || "Rue du Doyenné 75",
     email: process.env.SELLER_EMAIL || "shop@mikadodeco.be",
-    website: process.env.SELLER_WEBSITE || "shop.mikadodeco.be",
+    website: process.env.SELLER_WEBSITE || "www.mikadodeco.be",
     vat: process.env.SELLER_VAT || "",
     template: "b2b-v3",
   };
