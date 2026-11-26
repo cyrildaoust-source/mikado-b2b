@@ -1,6 +1,8 @@
 import { NumberField } from "./NumberField";
 import { lineTotal, money, signedMoney, type Line } from "../../domain/quote";
 import { safeImage } from "../QuoteDocument";
+import { ProPrice } from "../ProPrice";
+import { publicUnitPrice } from "../../domain/pro";
 export function ProductRow({
   line: i,
   base,
@@ -120,6 +122,9 @@ export function ProductRow({
       <div className="line-amount">
         <span>Total HTVA</span>
         <strong>{money(lineTotal(i))}</strong>
+        {i.sourcePrice !== null && (
+          <ProPrice cents={publicUnitPrice(i) * i.qty} />
+        )}
       </div>
       <button
         className="icon-button"

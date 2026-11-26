@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ProPrice } from "../ProPrice";
 import { useFetcher } from "react-router";
 import { money } from "../../domain/quote";
 import { sized } from "../catalog/image";
@@ -401,6 +402,10 @@ export function CatalogueBrowser({
                           {p.maxPrice > p.minPrice
                             ? `dès ${money(p.minPrice)}`
                             : money(p.minPrice)}
+                          <ProPrice
+                            cents={p.minPrice}
+                            from={p.maxPrice > p.minPrice}
+                          />
                         </span>
                       </span>
                     </div>

@@ -29,6 +29,7 @@ import { money } from "../domain/quote";
 import { sized } from "../components/catalog/image";
 import { FinishPicker } from "../components/catalog/FinishPicker";
 import { Models3dBlock } from "../components/catalog/Models3d";
+import { ProPrice } from "../components/ProPrice";
 
 export const meta = ({ data }: { data?: { product?: { title: string } } }) => [
   { title: `${data?.product?.title || "Produit"} · Mikado Deco Pro` },
@@ -285,6 +286,7 @@ export default function Product() {
           {variant && (
             <p className="product-price">
               {money(variant.price)} <small>HTVA · prix public</small>
+              <ProPrice cents={variant.price} className="product-pro-price" />
             </p>
           )}
           <FinishPicker

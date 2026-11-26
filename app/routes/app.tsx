@@ -13,6 +13,8 @@ import { useEffect, useRef, useState } from "react";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { context } from "../services/context.server";
+import { proPricing } from "../services/pro-price.server";
+import type { ProPricing } from "../domain/pro";
 import { FinishChooserHost } from "../components/catalog/FinishChooser";
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -22,10 +24,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
     demo: c.demo,
     embedded: c.embedded,
     user: c.user,
+    pro: await proPricing(request, c),
   };
 }
 export default function App() {
-  const { apiKey, demo, embedded, user } = useLoaderData<typeof loader>();
+  const { apiKey, demo, embedded, user, pro } = useLoaderData<typeof loader>();
   if (embedded)
     return (
       <AppProvider embedded apiKey={apiKey}>
@@ -35,10 +38,31 @@ export default function App() {
     );
   return (
     <div className="pro-app">
-      <ProNav demo={demo} user={user} />
+      <ProNav demo={demo} user={user} pro={pro} />
       <Outlet />
       <FinishChooserHost />
     </div>
+  );
+}
+
+/** « Afficher mes prix pro » : un réglage de l'appareil, sans effet sur les devis. */
+function PriceToggle({ pro, next }: { pro: ProPricing; next: string }) {
+  return (
+    <Form method="post" action="/app/prix-pro" className="pro-price-toggle">
+      <input type="hidden" name="next" value={next} />
+      <input type="hidden" name="show" value={pro.show ? "0" : "1"} />
+      <button
+        className="text-button"
+        aria-pressed={pro.show}
+        title={
+          pro.discount === null
+            ? "Aucune classe attribuée : prix pro à confirmer"
+            : `${pro.className} · remise de ${pro.discount} %`
+        }
+      >
+        {pro.show ? "Masquer mes prix pro" : "Afficher mes prix pro"}
+      </button>
+    </Form>
   );
 }
 
@@ -47,9 +71,17 @@ type NavUser = { name: string; role: string } | null | undefined;
 /** Barre du haut. Sur téléphone, les liens passent dans un panneau qui
  * s'ouvre sous la barre, par-dessus la page : Échap, un clic en dehors ou
  * un changement de page le referment. */
-function ProNav({ demo, user }: { demo: boolean; user: NavUser }) {
+function ProNav({
+  demo,
+  user,
+  pro,
+}: {
+  demo: boolean;
+  user: NavUser;
+  pro: ProPricing | null;
+}) {
   const [open, setOpen] = useState(false);
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const toggle = useRef<HTMLButtonElement>(null);
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
@@ -92,6 +124,7 @@ function ProNav({ demo, user }: { demo: boolean; user: NavUser }) {
         {open && (
           <div className="pro-nav-account">
             <span className="muted">{account}</span>
+            {pro && <PriceToggle pro={pro} next={pathname + search} />}
             {!demo && (
               <Form method="post" action="/deconnexion">
                 <button>Se déconnecter</button>
@@ -108,6 +141,7 @@ function ProNav({ demo, user }: { demo: boolean; user: NavUser }) {
             </span>
           </button>
         </Form>
+        {pro && <PriceToggle pro={pro} next={pathname + search} />}
         <span className="pro-user" title={account}>
           {account}
         </span>
@@ -236,7 +270,7 @@ function ErrorPage({ error }: { error: unknown }) {
   if (!app || app.embedded) return body;
   return (
     <div className="pro-app">
-      <ProNav demo={app.demo} user={app.user} />
+      <ProNav demo={app.demo} user={app.user} pro={null} />
       {body}
     </div>
   );

@@ -1,3 +1,5 @@
+import { ProPrice } from "./ProPrice";
+import { publicMerchandise } from "../domain/pro";
 import { NumberField } from "./quote/NumberField";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -1615,6 +1617,11 @@ export default function Editor({
             <span>Total HTVA</span>
             <strong>{money(fiscal.net)}</strong>
             <span className="total-bar-gross">TVAC {money(fiscal.gross)}</span>
+            <ProPrice
+              cents={publicMerchandise(s)}
+              className="total-bar-pro"
+              label="Marchandise au prix pro"
+            />
           </a>
         </div>
       )}

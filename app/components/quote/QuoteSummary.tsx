@@ -5,6 +5,8 @@ import {
   type QuoteState,
 } from "../../domain/quote";
 import { billingMilestones } from "../../domain/billing";
+import { publicMerchandise } from "../../domain/pro";
+import { ProPrice } from "../ProPrice";
 export function QuoteSummary({ state: s }: { state: QuoteState }) {
   const f = fiscalTotals(s),
     breakdown = costBreakdown(s),
@@ -41,6 +43,12 @@ export function QuoteSummary({ state: s }: { state: QuoteState }) {
         <strong>Total TVAC</strong>
         <strong>{f.complete ? money(f.gross) : "À vérifier"}</strong>
       </div>
+      {/* Vue privée de l'architecte : jamais reprise dans le PDF. */}
+      <ProPrice
+        cents={publicMerchandise(s)}
+        label="Marchandise au prix pro, HTVA :"
+        className="summary-pro"
+      />
       {schedule.length > 0 && (
         <div className="payment-summary">
           {schedule.map((stage, index) => (

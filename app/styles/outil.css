@@ -2843,7 +2843,8 @@ dialog > p {
   }
   .pro-nav-links,
   .pro-nav-end .pro-user,
-  .pro-nav-end .pro-logout-form {
+  .pro-nav-end .pro-logout-form,
+  .pro-nav-end .pro-price-toggle {
     display: none;
   }
   .pro-nav-end {
@@ -4194,5 +4195,43 @@ button.mood-swatch.active:hover:not(:disabled) {
   }
   .mood-toolbar input.mood-color-name {
     width: 100%;
+  }
+}
+
+/* ================================================================== */
+/* Prix pro : affichage choisi par l'architecte, sans effet sur le devis */
+/* ================================================================== */
+.pro-price {
+  display: block;
+  color: var(--brass);
+  font-size: var(--t-small, 0.8125rem);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.pro-price.pending {
+  color: var(--ink-3);
+  font-weight: 400;
+}
+.catalogue-price .pro-price {
+  text-align: right;
+}
+.modal-actions .pro-price,
+.product-price .pro-price {
+  display: inline;
+  margin-left: 8px;
+}
+.total-bar .pro-price {
+  display: inline;
+}
+.pro-price-toggle {
+  margin: 0;
+}
+.summary-pro {
+  margin-top: 8px;
+  text-align: right;
+}
+@media (max-width: 700px) {
+  .total-bar .pro-price {
+    display: none;
   }
 }

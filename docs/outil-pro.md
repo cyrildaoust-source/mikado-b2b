@@ -53,6 +53,21 @@ haute entre la classe choisie (un minimum) et celle que son chiffre ouvre : devi
 (commande créée), HTVA, sur les 12 derniers mois glissants. Une classe à palier 0 est
 ouverte dès l'inscription. La remise est affichée, pas appliquée aux prix du devis.
 
+### Prix pro
+
+Le prix pro est le prix public HTVA moins la remise de la classe (palier). C'est la seule
+réduction du portail pro : ni promotion ni autre remise (Cyril, 26/11/2026). Un
+pourcentage donne le même résultat HTVA ou TVAC. La livraison (5 % ou 3 %) et les
+prestations ne prennent pas la remise.
+
+« Afficher mes prix pro », dans la barre du haut (dans le menu sur téléphone), montre le
+prix pro sous le prix public : cartes du catalogue, fiche, choix de finition, lignes du
+devis et récapitulatif (« Marchandise au prix pro » : produits retenus et options cochées).
+C'est un réglage de l'appareil (cookie `prix_pro`), propre à l'architecte. Il ne change ni
+le devis, ni son PDF, ni la commande. Sans classe attribuée, la page indique « Prix pro à
+confirmer ». Mikado Deco ne voit pas ce réglage. Code : `app/domain/pro.ts`,
+`app/services/pro-price.server.ts`, `app/components/ProPrice.tsx`.
+
 Grille de départ (décision de Cyril du 26/11/2026), posée par la migration
 `20261126180000_architect_classes_seed` si aucune classe n'existe encore : Esquisse 10 %
 dès l'inscription, Plan 12 % dès 15 000 €, Projet 14 % dès 35 000 €, Signature 16 % dès

@@ -1,0 +1,58 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  proPrice,
+  publicMerchandise,
+  publicUnitPrice,
+  shownProPrice,
+} from "../app/domain/pro";
+
+test("prix pro : prix public moins la remise de classe, HTVA comme TVAC", () => {
+  assert.equal(proPrice(100000, 10), 90000);
+  assert.equal(proPrice(121000, 10) / 1.21, proPrice(100000, 10));
+  assert.equal(proPrice(1999, 12.5), 1749);
+  assert.equal(proPrice(5000, 0), 5000);
+});
+
+test("prix pro affiché seulement sur demande, « à confirmer » sans classe", () => {
+  assert.equal(shownProPrice(null, 1000), null);
+  assert.equal(shownProPrice({ discount: 10, className: "A", show: false }, 1000), null);
+  assert.equal(shownProPrice({ discount: null, className: null, show: true }, 1000), null);
+  assert.equal(shownProPrice({ discount: 10, className: "A", show: true }, 1000), 900);
+});
+
+const line = (id: string, price: number, qty = 1, extra = {}) => ({
+  id,
+  price,
+  qty,
+  sourcePrice: Math.round(price * 1.21),
+  sourceIncludesTax: true,
+  sourceVatRate: 21,
+  chargePercent: null,
+  ...extra,
+});
+
+test("prix public d'une ligne : celui du catalogue, même si l'architecte l'a changé", () => {
+  assert.equal(publicUnitPrice({ ...line("a", 100000), price: 120000 }), 100000);
+  assert.equal(
+    publicUnitPrice({ price: 500, sourcePrice: null, sourceIncludesTax: false, sourceVatRate: null }),
+    500,
+  );
+});
+
+test("marchandise : produits retenus et options cochées, sans livraison ni prestations", () => {
+  const s = {
+    groups: [
+      { id: "g1", selected: "a2", items: [line("a1", 50000), line("a2", 100000)] },
+      { id: "g2", selected: "b", items: [line("b", 20000, 2)] },
+    ],
+    extras: [
+      { ...line("opt", 10000), selected: true, parent: "g1" },
+      { ...line("off", 99999), selected: false, parent: "g1" },
+      { ...line("pose", 30000), selected: true },
+      { ...line("livraison", 0), selected: true, parent: "g1", chargePercent: 5 },
+    ],
+  };
+  assert.equal(publicMerchandise(s), 100000 + 40000 + 10000);
+  assert.equal(proPrice(publicMerchandise(s), 10), 135000);
+});
