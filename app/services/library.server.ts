@@ -3,6 +3,7 @@ import { LIBRARY_MAX_BYTES, type LibraryEntry } from "../domain/library";
 import { imageSize } from "./image-size";
 import { RUBELLI_IMAGE } from "../domain/rubelli";
 import { DG_IMAGE, type DgKind } from "../domain/designersguild";
+import { ELITIS_IMAGE } from "../domain/elitis";
 
 const MIMES = ["image/jpeg", "image/png", "image/webp"];
 const select = { id: true, maker: true, collection: true, colour: true, width: true, height: true };
@@ -53,7 +54,7 @@ export async function deleteLibrary(ids: string[]) {
 }
 
 const DEDAR_REMOTE = /^https:\/\/cdn\.dedar\.com\/bc-(?:swatch|variant)-\d+-[a-f0-9]+\.(?:jpe?g|png|webp)$/i;
-const REMOTE = { test: (u: string) => DEDAR_REMOTE.test(u) || RUBELLI_IMAGE.test(u) || DG_IMAGE.test(u) };
+const REMOTE = { test: (u: string) => DEDAR_REMOTE.test(u) || RUBELLI_IMAGE.test(u) || DG_IMAGE.test(u) || ELITIS_IMAGE.test(u) };
 
 /** Photo d'une matière : copie en base, ou vignette lue chez l'éditeur en 800 px. */
 export async function getLibraryImage(id: string): Promise<{ mime: string; data: Uint8Array } | null> {
@@ -288,6 +289,40 @@ export async function importDesignersGuild(kind: DgKind, from: number, count: nu
       report.imported++;
     } catch (err) {
       report.skipped.push(`${c.collection} ${c.colour} (${err instanceof Error ? err.message : "erreur"})`);
+    }
+  }
+  return report;
+}
+
+/** Collections Élitis n° from à from+count-1, chacune lue page par page dans l'API. */
+export async function importElitis(from: number, count: number, dry = false) {
+  const { ELITIS_API, elitisCollections, elitisColours } = await import("../domain/elitis");
+  const get = async (path: string) => {
+    const r = await fetch(ELITIS_API + path, { headers: { ...UA, Accept: "application/json" }, signal: AbortSignal.timeout(60_000) });
+    if (!r.ok) throw Error(`Élitis répond ${r.status}.`);
+    return r.json();
+  };
+  const collections = elitisCollections(await get("/shop-api/taxons"));
+  const part = collections.slice(from, from + count);
+  const report = { total: collections.length, from, next: from + part.length < collections.length ? from + part.length : null, imported: 0, skipped: [] as string[] };
+  for (const c of part) {
+    const colours = [];
+    for (let page = 1; page <= 30; page++) {
+      const json = await get(`/shop-api/taxon-products/by-slug/${c.slug}?limit=100&page=${page}`);
+      colours.push(...elitisColours(json));
+      if (page >= Number(json?.pages || 1)) break;
+    }
+    if (dry) {
+      const probe = colours[0] ? await remoteImage(colours[0].image) : null;
+      return { ...report, collections: part, first: { ...c, count: colours.length, sample: colours.slice(0, 6) }, probe: probe ? { mime: probe.mime, bytes: probe.data.length, size: imageSize(probe.data, probe.mime) } : null };
+    }
+    for (const k of colours) {
+      try {
+        await addRemoteLibrary({ maker: "Élitis", collection: c.name, colour: k.colour, remote: k.image });
+        report.imported++;
+      } catch (err) {
+        if (report.skipped.length < 50) report.skipped.push(`${c.name} ${k.colour} (${err instanceof Error ? err.message : "erreur"})`);
+      }
     }
   }
   return report;
