@@ -60,3 +60,15 @@ test("noms de fichiers et tailles d'image", () => {
   assert.match(sized("https://cdn.shopify.com/a.jpg?v=1", 800), /width=800/);
   assert.equal(sized("upload:abc", 800), "upload:abc");
 });
+
+test("une matière accepte une texture CC0 Poly Haven et rien d'autre de ce site", async () => {
+  const { textureUrl, TEXTURE_GROUPS } = await import("../app/domain/materials");
+  const item = (src: string) => ({
+    key: "s",
+    items: [{ id: "m1", kind: "material", src, ratio: 1, name: "Lin", maker: "Kvadrat", reference: "130", x: 0, y: 0, w: 0.1, h: 0.18 }],
+  });
+  for (const g of TEXTURE_GROUPS)
+    for (const t of g.items) assert.ok(boardSchema.safeParse(item(textureUrl(t.id))).success, t.id);
+  assert.ok(!boardSchema.safeParse(item("https://dl.polyhaven.org/file/ph-assets/HDRIs/x.exr")).success);
+  assert.ok(!boardSchema.safeParse(item("https://www.dedar.com/tissu.jpg")).success);
+});

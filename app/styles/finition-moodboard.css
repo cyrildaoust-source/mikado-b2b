@@ -415,3 +415,94 @@ button.mood-remove {
   padding: 0;
   line-height: 1;
 }
+
+/* ——— Matières : onglets Photos / Matières, vignettes carrées, échantillon ——— */
+.mood-shelf-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 3px;
+  border-radius: var(--radius);
+  background: var(--ground);
+}
+.mood-shelf-tabs button {
+  min-height: var(--compact);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink-2);
+}
+.mood-shelf-tabs button.active {
+  background: var(--surface);
+  box-shadow: var(--shadow-control);
+  color: var(--ink);
+}
+.mood-materials {
+  display: grid;
+  gap: 12px;
+}
+.mood-materials > .mood-add-photo {
+  width: 100%;
+}
+.mood-material-group {
+  display: grid;
+  gap: 6px;
+}
+.mood-material-group h3 {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: var(--t-small);
+  font-weight: 500;
+}
+.mood-material-group ul {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mood-material-group li[hidden] {
+  display: none;
+}
+button.mood-material {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  white-space: normal;
+  text-align: left;
+  cursor: grab;
+}
+button.mood-material:hover:not(:disabled) {
+  background: transparent;
+}
+button.mood-material img,
+.mood-material-color {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius-small);
+  box-shadow: inset 0 0 0 1px rgba(22, 24, 26, 0.08);
+  background: var(--paper);
+}
+button.mood-material:hover:not(:disabled) img,
+button.mood-material:hover:not(:disabled) .mood-material-color {
+  outline: 2px solid var(--brass);
+  outline-offset: 1px;
+}
+.mood-toolbar input.mood-material-field {
+  width: 170px;
+}
+.mood-toolbar input.mood-material-ref {
+  width: 110px;
+}
+@media (max-width: 1000px) {
+  .mood-material-group ul {
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  }
+}

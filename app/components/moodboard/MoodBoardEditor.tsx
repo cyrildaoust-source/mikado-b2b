@@ -10,6 +10,7 @@ import {
 import { Link } from "react-router";
 import { Breadcrumb } from "../Breadcrumb";
 import { BoardView } from "./BoardView";
+import { TEXTURE_GROUPS, textureUrl } from "../../domain/materials";
 import {
   BACKGROUNDS,
   BOARD_RATIO,
@@ -58,6 +59,7 @@ const TAGS: Record<PaletteItem["tag"], string> = {
   option: "Option",
   ambiance: "Ambiance",
   ajout: "Ajoutée",
+  finition: "Finition",
 };
 const INKS = ["#16181a", "#5f5d58", "#8a6a3d", "#ffffff"];
 const INK_NAMES: Record<string, string> = {
@@ -146,6 +148,9 @@ export function MoodBoardEditor({
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [dropping, setDropping] = useState(false);
+  // Colonne de gauche : photos des produits, ou matières (finitions, textures, échantillons).
+  const [shelf, setShelf] = useState<"photos" | "matieres">("photos");
+  const materialInput = useRef<HTMLInputElement>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const gesture = useRef<Gesture | null>(null);
   const ratios = useRef(new Map<string, number>());
@@ -395,6 +400,42 @@ export function MoodBoardEditor({
       ...place(0.08, 0.08 * BOARD_RATIO),
     });
 
+  /** Échantillon de matière : photo carrée, nom, éditeur, référence. */
+  const addMaterial = async (
+    m: { src: string; name: string; maker?: string; reference?: string },
+    at?: { x: number; y: number },
+  ) => {
+    const ratio = await measure(m.src);
+    const w = 0.12,
+      h = w * BOARD_RATIO;
+    addItem({
+      id: newId(),
+      kind: "material",
+      src: m.src,
+      ratio,
+      name: m.name,
+      maker: m.maker || "",
+      reference: m.reference || "",
+      w,
+      h,
+      ...place(w, h, at),
+    });
+  };
+  /** Finition Shopify : sa photo d'échantillon, sinon sa couleur. */
+  const addFinish = (f: PaletteItem, at?: { x: number; y: number }) => {
+    if (f.src) return void addMaterial({ src: f.src, name: f.alt, maker: f.maker }, at);
+    if (f.color)
+      addItem({
+        id: newId(),
+        kind: "color",
+        color: f.color,
+        label: f.alt,
+        w: 0.08,
+        h: 0.08 * BOARD_RATIO,
+        ...place(0.08, 0.08 * BOARD_RATIO, at),
+      });
+  };
+
   const removeSelected = () => {
     if (!selected) return;
     updateBoard((b) => ({ ...b, items: b.items.filter((i) => i.id !== selected) }));
@@ -518,6 +559,12 @@ export function MoodBoardEditor({
     e.preventDefault();
     setDropping(false);
     const at = boardPoint(e);
+    const material = e.dataTransfer.getData("application/x-mood-material");
+    if (material) {
+      const f = JSON.parse(material) as PaletteItem;
+      addFinish(f, at);
+      return;
+    }
     const raw = e.dataTransfer.getData("application/x-mood-photo");
     if (raw) {
       void addPhoto(JSON.parse(raw), at);
@@ -542,7 +589,7 @@ export function MoodBoardEditor({
     if (!blob) throw Error("Photo illisible.");
     return new File([blob], file.name.replace(/\.\w+$/, png ? ".png" : ".jpg"), { type });
   }
-  async function upload(files: File[], at?: { x: number; y: number }) {
+  async function upload(files: File[], at?: { x: number; y: number }, asMaterial = false) {
     setBusy("upload");
     setMessage(null);
     try {
@@ -556,7 +603,9 @@ export function MoodBoardEditor({
         const u = json.upload as Upload;
         ratios.current.set(`upload:${u.id}`, u.width / u.height);
         setUploads((cur) => [...cur, u]);
-        await addPhoto({ src: `upload:${u.id}`, alt: u.name }, at);
+        if (asMaterial)
+          await addMaterial({ src: `upload:${u.id}`, name: u.name.replace(/\.\w+$/, "") }, at);
+        else await addPhoto({ src: `upload:${u.id}`, alt: u.name }, at);
       }
     } catch (e) {
       setMessage({ tone: "error", text: e instanceof Error ? e.message : "Envoi impossible." });
@@ -580,7 +629,7 @@ export function MoodBoardEditor({
     // Le serveur a déjà retiré la photo des planches.
     const next = boards.map((b) => ({
       ...b,
-      items: b.items.filter((i) => !(i.kind === "photo" && i.src === src)),
+      items: b.items.filter((i) => !((i.kind === "photo" || i.kind === "material") && i.src === src)),
     }));
     setBoards(next);
     latest.current = next;
@@ -639,7 +688,13 @@ export function MoodBoardEditor({
         aria-roledescription="élément de la planche"
         tabIndex={0}
         aria-label={`${
-          it.kind === "photo" ? `Photo ${it.alt}` : it.kind === "text" ? `Texte ${it.text}` : `Couleur ${it.label || it.color}`
+          it.kind === "photo"
+            ? `Photo ${it.alt}`
+            : it.kind === "text"
+              ? `Texte ${it.text}`
+              : it.kind === "material"
+                ? `Matière ${it.name}`
+                : `Couleur ${it.label || it.color}`
         }${isSel ? ", sélectionné" : ""}`}
         onFocus={() => setSelected(it.id)}
         onPointerDown={(e) => onItemDown(e, it, "move")}
@@ -815,6 +870,28 @@ export function MoodBoardEditor({
                   }}
                 />
               </div>
+              <div className="mood-shelf-tabs" role="tablist" aria-label="Contenu de la colonne">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={shelf === "photos"}
+                  className={shelf === "photos" ? "active" : ""}
+                  onClick={() => setShelf("photos")}
+                >
+                  Photos
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={shelf === "matieres"}
+                  className={shelf === "matieres" ? "active" : ""}
+                  onClick={() => setShelf("matieres")}
+                >
+                  Matières
+                </button>
+              </div>
+              {shelf === "photos" ? (
+                <>
               {palette.length > 0 ? (
                 <>
                   <p className="muted mood-hint">
@@ -872,6 +949,75 @@ export function MoodBoardEditor({
                 <p className="mood-palette-empty">
                   Aucune photo pour cette pièce. Ajoutez les vôtres : JPEG, PNG ou WebP.
                 </p>
+              )}
+                </>
+              ) : (
+                <div className="mood-materials">
+                  <button
+                    type="button"
+                    className="mood-add-photo"
+                    disabled={busy === "upload" || preparing}
+                    onClick={() => materialInput.current?.click()}
+                  >
+                    {busy === "upload" ? "Envoi en cours…" : "Ajouter mon échantillon"}
+                  </button>
+                  <input
+                    ref={materialInput}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    style={{ display: "none" }}
+                    aria-label="Photos d'échantillons à ajouter"
+                    onChange={(e) => {
+                      const files = [...(e.target.files || [])];
+                      e.target.value = "";
+                      if (files.length) void upload(files, undefined, true);
+                    }}
+                  />
+                  <p className="muted mood-hint">
+                    Tissu Dedar ou Kvadrat, marbre, bois : photographiez l'échantillon, puis indiquez
+                    son nom, l'éditeur et la référence.
+                  </p>
+                  {(section?.finishes.length || 0) > 0 && (
+                    <MaterialGroup
+                      label="Finitions des produits"
+                      items={section!.finishes.map((f) => ({ ...f, key: `${f.src || f.color}-${f.alt}` }))}
+                      onAdd={(f) => addFinish(f)}
+                      thumb={(f) => (f.src ? sized(f.src, 300) : "")}
+                      disabled={preparing}
+                    />
+                  )}
+                  {uploads.length > 0 && (
+                    <MaterialGroup
+                      label="Mes photos"
+                      items={uploads.map((u) => ({
+                        key: u.id,
+                        src: `upload:${u.id}`,
+                        alt: u.name.replace(/\.\w+$/, ""),
+                        tag: "ajout" as const,
+                      }))}
+                      onAdd={(f) => void addMaterial({ src: f.src, name: f.alt })}
+                      thumb={(f) => resolve(f.src)}
+                      disabled={preparing}
+                    />
+                  )}
+                  {TEXTURE_GROUPS.map((g) => (
+                    <MaterialGroup
+                      key={g.label}
+                      label={g.label}
+                      items={g.items.map((t) => ({
+                        key: t.id,
+                        src: textureUrl(t.id),
+                        alt: t.name,
+                        tag: "finition" as const,
+                      }))}
+                      onAdd={(f) => void addMaterial({ src: f.src, name: f.alt })}
+                      thumb={(f) => f.src}
+                      disabled={preparing}
+                    />
+                  ))}
+                  <p className="muted mood-hint">Textures génériques Poly Haven, libres de droits (CC0).</p>
+                </div>
               )}
             </aside>
 
@@ -978,6 +1124,37 @@ export function MoodBoardEditor({
                       />
                     </>
                   )}
+                  {item?.kind === "material" && (
+                    <>
+                      <input
+                        type="text"
+                        className="mood-material-field"
+                        aria-label="Nom de la matière"
+                        placeholder="Nom (ex. Hallingdal 65)"
+                        maxLength={120}
+                        value={item.name}
+                        onChange={(e) => updateItem(item.id, { name: e.target.value })}
+                      />
+                      <input
+                        type="text"
+                        className="mood-material-field"
+                        aria-label="Éditeur"
+                        placeholder="Éditeur (ex. Kvadrat)"
+                        maxLength={120}
+                        value={item.maker}
+                        onChange={(e) => updateItem(item.id, { maker: e.target.value })}
+                      />
+                      <input
+                        type="text"
+                        className="mood-material-field mood-material-ref"
+                        aria-label="Référence"
+                        placeholder="Réf. (ex. 130)"
+                        maxLength={120}
+                        value={item.reference}
+                        onChange={(e) => updateItem(item.id, { reference: e.target.value })}
+                      />
+                    </>
+                  )}
                   {item && (
                     <>
                       {item.kind !== "photo" && <span className="mood-sep" aria-hidden="true" />}
@@ -1054,5 +1231,64 @@ export function MoodBoardEditor({
         </>
       )}
     </main>
+  );
+}
+
+/** Groupe de matières dans la colonne : vignettes carrées, toucher ou glisser. */
+function MaterialGroup({
+  label,
+  items,
+  onAdd,
+  thumb,
+  disabled,
+}: {
+  label: string;
+  items: (PaletteItem & { key: string })[];
+  onAdd: (item: PaletteItem) => void;
+  thumb: (item: PaletteItem) => string;
+  disabled?: boolean;
+}) {
+  return (
+    <section className="mood-material-group" aria-label={label}>
+      <h3>{label}</h3>
+      <ul>
+        {items.map((m) => {
+          const src = thumb(m);
+          return (
+            <li key={m.key}>
+              <button
+                type="button"
+                className="mood-material"
+                draggable
+                disabled={disabled}
+                title={m.maker ? `${m.alt} · ${m.maker}` : m.alt}
+                aria-label={`Ajouter la matière ${m.alt}`}
+                onDragStart={(e) => {
+                  const { key: _key, ...data } = m;
+                  e.dataTransfer.setData("application/x-mood-material", JSON.stringify(data));
+                  e.dataTransfer.effectAllowed = "copy";
+                }}
+                onClick={() => onAdd(m)}
+              >
+                {src ? (
+                  <img
+                    src={src}
+                    alt=""
+                    loading="lazy"
+                    onError={(e) => {
+                      // Texture indisponible : la vignette disparaît.
+                      (e.currentTarget.closest("li") as HTMLElement | null)?.setAttribute("hidden", "");
+                    }}
+                  />
+                ) : (
+                  <span className="mood-material-color" style={{ background: m.color }} />
+                )}
+                <span className="mood-photo-name">{m.alt}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
