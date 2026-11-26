@@ -691,7 +691,7 @@ export function MoodBoardEditor({
     <main className="workspace mood-page">
       <Breadcrumb
         items={[
-          { label: "Devis", to: "/app" },
+          { label: "Devis", to: "/app/devis" },
           { label: `${number} · ${project}`, to: `/app/quotes/${id}` },
           { label: "Mood board" },
         ]}

@@ -1260,11 +1260,11 @@ export default function Editor({
           items={[
             {
               label: "Devis",
-              to: "/app",
+              to: "/app/devis",
               onClick: (e) => {
                 if (dirty) {
                   e.preventDefault();
-                  setLeaveTo("/app");
+                  setLeaveTo("/app/devis");
                   setModal("leave");
                 }
               },

@@ -197,7 +197,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }
     if (intent === "archive") {
       await archiveQuote(c.shop, id, version);
-      return redirect("/app");
+      return redirect("/app/devis");
     }
     if (intent === "preview") {
       await previewConversion(c.shop, id, version, c.admin);
