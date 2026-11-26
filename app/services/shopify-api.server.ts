@@ -1,3 +1,4 @@
+import { memo } from "./memo.server";
 import { operations } from "./operations";
 import {
   addressSchema,
@@ -112,11 +113,14 @@ export async function shopInfo(admin: Admin | null) {
       currencyCode: "EUR",
       taxesIncluded: false,
     };
-  return (
-    await gql<{
-      shop: { name: string; currencyCode: string; taxesIncluded: boolean };
-    }>(admin, operations.shop)
-  ).shop;
+  // Nom, devise et TVA incluse : lus une fois toutes les 10 minutes, pas avant chaque recherche.
+  return memo("shop", 600000, async () =>
+    (
+      await gql<{
+        shop: { name: string; currencyCode: string; taxesIncluded: boolean };
+      }>(admin, operations.shop)
+    ).shop,
+  );
 }
 export const demoLines: Line[] = [
   {

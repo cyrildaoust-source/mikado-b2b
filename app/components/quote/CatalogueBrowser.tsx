@@ -117,7 +117,15 @@ export function CatalogueBrowser({
   useEffect(() => {
     const d = more.data;
     if (!d || more.state !== "idle") return;
-    setExtra((e) => ({ items: [...e.items, ...d.items], next: d.next }));
+    setExtra((e) => {
+      const known = new Set(
+        [...(first.data?.items || []), ...e.items].map((i) => i.id),
+      );
+      return {
+        items: [...e.items, ...d.items.filter((i) => !known.has(i.id))],
+        next: d.next,
+      };
+    });
   }, [more.data, more.state]);
 
   const data = first.data;

@@ -281,3 +281,8 @@ p.email-suggestions {
 dialog:has(> .picker-search) {
   margin-top: max(16px, 8vh);
 }
+
+/* Livraison : deux formules à taux fixe (26/11/2026). */
+.delivery-choice{border:0;margin:0;padding:0;display:grid;gap:0;min-width:0}
+.delivery-choice legend{font-weight:600;padding:0;margin-bottom:.25rem}
+.delivery-choice .check{min-height:44px;align-items:center}

@@ -642,7 +642,8 @@ export default function Editor({
                   <div className="lot-heading">
                     <input
                       aria-label={`Nom de la pièce ${section.title}`}
-                      value={section.title}
+                      value={section.groups[0]?.section ?? ""}
+                      placeholder="Produits"
                       maxLength={150}
                       onChange={(e) =>
                         change({

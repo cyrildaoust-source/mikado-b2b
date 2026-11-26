@@ -10,6 +10,7 @@ import {
   useSubmit,
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
+  type ShouldRevalidateFunctionArgs,
 } from "react-router";
 import { context, ownerScope } from "../services/context.server";
 import {
@@ -50,14 +51,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
     };
   try {
     // Devis ouvert : permet l'ajout rapide depuis une carte (action de la fiche produit).
-    const openQuote = await currentQuoteId(request)
-      .then((id) => quotePanel(c.shop, id, ownerScope(c)))
-      .catch(() => null);
-    const [list, facets, families, quotes] = await Promise.all([
+    // Page suivante du défilement : seule la liste sert, le reste est déjà affiché.
+    const page = !!filters.after;
+    const [list, facets, families, quotes, openQuote] = await Promise.all([
       listCatalog(c.admin, filters),
-      catalogFacets(c.admin),
-      brandFamilies(c.admin, filters.vendors).catch(() => []),
-      openQuotes(c.shop, ownerScope(c)).catch(() => []),
+      page ? { vendors: [], types: [] } : catalogFacets(c.admin),
+      page ? [] : brandFamilies(c.admin, filters.vendors).catch(() => []),
+      page ? [] : openQuotes(c.shop, ownerScope(c)).catch(() => []),
+      page
+        ? null
+        : currentQuoteId(request)
+            .then((id) => quotePanel(c.shop, id, ownerScope(c)))
+            .catch(() => null),
     ]);
     return {
       ...list,
@@ -98,6 +103,25 @@ export async function action({ request }: ActionFunctionArgs) {
   return data({ ok: true }, { headers: { "Set-Cookie": await rememberQuote(panel.id) } });
 }
 
+/**
+ * La liste ne dépend que de son adresse. Un enregistrement du devis (toutes les
+ * 700 ms pendant la saisie) ne la recharge pas : elle reprenait sinon ses trois
+ * appels Shopify, pour chaque page déjà chargée du catalogue ouvert à côté du
+ * devis. Après un ajout depuis le catalogue lui-même, seule la page affichée se
+ * recharge, pour le devis ouvert ; les pages suivantes restent telles quelles.
+ */
+export function shouldRevalidate({
+  currentUrl,
+  nextUrl,
+  formAction,
+  defaultShouldRevalidate,
+}: ShouldRevalidateFunctionArgs) {
+  if (!formAction) return defaultShouldRevalidate;
+  if (!formAction.startsWith("/app/catalogue")) return false;
+  const fetcher =
+    currentUrl.searchParams.has("apres") || currentUrl.searchParams.has("index");
+  return !fetcher && currentUrl.href === nextUrl.href;
+}
 export default function Catalogue() {
   const { items, next, facets, families, filters, openQuote, quotes, demo, error } =
     useLoaderData<typeof loader>();
@@ -209,7 +233,13 @@ export default function Catalogue() {
   useEffect(() => {
     const d = more.data;
     if (!d || more.state !== "idle") return;
-    setExtra((e) => ({ items: [...e.items, ...d.items], next: d.next }));
+    setExtra((e) => {
+      const known = new Set([...items, ...e.items].map((i) => i.id));
+      return {
+        items: [...e.items, ...d.items.filter((i) => !known.has(i.id))],
+        next: d.next,
+      };
+    });
   }, [more.data, more.state]);
   const cursor = extra.items.length ? extra.next : next;
   const loadMore = () => {
