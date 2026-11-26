@@ -31,6 +31,12 @@ export const KVADRAT_PRODUCTS: { number: string; name: string }[] = [
   { number: "8576", name: "Phlox" },
   { number: "1057", name: "Sonar 3" },
   { number: "600660", name: "Velvet" },
+  { number: "1078", name: "Divina" },
+  { number: "2223", name: "Steelcut 3" },
+  { number: "1004", name: "Serpentine" },
+  { number: "1070", name: "Technicolour" },
+  { number: "1082", name: "Twisted Flower" },
+  { number: "8097", name: "Sabi" },
   // Rideaux
   { number: "7109", name: "Two" },
   { number: "5801", name: "Air 4" },
