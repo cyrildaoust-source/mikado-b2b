@@ -53,3 +53,11 @@ test("la fiche passe avant la bibliothèque de la marque", () => {
   assert.equal(lib?.library?.vendor, "HAY");
   assert.equal(productModels3d([], "Marque sans source", libraries), null);
 });
+
+test("le métachamp texte des modèles 3D ne s'affiche pas dans les caractéristiques", async () => {
+  const { productSpecs } = await import("../app/domain/specs");
+  const groups = productSpecs([
+    { ...field('{"files":[]}'), type: "multi_line_text_field" },
+  ]);
+  assert.equal(groups.flatMap((g) => g.specs).length, 0);
+});

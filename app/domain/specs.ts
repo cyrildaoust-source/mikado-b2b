@@ -118,6 +118,8 @@ const GROUPS: { title: string; keys: string[] }[] = [
 /** Champs internes ou redondants : jamais montrés. */
 const HIDDEN = new Set([
   "custom.search_facts",
+  // Modèles 3D : bloc à part sur la fiche (domain/models3d.ts).
+  "custom.models_3d",
   "shopify.color-pattern",
   "mikado.legacy_sales_qty_total",
   "mikado.cost_family",
