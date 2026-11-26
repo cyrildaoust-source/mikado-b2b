@@ -155,27 +155,8 @@ export default function Editor({
     // Glisser-déposer : produit (avec ses alternatives) ou alternative seule.
     [dragging, setDragging] = useState<DragSource | null>(null),
     [dropAt, setDropAt] = useState<string | null>(null),
-    // Outil pro : coordonnées en bandeau, ou épinglées à droite sur grand écran.
-    [coordsOpen, setCoordsOpen] = useState(!s.client),
-    [pinPref, setPinPref] = useState(false),
-    [wide, setWide] = useState(false);
-  const pinned = !embedded && pinPref && wide;
-  function setPinned(value: boolean) {
-    setPinPref(value);
-    try {
-      localStorage.setItem("mikado-coordonnees", value ? "epinglees" : "");
-    } catch {}
-  }
-  useEffect(() => {
-    try {
-      setPinPref(localStorage.getItem("mikado-coordonnees") === "epinglees");
-    } catch {}
-    const mq = window.matchMedia("(min-width: 1600px)");
-    const update = () => setWide(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
+    // Outil pro : coordonnées en bandeau repliable, ouvert tant que le client manque.
+    [coordsOpen, setCoordsOpen] = useState(!s.client);
   const busy = navigation.state !== "idle" || working,
     legacy = s.schemaVersion === 1,
     locked =
@@ -1553,68 +1534,41 @@ export default function Editor({
           </aside>
         </div>
       ) : (
-        <div className={`editor-grid${pinned ? " is-pinned" : ""}`}>
+        <div className="editor-grid">
           <div className="editor-main">
-            {!pinned && (
-              <details
-                className="coords-band"
-                open={coordsOpen}
-                onToggle={(e) => setCoordsOpen(e.currentTarget.open)}
-              >
-                <summary>
-                  <span className="coords-title">Client et conditions</span>
-                  <span className="coords-line">
-                    {[
-                      s.client || "Client à compléter",
-                      s.terms,
-                      s.validity &&
-                        `valable jusqu’au ${new Date(s.validity).toLocaleDateString("fr-BE")}`,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
-                </summary>
-                <div className="coords-body">
-                  {coordinates}
-                  <button
-                    type="button"
-                    className="text-button coords-pin"
-                    onClick={() => setPinned(true)}
-                  >
-                    Garder ouvert à droite
-                  </button>
-                </div>
-              </details>
-            )}
+            <details
+              className="coords-band"
+              open={coordsOpen}
+              onToggle={(e) => setCoordsOpen(e.currentTarget.open)}
+            >
+              <summary>
+                <span className="coords-title">Client et conditions</span>
+                <span className="coords-line">
+                  {[
+                    s.client || "Client à compléter",
+                    s.terms,
+                    s.validity &&
+                      `valable jusqu’au ${new Date(s.validity).toLocaleDateString("fr-BE")}`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+                <span className="coords-action" aria-hidden="true">
+                  {coordsOpen ? "Fermer" : "Modifier"}
+                </span>
+              </summary>
+              <div className="coords-body">{coordinates}</div>
+            </details>
             <fieldset disabled={busy || locked} className="unframed">
               {productsSection}
               {optionsSection}
             </fieldset>
             {historySection}
-            {!pinned && (
-              <div className="recap" id="recapitulatif">
-                {summarySection}
-                {shopifySection}
-              </div>
-            )}
-          </div>
-          {pinned && (
-            <aside className="editor-sidebar" id="recapitulatif">
-              <div className="card-title sidebar-head">
-                <span className="muted">Client et conditions</span>
-                <button
-                  type="button"
-                  className="text-button"
-                  onClick={() => setPinned(false)}
-                >
-                  Replier dans le devis
-                </button>
-              </div>
-              {coordinates}
+            <div className="recap" id="recapitulatif">
               {summarySection}
               {shopifySection}
-            </aside>
-          )}
+            </div>
+          </div>
           <a className="total-bar" href="#recapitulatif">
             <span>Total HTVA</span>
             <strong>{money(fiscal.net)}</strong>

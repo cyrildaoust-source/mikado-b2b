@@ -4281,3 +4281,21 @@ button.mood-swatch.active:hover:not(:disabled) {
   align-items: center;
   font-variant-numeric: tabular-nums;
 }
+/* « Client et conditions » : l'action est écrite, à droite de la ligne */
+.coords-band > summary {
+  cursor: pointer;
+}
+.coords-action {
+  flex: none;
+  margin-left: auto;
+  padding: 6px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: var(--t-small, 0.8125rem);
+  font-weight: 500;
+  color: var(--ink);
+}
+.coords-band > summary:hover .coords-action {
+  border-color: var(--line-hover);
+}
