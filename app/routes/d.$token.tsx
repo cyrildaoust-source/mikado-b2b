@@ -4,7 +4,7 @@ import {
   type HeadersFunction,
   type LoaderFunctionArgs,
 } from "react-router";
-import { QuoteDocument } from "../components/QuoteDocument";
+import { ClientProposal } from "../components/ClientProposal";
 import { resolveShare } from "../services/share.server";
 
 /**
@@ -51,6 +51,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       expiresAt: share.expiresAt.toISOString(),
       seller: share.seller,
       state: share.state,
+      pdfHref: `/d/${String(params.token)}/pdf`,
     },
     { headers: PRIVATE },
   );
@@ -60,7 +61,7 @@ export default function SharedQuote() {
   const d = useLoaderData<typeof loader>();
   if (d.status !== "open")
     return (
-      <main className="workspace shared-quote shared-closed">
+      <main className="shared-closed">
         <h1>Proposition indisponible</h1>
         <p>
           {d.status === "expired"
@@ -75,26 +76,16 @@ export default function SharedQuote() {
       </main>
     );
   return (
-    <main className="workspace shared-quote">
-      <p className="shared-validity">
-        Proposition valable jusqu'au{" "}
-        {new Date(d.expiresAt).toLocaleDateString("fr-BE", {
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-          timeZone: "Europe/Brussels",
-        })}
-        . Les prix sont garantis jusqu'à cette date.
-      </p>
-      <div className="shared-paper">
-        <QuoteDocument
-          state={d.state}
-          number={d.number}
-          version={d.publishedNumber}
-          issuedAt={d.issuedAt}
-          seller={d.seller ?? undefined}
-        />
-      </div>
+    <main className="shared-quote">
+      <ClientProposal
+        state={d.state}
+        seller={d.seller}
+        number={d.number}
+        publishedNumber={d.publishedNumber}
+        issuedAt={d.issuedAt}
+        expiresAt={d.expiresAt}
+        pdfHref={d.pdfHref}
+      />
     </main>
   );
 }

@@ -12,6 +12,7 @@ import {
   hashToken,
   resolveShare,
   revokeShares,
+  sharePdf,
 } from "../../app/services/share.server";
 
 const shop = `share-${Date.now()}.local`;
@@ -81,7 +82,9 @@ test("lien en ligne : au nom du cabinet, prix figés, un seul lien actif", async
 
   // Un nouveau lien retire l'ancien.
   await ready(q.id, 2);
+  assert.equal((await sharePdf(first.token))?.bytes.toString(), "pdf");
   const second = await createShare(shop, q.id, 2, u.id);
+  assert.equal(await sharePdf(first.token), null, "ancien lien : plus de PDF");
   assert.equal((await resolveShare(first.token)).status, "closed");
   assert.equal((await resolveShare(second.token)).status, "open");
   assert.equal(await db.quoteShare.count({ where: { quoteId: q.id, revokedAt: null } }), 1);

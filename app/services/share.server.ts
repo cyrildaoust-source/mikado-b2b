@@ -158,3 +158,24 @@ export async function resolveShare(token: string, count = true) {
     state: quoteSchema.parse(JSON.parse(s.revision.state)),
   };
 }
+
+/** PDF de la révision derrière un lien ouvert, sans compter de visite. */
+export async function sharePdf(token: string) {
+  if (!TOKEN.test(token)) return null;
+  const s = await db.quoteShare.findUnique({
+    where: { tokenHash: hashToken(token) },
+    select: {
+      revokedAt: true,
+      expiresAt: true,
+      quote: { select: { id: true, number: true, status: true, createdAt: true } },
+      revision: { select: { pdf: true, publishedNumber: true } },
+    },
+  });
+  if (!s || s.revokedAt || s.expiresAt <= new Date() || s.quote.status === "deleted")
+    return null;
+  if (!s.revision.pdf) return null;
+  return {
+    bytes: Buffer.from(s.revision.pdf),
+    name: `${s.quote.number || reference(s.quote.id, s.quote.createdAt)}-R${s.revision.publishedNumber}.pdf`,
+  };
+}

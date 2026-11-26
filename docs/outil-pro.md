@@ -192,7 +192,10 @@ devis). Il vaut jusqu'à la fin du jour de validité, et un mois au plus après
 l'émission. Un seul lien est actif par devis : « Remplacer le lien » retire
 l'ancien, « Retirer le lien » le ferme. La base ne garde que l'empreinte SHA-256
 du jeton, d'où un lien affiché une seule fois. La page n'est pas indexée et ne
-transmet pas son adresse aux sites tiers. Le devis d'un architecte ne peut être
+transmet pas son adresse aux sites tiers. Elle est faite pour le téléphone : le
+client compare les alternatives, coche les options et voit le total suivre
+(livraison recalculée sur la marchandise retenue), puis télécharge le PDF. Ses
+choix restent sur son appareil tant que la validation en ligne n'existe pas. Le devis d'un architecte ne peut être
 figé que si « Mon cabinet » porte le nom, l'adresse et la TVA ; il n'affiche alors
 ni les coordonnées ni les conditions générales de Mikado Deco.
 
