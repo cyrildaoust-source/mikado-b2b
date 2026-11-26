@@ -363,3 +363,15 @@ export async function importElitis(from: number, count: number, dry = false) {
   }
   return report;
 }
+
+/** Collections Élitis encore absentes de la bibliothèque, par leur numéro dans la liste. */
+export async function elitisMissing() {
+  const { ELITIS_API, elitisCollections } = await import("../domain/elitis");
+  const r = await fetch(`${ELITIS_API}/shop-api/taxons`, { headers: { ...UA, Accept: "application/json" }, signal: AbortSignal.timeout(60_000) });
+  if (!r.ok) throw Error(`Élitis répond ${r.status}.`);
+  const collections = elitisCollections(await r.json());
+  const rows = await db.libraryMaterial.groupBy({ by: ["collection"], where: { maker: "Élitis" }, _count: true });
+  const have = new Set(rows.map((x) => x.collection));
+  const missing = collections.map((c, i) => ({ i, name: c.name })).filter((c) => !have.has(c.name));
+  return { total: collections.length, colours: rows.reduce((n, x) => n + x._count, 0), collections: rows.length, missing };
+}
