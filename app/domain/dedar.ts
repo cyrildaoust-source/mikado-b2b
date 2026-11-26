@@ -49,3 +49,140 @@ export function dedarProductSlugs(xml: string) {
   for (const m of xml.matchAll(/<loc>https:\/\/dedar\.com\/products\/([a-z0-9-]+)\/?<\/loc>/g)) slugs.add(m[1]);
   return [...slugs];
 }
+
+// ——— Données Nuxt de la page (__NUXT_DATA__) ———
+// La page n'affiche que quelques vignettes ; les autres coloris sont dans la
+// charge utile Nuxt, un tableau aplati où chaque valeur renvoie aux autres par
+// leur indice (format « devalue »).
+
+const TAGS = new Set(["Reactive", "ShallowReactive", "Ref", "ShallowRef", "NuxtError", "EmptyRef", "EmptyShallowRef"]);
+
+/** Reconstruit l'arbre d'une charge devalue. Les cycles sont coupés. */
+export function unflattenPayload(flat: unknown[]): unknown {
+  const memo = new Map<number, unknown>();
+  const busy = new Set<number>();
+  const at = (i: unknown): unknown => {
+    if (typeof i !== "number" || i < 0 || i >= flat.length) return undefined;
+    if (memo.has(i)) return memo.get(i);
+    if (busy.has(i)) return undefined;
+    busy.add(i);
+    const v = flat[i];
+    let out: unknown = v;
+    if (Array.isArray(v)) {
+      if (typeof v[0] === "string") {
+        out = TAGS.has(v[0]) ? at(v[1]) : v[0] === "Set" ? v.slice(1).map(at) : v[0] === "Date" ? v[1] : undefined;
+      } else out = v.map(at);
+    } else if (v && typeof v === "object") {
+      const o: Record<string, unknown> = {};
+      for (const [k, idx] of Object.entries(v)) o[k] = at(idx);
+      out = o;
+    }
+    busy.delete(i);
+    memo.set(i, out);
+    return out;
+  };
+  return at(0);
+}
+
+const SWATCH_URL = /^https:\/\/cdn\.dedar\.com\/bc-swatch-\d+-[a-f0-9]+\.(?:jpe?g|png|webp)/i;
+const LABEL = /^(.*?\S)\s+([0-9]{2,4}[A-Z]?)$/;
+const CODE = /^[0-9]{2,4}[A-Z]?$/;
+const CODE_KEYS = /^(code|colou?r|colou?r_?code|colou?rway|variant_?code|number|num|sku)$/i;
+
+type Node = Record<string, unknown>;
+const isObj = (v: unknown): v is Node => !!v && typeof v === "object" && !Array.isArray(v);
+
+/** Nom et numéro portés directement par un objet (« Acacia 012 », ou un champ code). */
+function labelOf(o: Node): { name: string; colour: string } | null {
+  let name = "";
+  let colour = "";
+  for (const [k, v] of Object.entries(o)) {
+    if (typeof v === "string") {
+      const m = decode(v).match(LABEL);
+      if (m && !/^bc /i.test(m[1]) && !/swatch/i.test(m[1])) return { name: m[1].trim(), colour: m[2] };
+      if (CODE_KEYS.test(k) && CODE.test(v.trim())) colour = v.trim();
+      if (/^(name|title|product_?name)$/i.test(k) && !/swatch/i.test(v)) name ||= decode(v);
+    }
+  }
+  return colour ? { name, colour } : null;
+}
+
+/** Coloris trouvés dans la charge Nuxt : chaque vignette prend le nom du plus proche objet parent qui en porte un. */
+export function dedarPayloadSwatches(html: string): DedarSwatch[] {
+  const script = html.match(/<script[^>]*id="__NUXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i);
+  if (!script) return [];
+  let flat: unknown;
+  try {
+    flat = JSON.parse(script[1]);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(flat)) return [];
+  const out: DedarSwatch[] = [];
+  const seen = new Set<string>();
+  const seenNodes = new Set<unknown>();
+  const walk = (v: unknown, stack: Node[]) => {
+    if (typeof v === "string") {
+      const src = v.match(SWATCH_URL)?.[0];
+      if (!src || seen.has(src)) return;
+      for (let i = stack.length - 1; i >= Math.max(0, stack.length - 4); i--) {
+        const l = labelOf(stack[i]);
+        if (l) {
+          seen.add(src);
+          out.push({ name: l.name, colour: l.colour, src });
+          return;
+        }
+      }
+      return;
+    }
+    if (!v || typeof v !== "object" || seenNodes.has(v)) return;
+    seenNodes.add(v);
+    if (Array.isArray(v)) for (const x of v) walk(x, stack);
+    else for (const x of Object.values(v)) walk(x, [...stack, v as Node]);
+  };
+  walk(unflattenPayload(flat), []);
+  return out;
+}
+
+/** Vignettes de la page puis celles de la charge Nuxt, sans doublon de fichier ni de numéro. */
+export function dedarAllSwatches(html: string): DedarSwatch[] {
+  const out = dedarSwatches(html);
+  const extra = dedarPayloadSwatches(html);
+  // Les fiches liées (« vous aimerez aussi ») sont aussi dans la charge : on ne garde que la collection de la page.
+  const name = dedarCollection(out.length ? out : extra, "").toLowerCase();
+  const files = new Set(out.map((s) => s.src));
+  const codes = new Set(out.map((s) => s.colour));
+  for (const s of extra) {
+    if (files.has(s.src) || codes.has(s.colour)) continue;
+    if (s.name && name && s.name.toLowerCase() !== name) continue;
+    files.add(s.src);
+    codes.add(s.colour);
+    out.push({ ...s, name: s.name || out[0]?.name || "" });
+  }
+  return out;
+}
+
+/** Diagnostic : la chaîne de parents d'une vignette, valeurs simples seulement. */
+export function dedarPayloadTrace(html: string, id: string) {
+  const script = html.match(/<script[^>]*id="__NUXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i);
+  if (!script) return null;
+  const root = unflattenPayload(JSON.parse(script[1]));
+  const seenNodes = new Set<unknown>();
+  let found: Node[] | null = null;
+  const walk = (v: unknown, stack: Node[]) => {
+    if (found) return;
+    if (typeof v === "string") {
+      if (v.includes(id) && SWATCH_URL.test(v)) found = stack;
+      return;
+    }
+    if (!v || typeof v !== "object" || seenNodes.has(v)) return;
+    seenNodes.add(v);
+    if (Array.isArray(v)) for (const x of v) walk(x, stack);
+    else for (const x of Object.values(v)) walk(x, [...stack, v as Node]);
+  };
+  walk(root, []);
+  const chain = (found || []) as Node[];
+  return chain.slice(-5).map((o) =>
+    Object.fromEntries(Object.entries(o).map(([k, v]) => [k, typeof v === "object" ? (Array.isArray(v) ? `[${v.length}]` : "{…}") : String(v).slice(0, 80)])),
+  );
+}
