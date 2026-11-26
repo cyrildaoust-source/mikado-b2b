@@ -93,7 +93,7 @@ test("Rubelli : liste et coloris d'une fiche", async () => {
   const page = `<title>Ombra</title>
     <img src="https://cdn.rubelli.com/A762_001/762_1.840x840c.jpg" alt="Ombra">
     <img src="https://cdn.rubelli.com/A762_001/762_1.84x84c.jpg" alt="Ombra - Celeste">
-    <img alt="Ombra - Nuvola" data-src="https://cdn.rubelli.com/A762_002/762_2.84x84c.jpg">
+    <img alt="Ombra&#x20;-&#x20;Nuvola" data-src="https://cdn.rubelli.com/A762_002/762_2.84x84c.jpg">
     <img src="https://cdn.rubelli.com/A762_040/762_40.84x84c.jpg" alt="Ombra - Panna">`;
   const c = rubelliColours(page);
   assert.deepEqual(c.map((x) => `${x.collection}|${x.colour}`), ["Ombra|1 Celeste", "Ombra|2 Nuvola", "Ombra|40 Panna"]);

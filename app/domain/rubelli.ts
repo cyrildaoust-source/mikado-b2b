@@ -14,6 +14,8 @@ export type RubelliColour = { collection: string; colour: string; image: string 
 
 const decode = (s: string) =>
   s
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
     .replace(/&amp;/g, "&")
     .replace(/&#39;|&apos;|&#x27;/g, "'")
     .replace(/&quot;/g, '"')
@@ -33,7 +35,7 @@ export function rubelliColours(html: string): RubelliColour[] {
   const seen = new Set<string>();
   const tags = html.match(/<img\b[^>]*>/gi) || [];
   // Les vignettes nommées (« Ombra - Celeste ») passent avant la grande photo sans nom.
-  const named = tags.filter((t) => /\balt="[^"]* - [^"]*"/i.test(t));
+  const named = tags.filter((t) => decode(t.match(/\balt="([^"]*)"/i)?.[1] || "").includes(" - "));
   for (const tag of named.length ? named : tags) {
     const src = tag.match(/\b(?:data-)?src="https:\/\/cdn\.rubelli\.com\/A(\d{2,6})_(\d{3})\/\1_(\d{1,3})\.\d+x\d+c\.jpg"/i);
     const alt = tag.match(/\balt="([^"]*)"/i);
