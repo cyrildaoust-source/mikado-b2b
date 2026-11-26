@@ -9,6 +9,8 @@ export type CatalogueCard = {
   id: string; // variante (gid)
   numericId: string; // produit
   title: string;
+  /** Nombre de finitions : au-delà d'une, on la choisit à l'ajout. */
+  variants?: number;
   /** Ajout en alternative ou en option de ce produit du devis. */
   group?: string;
   mode?: CatalogueTarget["mode"];
@@ -43,6 +45,8 @@ type Page = {
     variantTitle: string;
     variantNumericId: string;
     minPrice: number;
+    maxPrice: number;
+    variants: number;
     image: string | null;
     imageAlt: string;
   })[];
@@ -286,8 +290,10 @@ export function CatalogueBrowser({
           <ul className="catalogue-grid" aria-busy={busy}>
             {items.map((p) => {
               // Même variante que le produit visé : on ne la propose pas deux fois.
+              // Plusieurs finitions : celles déjà proposées se grisent au choix.
               const already =
                 !!alternative &&
+                p.variants <= 1 &&
                 (taken.has(p.id) ||
                   taken.has(`${p.title} - ${p.variantTitle}`));
               return (
@@ -339,6 +345,7 @@ export function CatalogueBrowser({
                               id: p.id,
                               numericId: p.numericId,
                               title: p.title,
+                              variants: p.variants,
                               group: alternative?.group,
                               mode: alternative?.mode,
                             },
@@ -378,10 +385,14 @@ export function CatalogueBrowser({
                       <strong title={p.title}>{p.title}</strong>
                       <span className="catalogue-row">
                         <span className="catalogue-finish">
-                          {p.variantTitle}
+                          {p.variants > 1
+                            ? `${p.variants} finitions`
+                            : p.variantTitle}
                         </span>
                         <span className="catalogue-price">
-                          {money(p.minPrice)}
+                          {p.maxPrice > p.minPrice
+                            ? `dès ${money(p.minPrice)}`
+                            : money(p.minPrice)}
                         </span>
                       </span>
                     </div>
