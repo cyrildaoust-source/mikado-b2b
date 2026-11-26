@@ -364,3 +364,91 @@ s-badge[tone="info"] {
     background: none;
   }
 }
+
+/* Accueil personnel : le prénom en grand */
+.dash-head h1 {
+  font-size: 48px;
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+.dash-name {
+  display: inline-block;
+  margin-left: 0.25em;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+/* Classe et remise */
+.dash-tier {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) 1fr;
+  gap: 24px;
+  align-items: center;
+  margin: 0 0 20px;
+  padding: 20px 24px;
+  background: var(--brass-bg);
+  border: 1px solid color-mix(in srgb, var(--brass) 25%, transparent);
+  border-radius: var(--radius);
+}
+.dash-tier-now {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dash-tier-label {
+  font-size: var(--t-small);
+  color: var(--brass);
+}
+.dash-tier-now strong {
+  font-size: 36px;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.dash-tier-now span:last-child {
+  font-size: var(--t-body);
+  color: var(--ink-2);
+}
+.dash-tier-next p {
+  margin: 0 0 10px;
+  font-size: var(--t-name);
+  color: var(--ink);
+}
+.dash-tier-next strong {
+  font-weight: 500;
+}
+.dash-tier-next small {
+  display: block;
+  margin-top: 8px;
+  font-size: var(--t-small);
+  color: var(--ink-2);
+}
+.dash-tier-bar {
+  height: 8px;
+  background: var(--surface);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.dash-tier-bar span {
+  display: block;
+  height: 100%;
+  background: var(--brass);
+  border-radius: inherit;
+}
+
+@media (max-width: 700px) {
+  .dash-head h1 {
+    font-size: 34px;
+  }
+  .dash-tier {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 16px;
+  }
+  .dash-tier-now strong {
+    font-size: 30px;
+  }
+}

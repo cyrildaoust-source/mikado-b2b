@@ -21,8 +21,10 @@ réglage par marque.
 Deco, les siens pour une architecte). La liste complète des devis est sous `/app/devis`.
 Dans l'admin Shopify, `/app` reste la liste des devis.
 
-- « Bonjour » avec le prénom du compte, et une phrase sur ce qui attend.
-- Quatre chiffres, chacun ouvre la liste filtrée : en préparation, en attente du client
+- « Bonjour » avec le prénom du compte, en grand, et une phrase sur ce qui attend.
+- Pour une architecte : sa remise Mikado Deco (classe actuelle), la remise suivante et ce
+  qu'il reste de chiffre à faire pour l'obtenir (voir « Classes et remises »).
+- Quatre chiffres, chacun ouvre la liste filtrée : devis ouverts, en attente du client
   (avec le total HTVA), acceptés, à relancer.
 - À faire : validité dépassée ou proche (7 jours), devis envoyé sans réponse depuis
   10 jours, PDF prêt à envoyer, commande à vérifier.
@@ -38,6 +40,14 @@ boutique. Le tableau de bord prend le plus long des produits retenus et compte e
 ouvrés depuis la date de la commande confirmée (une semaine = cinq jours ouvrés). Un
 produit sans délai est signalé, l'estimation est alors partielle. Lecture seule : rien
 n'est écrit en base ni dans Shopify. Sans Shopify, la page s'affiche sans les délais.
+
+## Classes et remises
+
+Dans « Accès », Mikado Deco crée des classes (nom, remise en %, palier en € HTVA) et
+peut choisir une classe pour chaque architecte. La classe d'une architecte est la plus
+haute entre la classe choisie (un minimum) et celle que son chiffre ouvre : devis acceptés
+(commande créée), HTVA, sur les 12 derniers mois glissants. Une classe à palier 0 est
+ouverte dès l'inscription. La remise est affichée, pas appliquée aux prix du devis.
 
 ## Le catalogue
 
