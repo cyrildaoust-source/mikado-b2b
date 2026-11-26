@@ -1,6 +1,8 @@
 import db from "../db.server";
 import { LIBRARY_MAX_BYTES, type LibraryEntry } from "../domain/library";
 import { imageSize } from "./image-size";
+import { RUBELLI_IMAGE } from "../domain/rubelli";
+import { DG_IMAGE, type DgKind } from "../domain/designersguild";
 
 const MIMES = ["image/jpeg", "image/png", "image/webp"];
 const select = { id: true, maker: true, collection: true, colour: true, width: true, height: true };
@@ -50,7 +52,8 @@ export async function deleteLibrary(ids: string[]) {
   await db.libraryMaterial.deleteMany({ where: { id: { in: ids } } });
 }
 
-const REMOTE = /^https:\/\/cdn\.dedar\.com\/bc-swatch-\d+-[a-f0-9]+\.(?:jpe?g|png|webp)$/i;
+const DEDAR_REMOTE = /^https:\/\/cdn\.dedar\.com\/bc-(?:swatch|variant)-\d+-[a-f0-9]+\.(?:jpe?g|png|webp)$/i;
+const REMOTE = { test: (u: string) => DEDAR_REMOTE.test(u) || RUBELLI_IMAGE.test(u) || DG_IMAGE.test(u) };
 
 /** Photo d'une matière : copie en base, ou vignette lue chez l'éditeur en 800 px. */
 export async function getLibraryImage(id: string): Promise<{ mime: string; data: Uint8Array } | null> {
@@ -63,7 +66,8 @@ export async function getLibraryImage(id: string): Promise<{ mime: string; data:
 async function remoteImage(url: string) {
   if (!REMOTE.test(url)) return null;
   try {
-    const r = await fetch(`${url}?format=jpg&width=800`, {
+    // Dedar redimensionne à la demande ; Rubelli donne déjà la taille dans le nom du fichier.
+    const r = await fetch(DEDAR_REMOTE.test(url) ? `${url}?format=jpg&width=800` : url, {
       headers: { "User-Agent": "MikadoDecoPro/1.0 (bibliotheque de matieres)", Accept: "image/jpeg,image/*;q=0.8" },
       signal: AbortSignal.timeout(15_000),
     });
@@ -77,13 +81,17 @@ async function remoteImage(url: string) {
 }
 
 /** Coloris dont la photo reste chez l'éditeur (une ligne, aucune copie de l'image). */
-export async function addRemoteLibrary(input: { maker: string; collection: string; colour: string; remote: string }) {
+export async function addRemoteLibrary(input: { maker: string; collection: string; colour: string; remote: string; previous?: string }) {
   const maker = clean(input.maker, 80),
     collection = clean(input.collection, 120),
     colour = clean(input.colour, 60);
   if (!maker || !collection || !REMOTE.test(input.remote)) throw Error("Coloris invalide.");
   // Une vignette de l'éditeur n'entre qu'une fois, même si deux fiches portent le même nom.
-  const same = await db.libraryMaterial.findFirst({ where: { remote: input.remote }, select: { id: true } });
+  // L'ancienne adresse (vignette 150 px) est reprise en place : les planches gardent la matière.
+  const same = await db.libraryMaterial.findFirst({
+    where: { remote: { in: [input.remote, ...(input.previous ? [input.previous] : [])] } },
+    select: { id: true },
+  });
   // Dimensions inconnues (0) : l'éditeur de planche mesure la photo à l'affichage.
   const data = { maker, collection, colour, mime: "image/jpeg", data: null, remote: input.remote, width: 0, height: 0 };
   return same
@@ -179,7 +187,7 @@ export async function importDedarProduct(slug: string, dry = false) {
   const r = await fetch(`${DEDAR_SITE}/products/${slug}/`, { headers: UA, signal: AbortSignal.timeout(30_000) });
   if (!r.ok) throw Error(`Dedar répond ${r.status} pour ${slug}.`);
   const html = await r.text();
-  const swatches = dedarAllSwatches(html);
+  const swatches = dedarAllSwatches(html, slug);
   let collection = dedarCollection(swatches, slug);
   // Papier peint et tissu portent parfois le même nom : on les distingue.
   if (/-wall(-|$)/.test(slug) && !/wall/i.test(collection)) collection += " Wall";
@@ -196,38 +204,90 @@ export async function importDedarProduct(slug: string, dry = false) {
       trace = String(e);
     }
     // Contrôle : la première vignette se lit comme à l'affichage.
-    const probe = swatches[0] ? await remoteImage(swatches[0].src) : null;
+    const probe = swatches[0] ? await remoteImage(swatches[0].image || swatches[0].src) : null;
     const size = probe ? imageSize(probe.data, probe.mime) : null;
-    // Diagnostic : tailles servies selon les paramètres, et voisins de la vignette dans la charge.
-    const variants: Record<string, unknown> = {};
-    if (swatches[0]) {
-      for (const q of ["", "?width=1200", "?format=auto&width=1200", "?w=1200"]) {
-        try {
-          const r = await fetch(`${swatches[0].src}${q}`, { headers: UA, signal: AbortSignal.timeout(15_000) });
-          const mime = r.headers.get("content-type")?.split(";")[0] || "";
-          const b = new Uint8Array(await r.arrayBuffer());
-          variants[q || "brut"] = { status: r.status, mime, bytes: b.length, size: imageSize(b, mime) };
-        } catch (e) {
-          variants[q || "brut"] = String(e);
-        }
-      }
-    }
-    let first: unknown = null;
-    try {
-      const id = swatches[0]?.src.match(/bc-swatch-\d+-[a-f0-9]+/)?.[0];
-      first = id ? dedarPayloadTrace(html, id) : null;
-    } catch (e) {
-      first = String(e);
-    }
-    const big = [...new Set(html.match(/https:\\?\/\\?\/cdn\.dedar\.com\\?\/bc-(?:variant|gallery)-[0-9a-f-]+\.jpe?g/gi) || [])].slice(0, 6);
-    return { ...report, probe: probe ? { mime: probe.mime, bytes: probe.data.length, size } : null, variants, first, big, colours: swatches.map((s) => s.colour), allSwatchIds: ids.length, missing: other || null, trace };
+    return { ...report, probe: probe ? { mime: probe.mime, bytes: probe.data.length, size } : null, colourNames: swatches.slice(0, 5).map((s) => s.tint || null), colours: swatches.map((s) => s.colour), allSwatchIds: ids.length, missing: other || null, trace };
   }
   for (const s of swatches) {
     try {
-      await addRemoteLibrary({ maker: "Dedar", collection, colour: s.colour, remote: s.src });
+      const colour = s.tint ? `${s.colour} ${s.tint}` : s.colour;
+      await addRemoteLibrary({ maker: "Dedar", collection, colour, remote: s.image || s.src, previous: s.src });
       report.imported++;
     } catch (err) {
       report.skipped.push(`${s.colour} (${err instanceof Error ? err.message : "erreur"})`);
+    }
+  }
+  return report;
+}
+
+// ——— Import des coloris Rubelli (fiches publiques de rubelli.com) ———
+
+/** Une fiche Rubelli : une requête pour la page, les photos restent sur cdn.rubelli.com. */
+export async function importRubelliProduct(slug: string, dry = false) {
+  const { RUBELLI_SITE, rubelliColours, rubelliReplaced } = await import("../domain/rubelli");
+  const r = await fetch(`${RUBELLI_SITE}/en/${slug}`, { headers: UA, signal: AbortSignal.timeout(30_000) });
+  if (!r.ok) throw Error(`Rubelli répond ${r.status} pour ${slug}.`);
+  const html = await r.text();
+  if (rubelliReplaced(html)) return { product: slug, replaced: true, colours: 0, imported: 0, skipped: [] as string[] };
+  const colours = rubelliColours(html);
+  const report = { product: slug, collection: colours[0]?.collection || "", colours: colours.length, imported: 0, skipped: [] as string[] };
+  if (dry) {
+    const probe = colours[0] ? await remoteImage(colours[0].image) : null;
+    return { ...report, sample: colours.slice(0, 5), probe: probe ? { mime: probe.mime, bytes: probe.data.length, size: imageSize(probe.data, probe.mime) } : null };
+  }
+  for (const c of colours) {
+    try {
+      await addRemoteLibrary({ maker: "Rubelli", collection: c.collection, colour: c.colour, remote: c.image });
+      report.imported++;
+    } catch (err) {
+      report.skipped.push(`${c.colour} (${err instanceof Error ? err.message : "erreur"})`);
+    }
+  }
+  return report;
+}
+
+/** Une page de la liste « textiles » (12 fiches), une page par seconde au plus. */
+export async function importRubelliPage(page: number, dry = false) {
+  const { RUBELLI_SITE, rubelliListing } = await import("../domain/rubelli");
+  const r = await fetch(`${RUBELLI_SITE}/en/textiles?p=${page}`, { headers: UA, signal: AbortSignal.timeout(30_000) });
+  if (!r.ok) throw Error(`Rubelli répond ${r.status} pour la page ${page}.`);
+  const slugs = rubelliListing(await r.text());
+  if (dry) return { page, products: slugs };
+  const done: unknown[] = [];
+  let imported = 0;
+  for (const slug of slugs) {
+    await pause(1000);
+    try {
+      const rep = await importRubelliProduct(slug);
+      imported += rep.imported;
+      done.push({ product: slug, collection: "collection" in rep ? rep.collection : undefined, imported: rep.imported, ...("replaced" in rep ? { replaced: true } : {}) });
+    } catch (e) {
+      done.push({ product: slug, error: e instanceof Error ? e.message : "erreur" });
+    }
+  }
+  return { page, products: slugs.length, imported, done };
+}
+
+// ——— Import Designers Guild (catalogue public de designersguild.com) ———
+
+/** Une page catalogue (tissus ou papiers peints), une seule requête ; `count` coloris à partir de `from`. */
+export async function importDesignersGuild(kind: DgKind, from: number, count: number, dry = false) {
+  const { DG_SITE, dgCards, dgColours } = await import("../domain/designersguild");
+  const r = await fetch(`${DG_SITE}/${kind}`, { headers: UA, signal: AbortSignal.timeout(60_000) });
+  if (!r.ok) throw Error(`Designers Guild répond ${r.status}.`);
+  const colours = dgColours(dgCards(await r.text()));
+  const part = colours.slice(from, from + count);
+  const report = { kind, total: colours.length, from, next: from + part.length < colours.length ? from + part.length : null, imported: 0, skipped: [] as string[] };
+  if (dry) {
+    const probe = part[0] ? await remoteImage(part[0].image) : null;
+    return { ...report, sample: part.slice(0, 8), probe: probe ? { mime: probe.mime, bytes: probe.data.length, size: imageSize(probe.data, probe.mime) } : null };
+  }
+  for (const c of part) {
+    try {
+      await addRemoteLibrary({ maker: "Designers Guild", collection: kind === "wallpaper" ? `${c.collection} Wall` : c.collection, colour: c.colour, remote: c.image });
+      report.imported++;
+    } catch (err) {
+      report.skipped.push(`${c.collection} ${c.colour} (${err instanceof Error ? err.message : "erreur"})`);
     }
   }
   return report;

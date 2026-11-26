@@ -57,3 +57,69 @@ test("Dedar : coloris cachés dans la charge Nuxt", async () => {
     ["Acacia 012", "Acacia 020", "Acacia 031"],
   );
 });
+
+test("Dedar : variantes du produit de la page, avec teinte et grande photo", async () => {
+  const { dedarAllSwatches } = await import("../app/domain/dedar");
+  const flat = [
+    { entry: 1 },
+    { slug: 2, title: 3, variants: 4 },
+    "acacia",
+    "Acacia",
+    [5, 11],
+    { code: 6, color: 7, swatch: 8, imagesBc: 9 },
+    "012",
+    "rose indien",
+    { url: 10 },
+    [12],
+    "https://cdn.dedar.com/bc-swatch-1-aa.jpg",
+    { code: 13, swatch: 14 },
+    "https://cdn.dedar.com/bc-variant-19445-c54df3fa.jpg",
+    "001",
+    { url: 15 },
+    "https://cdn.dedar.com/bc-swatch-2-bb.jpg",
+  ];
+  const html = `<script id="__NUXT_DATA__" type="application/json">${JSON.stringify(flat)}</script>`;
+  assert.deepEqual(dedarAllSwatches(html, "acacia"), [
+    { name: "Acacia", colour: "012", src: "https://cdn.dedar.com/bc-swatch-1-aa.jpg", image: "https://cdn.dedar.com/bc-variant-19445-c54df3fa.jpg", tint: "rose indien" },
+    { name: "Acacia", colour: "001", src: "https://cdn.dedar.com/bc-swatch-2-bb.jpg" },
+  ]);
+});
+
+test("Rubelli : liste et coloris d'une fiche", async () => {
+  const { rubelliListing, rubelliColours, rubelliReplaced, RUBELLI_IMAGE } = await import("../app/domain/rubelli");
+  const list = `<a href="https://www.rubelli.com/en/ola-30719">x</a><a href="https://www.rubelli.com/en/ola-30719">y</a>
+    <a href="https://www.rubelli.com/en/masavi-17309">z</a><a href="https://www.rubelli.com/en/textiles?p=8">n</a>`;
+  assert.deepEqual(rubelliListing(list), ["ola-30719", "masavi-17309"]);
+  const page = `<title>Ombra</title>
+    <img src="https://cdn.rubelli.com/A762_001/762_1.840x840c.jpg" alt="Ombra">
+    <img src="https://cdn.rubelli.com/A762_001/762_1.84x84c.jpg" alt="Ombra - Celeste">
+    <img alt="Ombra&#x20;-&#x20;Nuvola" data-src="https://cdn.rubelli.com/A762_002/762_2.84x84c.jpg">
+    <img src="https://cdn.rubelli.com/A762_040/762_40.84x84c.jpg" alt="Ombra - Panna">`;
+  const c = rubelliColours(page);
+  assert.deepEqual(c.map((x) => `${x.collection}|${x.colour}`), ["Ombra|1 Celeste", "Ombra|2 Nuvola", "Ombra|40 Panna"]);
+  assert.ok(c.every((x) => RUBELLI_IMAGE.test(x.image)));
+  assert.equal(c[2].image, "https://cdn.rubelli.com/A762_040/762_40.840x840c.jpg");
+  assert.ok(rubelliReplaced("<title>Ombra. Replaced by 30253.</title>"));
+});
+
+test("Designers Guild : cartes du catalogue, collection et teinte", async () => {
+  const { dgCards, dgColours, DG_IMAGE } = await import("../app/domain/designersguild");
+  const html = `<ul class="grid"><li class="card">
+  <div class="img"><span class="new">New</span><img src="assets/img/fabric/178365.webp" alt="Pavin Delft fabric"></div>
+  <h3>Pavin Delft</h3><p class="type">Fabric</p><p class="meta">FDG3301/03</p>
+</li><li class="card"><div class="img"><img src="assets/img/fabric/178357.webp" alt=""></div>
+  <h3>Pavin Noir</h3><p class="meta">FDG3301/01</p>
+</li><li class="card"><div class="img"><img src="assets/img/fabric/1.webp" alt=""></div>
+  <h3>Brera Lino Duck Egg</h3><p class="meta">F1723/12</p>
+</li><li class="card"><div class="img"><img src="assets/img/fabric/2.webp" alt=""></div>
+  <h3>Brera Lino Chalk</h3><p class="meta">F1723/01</p></li></ul>`;
+  const cards = dgCards(html);
+  assert.equal(cards.length, 4);
+  assert.ok(cards.every((c) => DG_IMAGE.test(c.image)));
+  assert.deepEqual(dgColours(cards).map((c) => `${c.collection}|${c.colour}`), [
+    "Pavin|03 Delft",
+    "Pavin|01 Noir",
+    "Brera Lino|12 Duck Egg",
+    "Brera Lino|01 Chalk",
+  ]);
+});
