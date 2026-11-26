@@ -28,8 +28,60 @@ export type Models3d = {
 
 export const MODELS_3D_KEY = { namespace: "custom", key: "models_3d" } as const;
 
-/** Bibliothèques 3D vérifiées par marque (recherche du 26/11/2026). */
-export const BRAND_LIBRARIES: Record<string, BrandLibrary> = {};
+/** Bibliothèques 3D par marque, relevées le 26/11/2026 (confiance moyenne ou haute).
+ * Relevé complet : /mnt/project-files/modeles-3d/sources/ du projet. */
+export const BRAND_LIBRARIES: Record<string, BrandLibrary> = {
+  Flos: {
+    url: "https://professional.flos.com/en/global/product-downloads/planning-aids/",
+    access: "public",
+    formats: ["2D", "3D", "LDT"],
+  },
+  Artemide: {
+    url: "https://artemide.com/en/download",
+    access: "public",
+    formats: ["DWG", "DXF", "3DS", "STP", "IES"],
+  },
+  "Martinelli Luce": {
+    url: "https://martinelliluce.it/en/pCon",
+    access: "public",
+    formats: ["3D", "pCon"],
+  },
+  "Louis Poulsen": {
+    url: "https://www.louispoulsen.com/en/download-center",
+    access: "public",
+    formats: ["Revit", "DXF", "FBX", "IFC", "LDT"],
+  },
+  Muuto: {
+    url: "https://download.muuto.com/digitalshowroom/#/gallery/2D%252C-3D-%2526-revit-files",
+    access: "public",
+    formats: ["DWG", "3DS", "OBJ", "SKP", "RFA"],
+  },
+  Fatboy: {
+    url: "https://business.fatboy.com/productinformation/productinformation_7.3dfiles",
+    access: "public",
+    formats: [],
+  },
+  Knoll: {
+    url: "https://www.knoll.com/design-plan/resources/furniture-symbols/showcase-symbols",
+    access: "public",
+    formats: ["RFA", "DWG", "SKP"],
+  },
+  HAY: {
+    url: "https://www.hay.com/professionals/planning",
+    access: "public",
+    formats: ["pCon"],
+  },
+  Softline: {
+    url: "https://softline.presscloud.com/digitalshowroom/#/gallery/3D-files",
+    access: "public",
+    formats: [],
+  },
+  Ethnicraft: {
+    url: "https://sheprd.app/ethnicraft",
+    access: "dealer_login",
+    formats: ["DWG", "SKP"],
+  },
+};
 
 const httpsUrl = (v: unknown) => {
   if (typeof v !== "string") return "";
