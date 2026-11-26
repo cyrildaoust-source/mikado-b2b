@@ -1,6 +1,7 @@
 import db from "../db.server";
 import { LIBRARY_MAX_BYTES, type LibraryEntry } from "../domain/library";
 import { imageSize } from "./image-size";
+import { RUBELLI_IMAGE } from "../domain/rubelli";
 
 const MIMES = ["image/jpeg", "image/png", "image/webp"];
 const select = { id: true, maker: true, collection: true, colour: true, width: true, height: true };
@@ -50,7 +51,8 @@ export async function deleteLibrary(ids: string[]) {
   await db.libraryMaterial.deleteMany({ where: { id: { in: ids } } });
 }
 
-const REMOTE = /^https:\/\/cdn\.dedar\.com\/bc-(?:swatch|variant)-\d+-[a-f0-9]+\.(?:jpe?g|png|webp)$/i;
+const DEDAR_REMOTE = /^https:\/\/cdn\.dedar\.com\/bc-(?:swatch|variant)-\d+-[a-f0-9]+\.(?:jpe?g|png|webp)$/i;
+const REMOTE = { test: (u: string) => DEDAR_REMOTE.test(u) || RUBELLI_IMAGE.test(u) };
 
 /** Photo d'une matière : copie en base, ou vignette lue chez l'éditeur en 800 px. */
 export async function getLibraryImage(id: string): Promise<{ mime: string; data: Uint8Array } | null> {
@@ -63,7 +65,8 @@ export async function getLibraryImage(id: string): Promise<{ mime: string; data:
 async function remoteImage(url: string) {
   if (!REMOTE.test(url)) return null;
   try {
-    const r = await fetch(`${url}?format=jpg&width=800`, {
+    // Dedar redimensionne à la demande ; Rubelli donne déjà la taille dans le nom du fichier.
+    const r = await fetch(DEDAR_REMOTE.test(url) ? `${url}?format=jpg&width=800` : url, {
       headers: { "User-Agent": "MikadoDecoPro/1.0 (bibliotheque de matieres)", Accept: "image/jpeg,image/*;q=0.8" },
       signal: AbortSignal.timeout(15_000),
     });
@@ -214,4 +217,52 @@ export async function importDedarProduct(slug: string, dry = false) {
     }
   }
   return report;
+}
+
+// ——— Import des coloris Rubelli (fiches publiques de rubelli.com) ———
+
+/** Une fiche Rubelli : une requête pour la page, les photos restent sur cdn.rubelli.com. */
+export async function importRubelliProduct(slug: string, dry = false) {
+  const { RUBELLI_SITE, rubelliColours, rubelliReplaced } = await import("../domain/rubelli");
+  const r = await fetch(`${RUBELLI_SITE}/en/${slug}`, { headers: UA, signal: AbortSignal.timeout(30_000) });
+  if (!r.ok) throw Error(`Rubelli répond ${r.status} pour ${slug}.`);
+  const html = await r.text();
+  if (rubelliReplaced(html)) return { product: slug, replaced: true, colours: 0, imported: 0, skipped: [] as string[] };
+  const colours = rubelliColours(html);
+  const report = { product: slug, collection: colours[0]?.collection || "", colours: colours.length, imported: 0, skipped: [] as string[] };
+  if (dry) {
+    const probe = colours[0] ? await remoteImage(colours[0].image) : null;
+    return { ...report, sample: colours.slice(0, 5), probe: probe ? { mime: probe.mime, bytes: probe.data.length, size: imageSize(probe.data, probe.mime) } : null };
+  }
+  for (const c of colours) {
+    try {
+      await addRemoteLibrary({ maker: "Rubelli", collection: c.collection, colour: c.colour, remote: c.image });
+      report.imported++;
+    } catch (err) {
+      report.skipped.push(`${c.colour} (${err instanceof Error ? err.message : "erreur"})`);
+    }
+  }
+  return report;
+}
+
+/** Une page de la liste « textiles » (12 fiches), une page par seconde au plus. */
+export async function importRubelliPage(page: number, dry = false) {
+  const { RUBELLI_SITE, rubelliListing } = await import("../domain/rubelli");
+  const r = await fetch(`${RUBELLI_SITE}/en/textiles?p=${page}`, { headers: UA, signal: AbortSignal.timeout(30_000) });
+  if (!r.ok) throw Error(`Rubelli répond ${r.status} pour la page ${page}.`);
+  const slugs = rubelliListing(await r.text());
+  if (dry) return { page, products: slugs };
+  const done: unknown[] = [];
+  let imported = 0;
+  for (const slug of slugs) {
+    await pause(1000);
+    try {
+      const rep = await importRubelliProduct(slug);
+      imported += rep.imported;
+      done.push({ product: slug, collection: "collection" in rep ? rep.collection : undefined, imported: rep.imported, ...("replaced" in rep ? { replaced: true } : {}) });
+    } catch (e) {
+      done.push({ product: slug, error: e instanceof Error ? e.message : "erreur" });
+    }
+  }
+  return { page, products: slugs.length, imported, done };
 }

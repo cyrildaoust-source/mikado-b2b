@@ -84,3 +84,20 @@ test("Dedar : variantes du produit de la page, avec teinte et grande photo", asy
     { name: "Acacia", colour: "001", src: "https://cdn.dedar.com/bc-swatch-2-bb.jpg" },
   ]);
 });
+
+test("Rubelli : liste et coloris d'une fiche", async () => {
+  const { rubelliListing, rubelliColours, rubelliReplaced, RUBELLI_IMAGE } = await import("../app/domain/rubelli");
+  const list = `<a href="https://www.rubelli.com/en/ola-30719">x</a><a href="https://www.rubelli.com/en/ola-30719">y</a>
+    <a href="https://www.rubelli.com/en/masavi-17309">z</a><a href="https://www.rubelli.com/en/textiles?p=8">n</a>`;
+  assert.deepEqual(rubelliListing(list), ["ola-30719", "masavi-17309"]);
+  const page = `<title>Ombra</title>
+    <img src="https://cdn.rubelli.com/A762_001/762_1.840x840c.jpg" alt="Ombra">
+    <img src="https://cdn.rubelli.com/A762_001/762_1.84x84c.jpg" alt="Ombra - Celeste">
+    <img alt="Ombra - Nuvola" data-src="https://cdn.rubelli.com/A762_002/762_2.84x84c.jpg">
+    <img src="https://cdn.rubelli.com/A762_040/762_40.84x84c.jpg" alt="Ombra - Panna">`;
+  const c = rubelliColours(page);
+  assert.deepEqual(c.map((x) => `${x.collection}|${x.colour}`), ["Ombra|1 Celeste", "Ombra|2 Nuvola", "Ombra|40 Panna"]);
+  assert.ok(c.every((x) => RUBELLI_IMAGE.test(x.image)));
+  assert.equal(c[2].image, "https://cdn.rubelli.com/A762_040/762_40.840x840c.jpg");
+  assert.ok(rubelliReplaced("<title>Ombra. Replaced by 30253.</title>"));
+});
