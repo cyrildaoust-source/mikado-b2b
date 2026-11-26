@@ -123,10 +123,18 @@ export async function importDedarProduct(slug: string, dry = false) {
   const { DEDAR_SITE, dedarSwatches, dedarCollection } = await import("../domain/dedar");
   const r = await fetch(`${DEDAR_SITE}/products/${slug}/`, { headers: UA, signal: AbortSignal.timeout(30_000) });
   if (!r.ok) throw Error(`Dedar répond ${r.status} pour ${slug}.`);
-  const swatches = dedarSwatches(await r.text());
+  const html = await r.text();
+  const swatches = dedarSwatches(html);
   const collection = dedarCollection(swatches, slug);
   const report = { product: slug, collection, swatches: swatches.length, imported: 0, skipped: [] as string[], sample: swatches.slice(0, 5) };
-  if (dry) return report;
+  if (dry) {
+    // Diagnostic : vignettes présentes ailleurs que dans les balises img (données de la page).
+    const ids = [...new Set(html.match(/bc-swatch-\d+-[a-f0-9]+/g) || [])];
+    const known = new Set(swatches.map((s) => s.src.match(/bc-swatch-\d+-[a-f0-9]+/)?.[0]));
+    const other = ids.find((id) => !known.has(id));
+    const at = other ? html.indexOf(other) : -1;
+    return { ...report, allSwatchIds: ids.length, excerpt: at >= 0 ? html.slice(Math.max(0, at - 400), at + 200) : "" };
+  }
   for (const s of swatches) {
     await pause(1000);
     try {
