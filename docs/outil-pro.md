@@ -31,6 +31,26 @@ Les fiches sont lues dans Shopify côté serveur. Rien n'est publié ni modifié
   même si on devine son adresse.
 - Les prix affichés sont les prix publics HTVA (prix Shopify TVAC divisé par 1,21).
 
+## Le mood board
+
+Depuis un devis, « Mood board » ouvre une planche par pièce, plus une planche « Tout le
+projet » quand le devis a plusieurs pièces. À la première ouverture, chaque planche est
+disposée toute seule : le nom de la pièce, puis les photos des produits retenus et des
+options.
+
+- À gauche : les photos des produits de la pièce (produit, alternative, option), les photos
+  d'ambiance de leurs fiches Shopify et les photos ajoutées par l'architecte (JPEG, PNG
+  ou WebP, réduites à 2000 px dans le navigateur, 60 par devis au plus).
+- Un toucher ou un glisser pose la photo sur la planche. Glisser déplace, le coin agrandit
+  (une photo garde ses proportions). Textes (titre, texte, légende), pastilles de couleur
+  avec leur nom, quatre fonds. Annuler et Rétablir, flèches du clavier, Suppr.
+- Enregistrement automatique, à part du devis : le mood board ne crée ni version ni PDF de
+  devis.
+- Exporter : PowerPoint 16:9 (une diapositive par pièce, s'ouvre dans Canva et Keynote),
+  PDF (une page par pièce, ou la planche ouverte) et image PNG 3840 × 2160 de la planche
+  ouverte, pour Photoshop. Les exports tournent sur le serveur ; seules les photos de
+  `cdn.shopify.com` et les photos ajoutées y entrent.
+
 ## Les accès
 
 Pas d'envoi d'e-mail : Mikado Deco crée l'accès dans « Accès » et transmet lui-même le

@@ -148,6 +148,8 @@ export default function Editor({
     [newLot, setNewLot] = useState(false),
     [clientDraft, setClientDraft] = useState(s),
     [showHistory, setShowHistory] = useState(false),
+    // Page ouverte après « Quitter » : la liste des devis ou le mood board.
+    [leaveTo, setLeaveTo] = useState("/app"),
     // Glisser-déposer : produit (avec ses alternatives) ou alternative seule.
     [dragging, setDragging] = useState<DragSource | null>(null),
     [dropAt, setDropAt] = useState<string | null>(null),
@@ -1246,6 +1248,7 @@ export default function Editor({
           onClick={(e) => {
             if (dirty) {
               e.preventDefault();
+              setLeaveTo("/app");
               setModal("leave");
             }
           }}
@@ -1261,6 +1264,7 @@ export default function Editor({
               onClick: (e) => {
                 if (dirty) {
                   e.preventDefault();
+                  setLeaveTo("/app");
                   setModal("leave");
                 }
               },
@@ -1301,6 +1305,21 @@ export default function Editor({
           </div>
         </div>
         <div className="header-actions">
+          {!embedded && q.status !== "deleted" && (
+            <Link
+              to={`/app/quotes/${q.id}/moodboard`}
+              className="button"
+              onClick={(e) => {
+                if (dirty) {
+                  e.preventDefault();
+                  setLeaveTo(`/app/quotes/${q.id}/moodboard`);
+                  setModal("leave");
+                }
+              }}
+            >
+              Mood board
+            </Link>
+          )}
           {q.status === "draft" && ready && !current?.sentAt && (
             <button disabled={busy || dirty} onClick={() => send("sent")}>
               Marquer comme envoyé
@@ -1918,7 +1937,7 @@ export default function Editor({
             <button
               onClick={() => {
                 draft.discard();
-                navigate("/app");
+                navigate(leaveTo);
               }}
             >
               Quitter
