@@ -46,5 +46,4 @@ export const KVADRAT_PRODUCTS: { number: string; name: string }[] = [
   { number: "6882", name: "Site" },
   { number: "5566", name: "Tetra" },
   { number: "5868", name: "Dawn 2" },
-  { number: "7832", name: "Haze" },
 ];
