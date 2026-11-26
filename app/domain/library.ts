@@ -96,13 +96,17 @@ export function parseKvadratProduct(input: string) {
 }
 
 /**
- * Coloris dans le nom d'une photo du pack Kvadrat : un numéro de quatre
+ * Coloris dans le nom d'une photo du pack Kvadrat : « _C0130_ » dans le nom
+ * des packs actuels (« F_1000_C0130_W24_HIGH_CMYK.jpg »), sinon un numéro de quatre
  * chiffres commençant par 0 (« 0130 »), sinon le dernier numéro de trois ou
  * quatre chiffres autre que celui du produit. Vide quand rien ne convient :
  * Cyril le complète avant l'envoi.
  */
 export function kvadratColour(file: string, product: string) {
   const base = (file.split("/").pop() || file).replace(/\.[a-z0-9]{2,5}$/i, "");
+  // Pack Kvadrat : « F_1000_C0130_W24_HIGH_CMYK.jpg ».
+  const tagged = base.match(/(?:^|_)C(\d{3,4})(?:_|$)/);
+  if (tagged) return tagged[1];
   const groups = (base.match(/(?<!\d)\d{3,4}(?!\d)/g) || []).filter((g) => g !== product);
   return groups.find((g) => /^0\d{3}$/.test(g)) || groups.pop() || "";
 }
