@@ -27,7 +27,7 @@ export function QuoteSummary({ state: s }: { state: QuoteState }) {
       )}
       {breakdown.delivery !== 0 && (
         <div className="sumrow">
-          <span>Livraison + montage</span>
+          <span>{breakdown.deliveryName}</span>
           <span>{money(breakdown.delivery)}</span>
         </div>
       )}

@@ -2,7 +2,7 @@ import {
   type QuoteState,
   paymentText,
   setDeliveryFee,
-  DELIVERY_PERCENT,
+  DELIVERY_OPTIONS,
   money,
   lineTotal,
 } from "../../domain/quote";
@@ -13,6 +13,9 @@ export function PaymentTerms({
   state: QuoteState;
   onChange: (s: QuoteState) => void;
 }) {
+  const fee = s.extras.find((e) => e.deliveryFee && e.selected);
+  // Un ancien devis à un autre taux (4 %) ne coche aucune formule tant qu'on n'en choisit pas une.
+  const deliveryChoice = fee ? String(fee.chargePercent) : "none";
   const value =
     s.payment === "deposit" && [30, 50].includes(s.depositPercent || 0)
       ? `deposit${s.depositPercent}`
@@ -112,50 +115,46 @@ export function PaymentTerms({
           </p>
         </>
       )}
-      <div className="full-width">
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={s.extras.some((e) => e.deliveryFee && e.selected)}
-            onChange={(e) =>
-              onChange(setDeliveryFee(s, e.target.checked, crypto.randomUUID()))
-            }
-          />
-          Ajouter la livraison + montage
-        </label>
-        {s.extras
-          .filter((e) => e.deliveryFee && e.selected)
-          .map((e) => (
-            <label key={`${e.id}-rate`} className="inline">
-              Taux{" "}
-              <input
-                type="number"
-                min={0}
-                max={20}
-                step={0.5}
-                value={e.chargePercent ?? DELIVERY_PERCENT}
-                onChange={(ev) =>
-                  onChange(
-                    setDeliveryFee(s, true, e.id, Number(ev.target.value) || 0),
-                  )
-                }
-                style={{ width: "5em" }}
-              />{" "}
-              % du montant des produits
-            </label>
-          ))}
+      <fieldset className="full-width delivery-choice">
+        <legend>Livraison</legend>
+        {[
+          { value: "none", label: "Sans livraison", percent: null },
+          ...DELIVERY_OPTIONS.map((o) => ({
+            value: String(o.percent),
+            label: `${o.label} · ${o.percent} %`,
+            percent: o.percent,
+          })),
+        ].map((o) => (
+          <label className="check" key={o.value}>
+            <input
+              type="radio"
+              name="delivery-fee"
+              value={o.value}
+              checked={deliveryChoice === o.value}
+              onChange={() =>
+                onChange(
+                  setDeliveryFee(
+                    s,
+                    o.percent !== null,
+                    fee?.id ?? crypto.randomUUID(),
+                    o.percent ?? undefined,
+                  ),
+                )
+              }
+            />
+            {o.label}
+          </label>
+        ))}
         <p className="muted">
-          Calculée sur les produits retenus après remise, hors TVA. Le montant
-          s’ajoute au devis et se recalcule lorsque les produits changent.
+          Pourcentage du montant des produits retenus après remise, hors TVA.
+          Il se recalcule lorsque les produits changent.
         </p>
-        {s.extras
-          .filter((e) => e.deliveryFee && e.selected)
-          .map((e) => (
-            <strong key={e.id}>
-              Livraison + montage : {money(lineTotal(e))} HTVA
-            </strong>
-          ))}
-      </div>
+        {fee && (
+          <strong>
+            {fee.name} : {money(lineTotal(fee))} HTVA
+          </strong>
+        )}
+      </fieldset>
       <label>
         Livraison estimée
         <input

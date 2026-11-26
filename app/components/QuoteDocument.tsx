@@ -321,7 +321,7 @@ export function QuoteDocument({
           )}
           {breakdown.delivery !== 0 && (
             <div>
-              <span>Livraison + montage</span>
+              <span>{breakdown.deliveryName}</span>
               <span>{money(breakdown.delivery)}</span>
             </div>
           )}

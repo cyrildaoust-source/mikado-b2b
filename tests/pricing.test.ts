@@ -720,7 +720,7 @@ test("livraison à 3 % : remise, recalcul, TVA, activation unique et retrait", (
   s = setDeliveryFee(s, true, "delivery", 3);
   assert.equal(
     s.extras.find((e) => e.deliveryFee)?.name,
-    "Livraison + montage",
+    "Livraison porte à porte",
   );
   assert.equal(s.extras.find((e) => e.deliveryFee)?.price, 510);
   assert.equal(totals(s).total, before + 510);
@@ -728,6 +728,7 @@ test("livraison à 3 % : remise, recalcul, TVA, activation unique et retrait", (
     products: 17000,
     options: 35000,
     delivery: 510,
+    deliveryName: "Livraison porte à porte",
     total: 52510,
   });
   assert.equal(quoteSchema.safeParse(s).success, true);
@@ -754,18 +755,20 @@ test("livraison à 3 % : remise, recalcul, TVA, activation unique et retrait", (
   assert.equal(s.extras.length, 1);
 });
 
-test("livraison + montage : 4 % par défaut sur un nouveau devis, taux modifiable", () => {
+test("livraison : installation à 5 % par défaut, porte à porte à 3 %", () => {
   let s = newQuote();
   const fee = () => s.extras.find((e) => e.deliveryFee);
-  assert.equal(fee()?.chargePercent, 4);
+  assert.equal(fee()?.chargePercent, 5);
+  assert.equal(fee()?.name, "Livraison + installation");
   assert.equal(fee()?.price, 0);
   s.groups = fixture().groups;
   s.groups[0].syncQty = false;
   s = repriceExtras(s);
   const base = costBreakdown(s).products;
-  assert.equal(fee()?.price, Math.round(base * 0.04));
-  s = setDeliveryFee(s, true, fee()!.id, 5);
   assert.equal(fee()?.price, Math.round(base * 0.05));
+  s = setDeliveryFee(s, true, fee()!.id, 3);
+  assert.equal(fee()?.price, Math.round(base * 0.03));
+  assert.equal(fee()?.name, "Livraison porte à porte");
   assert.equal(s.extras.filter((e) => e.deliveryFee).length, 1);
   s = setDeliveryFee(s, false, "x");
   assert.equal(fee(), undefined);
@@ -797,7 +800,7 @@ test("version client : sans les remises de l'architecte, au choix", () => {
   assert.ok(shown.groups.every((g) => g.items.every((i) => i.discount === 0)));
   assert.ok(costBreakdown(shown).products > costBreakdown(s).products);
   const fee = (x: typeof s) => x.extras.find((e) => e.deliveryFee)!.price;
-  assert.equal(fee(shown), Math.round(costBreakdown(shown).products * 0.04));
+  assert.equal(fee(shown), Math.round(costBreakdown(shown).products * 0.05));
   // Le devis lui-même garde les remises.
   assert.equal(s.groups[0].items[0].discount, 20);
 });

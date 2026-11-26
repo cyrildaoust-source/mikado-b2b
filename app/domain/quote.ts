@@ -195,7 +195,7 @@ export const quoteSchema = z
           ? e
           : {
               ...e,
-              name: e.deliveryFee ? "Livraison + montage" : e.name,
+              name: e.deliveryFee ? deliveryFeeLabel(e.chargePercent) : e.name,
               variantId: null,
               qty: 1,
               discount: 0,
@@ -242,7 +242,15 @@ export function costBreakdown(s: QuoteState) {
     options = s.extras
       .filter((e) => e.selected && !e.deliveryFee)
       .reduce((n, e) => n + lineTotal(e), 0);
-  return { products, options, delivery, total: products + options + delivery };
+  const deliveryName = s.extras.find((e) => e.selected && e.deliveryFee)?.name ??
+    deliveryFeeLabel(DELIVERY_PERCENT);
+  return {
+    products,
+    options,
+    delivery,
+    deliveryName,
+    total: products + options + delivery,
+  };
 }
 export function fiscalTotals(s: QuoteState) {
   const lines = selectedLines(s),
@@ -463,7 +471,7 @@ export function withClientNames<T extends ClientFields>(s: T): T {
   };
 }
 
-/** Nouveau devis : livraison + montage déjà ajoutée au taux par défaut, à retirer au besoin. */
+/** Nouveau devis : livraison + installation déjà ajoutée au taux par défaut, à retirer au besoin. */
 export function newQuote(taxesIncluded = false): QuoteState {
   return setDeliveryFee(emptyQuote(taxesIncluded), true, crypto.randomUUID());
 }
@@ -616,8 +624,23 @@ export function quoteSections(s: QuoteState) {
   return [...map.values()];
 }
 
-/** Taux par défaut de la ligne « Livraison + montage » (décision de Cyril, 25/11/2026). */
-export const DELIVERY_PERCENT = 4;
+/**
+ * Les deux formules de livraison et leur taux fixe (Cyril, 26/11/2026). Le taux
+ * ne se saisit pas : on choisit une formule.
+ */
+export const DELIVERY_OPTIONS = [
+  { percent: 5, label: "Livraison + installation" },
+  { percent: 3, label: "Livraison porte à porte" },
+] as const;
+export const DELIVERY_PERCENT = 5;
+
+/** Libellé d'une ligne de livraison d'après son taux ; un ancien taux garde le libellé avec installation. */
+export function deliveryFeeLabel(percent: number | null | undefined): string {
+  return (
+    DELIVERY_OPTIONS.find((o) => o.percent === percent)?.label ??
+    DELIVERY_OPTIONS[0].label
+  );
+}
 
 export function setDeliveryFee(
   s: QuoteState,
@@ -635,7 +658,7 @@ export function setDeliveryFee(
     extras.push({
       ...lineSchema.parse({
         id: existing?.id ?? id,
-        name: "Livraison + montage",
+        name: deliveryFeeLabel(rate),
         qty: 1,
         price: 0,
         discount: 0,

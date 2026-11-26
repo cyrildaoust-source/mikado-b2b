@@ -45,7 +45,8 @@ import {
   CatalogueBrowser,
   type CatalogueTarget,
 } from "../components/quote/CatalogueBrowser";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useFetchers } from "react-router";
 import { rememberQuote } from "../services/current-quote.server";
 
 export const meta = ({ data }: { data?: { q?: { number: string } } }) => [
@@ -54,7 +55,16 @@ export const meta = ({ data }: { data?: { q?: { number: string } } }) => [
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const c = await context(request);
   await assertQuoteAccess(c.shop, Number(params.id), ownerScope(c));
-  const q = await getQuote(c.shop, Number(params.id));
+  const full = await getQuote(c.shop, Number(params.id));
+  // Chaque enregistrement automatique ajoute une version : la page ne reçoit
+  // que les 20 dernières et celles qui portent un PDF ou une révision, pour
+  // que le rechargement après chaque enregistrement reste léger.
+  const q = {
+    ...full,
+    revisions: full.revisions.filter(
+      (r, i) => i < 20 || r.publishedNumber || r.pdfGeneratedAt,
+    ),
+  };
   // Ce devis devient le « devis ouvert » affiché à côté des fiches du catalogue.
   const headers = { "Set-Cookie": await rememberQuote(q.id) };
   return data({
@@ -224,9 +234,32 @@ export async function action({ request, params }: ActionFunctionArgs) {
     };
   }
 }
+/**
+ * Clé de l'éditeur. Chaque enregistrement automatique crée une version ; si la
+ * clé suivait la version, l'éditeur se remontait à chaque fois sur l'état
+ * enregistré et perdait ce qui avait été tapé pendant l'envoi (lettres perdues
+ * dans le nom d'une pièce). La clé ne change donc que si le devis change
+ * ailleurs : reprise d'une sauvegarde, photos ajoutées, autre onglet.
+ */
+function useEditorKey(q: { id: number; version: number; state: string }) {
+  const sent = useRef(new Set<string>()),
+    seen = useRef({ id: q.id, version: q.version }),
+    [epoch, setEpoch] = useState(0);
+  for (const f of useFetchers())
+    if (f.formData?.get("intent") === "save")
+      sent.current.add(String(f.formData.get("state")));
+  if (seen.current.id !== q.id || seen.current.version !== q.version) {
+    const own = seen.current.id === q.id && sent.current.has(q.state);
+    seen.current = { id: q.id, version: q.version };
+    if (!own) setEpoch((n) => n + 1);
+    sent.current.clear();
+  }
+  return `${q.id}-${epoch}`;
+}
 export default function Quote() {
   const data = useLoaderData<typeof loader>();
   const result = useActionData<typeof action>();
+  const editorKey = useEditorKey(data.q);
   const [catalogue, setCatalogue] = useState(false);
   // Alternative ou option en cours : le catalogue ajoute sous ce produit.
   const [alternative, setAlternative] = useState<CatalogueTarget | null>(null);
@@ -258,11 +291,11 @@ export default function Quote() {
     );
   if (data.embedded || !editable)
     return (
-      <Editor key={`${data.q.id}-${data.q.version}`} {...data} result={result} />
+      <Editor key={editorKey} {...data} result={result} />
     );
   const editor = (
     <Editor
-      key={`${data.q.id}-${data.q.version}`}
+      key={editorKey}
       {...data}
       result={result}
       catalogueTarget={alternative}

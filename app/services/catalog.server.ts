@@ -1,3 +1,4 @@
+import { memo } from "./memo.server";
 import db from "../db.server";
 import { cents } from "../domain/quote";
 import { gql, searchPrefix, shopInfo, type Admin } from "./shopify-api.server";
@@ -216,12 +217,14 @@ export async function catalogFacets(admin: Admin | null) {
         .sort(),
       types: [...new Set(demoProducts.map((p) => p.productType))].sort(),
     };
-  const data = await gql<{
-    productVendors: { nodes: string[] };
-    productTypes: { nodes: string[] };
-  }>(
-    admin,
-    `query Facets { productVendors(first: 250) { nodes } productTypes(first: 250) { nodes } }`,
+  const data = await memo("facets", 300000, () =>
+    gql<{
+      productVendors: { nodes: string[] };
+      productTypes: { nodes: string[] };
+    }>(
+      admin,
+      `query Facets { productVendors(first: 250) { nodes } productTypes(first: 250) { nodes } }`,
+    ),
   );
   const hidden = new Set(rules.filter((r) => !r.visible).map((r) => r.vendor));
   return {
@@ -244,30 +247,38 @@ export async function brandFamilies(
       .filter((p) => vendors.includes(p.vendor) && isVisible(p, rules))
       .forEach((p) => add(p.productType));
   } else {
-    let after: string | null = null;
-    for (let page = 0; page < 4; page++) {
-      const data: {
-        products: {
-          nodes: { productType: string; vendor: string; status: string }[];
-          pageInfo: { hasNextPage: boolean; endCursor: string };
-        };
-      } = await gql(
-        admin,
-        `query Families($query: String!, $after: String) {
-          products(first: 250, after: $after, query: $query) {
-            nodes { productType vendor status }
-            pageInfo { hasNextPage endCursor }
-          }
-        }`,
-        { query: catalogQuery(rules, { vendors }), after },
-      );
-      data.products.nodes
-        .filter((p) => isVisible(p, rules))
-        .forEach((p) => add(p.productType));
-      if (!data.products.pageInfo.hasNextPage) break;
-      after = data.products.pageInfo.endCursor;
-    }
+    // Jusqu'à quatre pages de 250 fiches : gardé 5 minutes par choix de marques.
+    const query = catalogQuery(rules, { vendors });
+    return memo(`families:${query}`, 300000, async () => {
+      let after: string | null = null;
+      for (let page = 0; page < 4; page++) {
+        const data: {
+          products: {
+            nodes: { productType: string; vendor: string; status: string }[];
+            pageInfo: { hasNextPage: boolean; endCursor: string };
+          };
+        } = await gql(
+          admin,
+          `query Families($query: String!, $after: String) {
+            products(first: 250, after: $after, query: $query) {
+              nodes { productType vendor status }
+              pageInfo { hasNextPage endCursor }
+            }
+          }`,
+          { query, after },
+        );
+        data.products.nodes
+          .filter((p) => isVisible(p, rules))
+          .forEach((p) => add(p.productType));
+        if (!data.products.pageInfo.hasNextPage) break;
+        after = data.products.pageInfo.endCursor;
+      }
+      return sortedCounts(counts);
+    });
   }
+  return sortedCounts(counts);
+}
+function sortedCounts(counts: Map<string, number>) {
   return [...counts]
     .map(([type, count]) => ({ type, count }))
     .sort((a, b) => a.type.localeCompare(b.type, "fr"));
