@@ -51,6 +51,8 @@ model Quote {
   billingRequests BillingRequest[]
   ownerId     Int?
   owner       User?     @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  moodBoard   MoodBoard?
+  moodImages  MoodImage[]
   @@index([shop, updatedAt])
   @@index([ownerId])
 }
@@ -153,4 +155,28 @@ model BrandSetting {
   vendor    String   @id
   visible   Boolean  @default(true)
   updatedAt DateTime @updatedAt
+}
+
+// Mood board d'un devis : planches par pièce (JSON, voir app/domain/moodboard.ts).
+// À part du devis : le modifier ne crée ni version ni révision.
+model MoodBoard {
+  quoteId   Int      @id
+  quote     Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  state     String
+  updatedAt DateTime @updatedAt
+}
+
+// Photo ajoutée par l'architecte (inspiration, matière, plan). Redimensionnée
+// dans le navigateur avant l'envoi.
+model MoodImage {
+  id        String   @id @default(cuid())
+  quoteId   Int
+  quote     Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  mime      String
+  data      Bytes
+  width     Int
+  height    Int
+  name      String   @default("")
+  createdAt DateTime @default(now())
+  @@index([quoteId])
 }

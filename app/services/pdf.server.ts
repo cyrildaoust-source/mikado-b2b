@@ -15,7 +15,7 @@ const embeddedCss = css
   .replaceAll("/fonts/inter-700.woff2", inter700);
 
 /** Chromium local (Playwright) ou, sur Vercel, la version prévue pour les fonctions. */
-async function launchBrowser() {
+export async function launchBrowser() {
   if (process.env.VERCEL) {
     const { default: serverless } = await import("@sparticuz/chromium");
     return chromium.launch({
