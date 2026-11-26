@@ -54,13 +54,33 @@ export function definiteRejection(error: unknown) {
     )
   );
 }
+const throttled = (
+  response: Response,
+  body: { errors?: { extensions?: { code?: string } }[] },
+) =>
+  response.status === 429 ||
+  !!body?.errors?.some?.((e) => e.extensions?.code === "THROTTLED");
+
 export async function gql<T>(
   admin: Admin,
   query: string,
   variables: Record<string, unknown> = {},
 ): Promise<T> {
-  const response = await admin.graphql(query, { variables });
-  const body = await response.json();
+  // Seau de points Shopify vide : il se remplit en une ou deux secondes.
+  let response: Response | null = null,
+    body: { errors?: { extensions?: { code?: string } }[]; data?: unknown } = {};
+  for (let wait = 0; wait <= 2000; wait += 1000) {
+    if (wait) await new Promise((r) => setTimeout(r, wait));
+    try {
+      response = await admin.graphql(query, { variables });
+      body = await response.json();
+    } catch (e) {
+      if (wait < 2000 && /throttl/i.test(String(e))) continue;
+      throw e;
+    }
+    if (!throttled(response, body)) break;
+  }
+  if (!response) throw Error("Shopify indisponible");
   if (!response.ok) {
     if ([400, 401, 403, 429].includes(response.status))
       throw new ShopifyRejected(

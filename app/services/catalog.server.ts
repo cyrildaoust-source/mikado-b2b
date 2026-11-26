@@ -279,9 +279,12 @@ export async function allVendors(admin: Admin | null) {
   return data.productVendors.nodes.filter(Boolean);
 }
 
+/** Fiche d'un produit. `specs: false` pour un ajout au devis : les
+ * caractéristiques coûtent cher en points Shopify et ne servent qu'à la fiche. */
 export async function getCatalogProduct(
   admin: Admin | null,
   numericId: string,
+  { specs: withSpecs = true }: { specs?: boolean } = {},
 ): Promise<CatalogProduct | null> {
   if (!/^\d{1,20}$/.test(numericId)) return null;
   const rules = await brandRules();
@@ -291,13 +294,15 @@ export async function getCatalogProduct(
   }
   const [info, specs] = await Promise.all([
     shopInfo(admin),
-    gql<{ product: { metafields: { nodes: RawMetafield[] } } | null }>(
+    !withSpecs
+      ? { product: null }
+      : gql<{ product: { metafields: { nodes: RawMetafield[] } } | null }>(
       admin,
       `query CatalogSpecs($id: ID!) {
         product(id: $id) {
-          metafields(first: 80) {
+          metafields(first: 50) {
             nodes { namespace key type value definition { name }
-              references(first: 8) { nodes { ... on Metaobject { displayName } } } }
+              references(first: 4) { nodes { ... on Metaobject { displayName } } } }
           }
         }
       }`,

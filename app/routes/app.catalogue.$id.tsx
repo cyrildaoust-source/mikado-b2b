@@ -4,7 +4,6 @@ import {
   Form,
   Link,
   data,
-  redirect,
   useActionData,
   useLoaderData,
   useNavigation,
@@ -51,8 +50,13 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
 export async function action({ request, params }: ActionFunctionArgs) {
   const c = await context(request);
-  const product = await getCatalogProduct(c.admin, String(params.id));
-  if (!product) throw new Response("Produit introuvable", { status: 404 });
+  let product;
+  try {
+    product = await getCatalogProduct(c.admin, String(params.id), { specs: false });
+  } catch {
+    return { error: "Shopify n'a pas répondu. Réessayez dans un instant." };
+  }
+  if (!product) return { error: "Ce produit n'est plus au catalogue." };
   const form = await readForm(request),
     target = String(form.get("quote") || "new");
   if (form.get("intent") === "close")
@@ -82,10 +86,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
       quoteId: target === "new" ? "new" : Number(target),
       placement: parsePlacement(String(form.get("placement") || "")),
     });
-    // Devis ouvert à côté : on reste sur la fiche, le panneau se met à jour.
-    if (id === open)
-      return { ok: "Ajouté au devis.", error: "", quote: id, line: lineId };
-    return redirect(`/app/quotes/${id}`);
+    // On reste sur la fiche : le devis choisi devient le devis ouvert à côté.
+    const result = { ok: "Ajouté au devis.", error: "", quote: id, line: lineId };
+    if (id === open) return result;
+    return data(result, { headers: { "Set-Cookie": await rememberQuote(id) } });
   } catch (e) {
     return {
       ok: "",
@@ -344,6 +348,9 @@ export default function Product() {
               <p role="status" className="success">
                 {result.ok}
                 {undo}
+                {"quote" in result && result.quote && (
+                  <Link to={`/app/quotes/${result.quote}`}>Ouvrir le devis</Link>
+                )}
               </p>
             )}
             {result?.error && (
@@ -390,9 +397,9 @@ export default function Product() {
         {panel && (
           <aside className="quote-panel" aria-label="Devis ouvert">
             <header>
-              <small>Devis ouvert · {panel.number}</small>
+              <small>Devis ouvert</small>
               <strong>{panel.title}</strong>
-              <span>{money(panel.total)} HTVA</span>
+              <span>Total {money(panel.total)} HTVA</span>
             </header>
             {here && (busy || result?.ok || result?.error) && (
               <p
