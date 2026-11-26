@@ -101,3 +101,25 @@ test("Rubelli : liste et coloris d'une fiche", async () => {
   assert.equal(c[2].image, "https://cdn.rubelli.com/A762_040/762_40.840x840c.jpg");
   assert.ok(rubelliReplaced("<title>Ombra. Replaced by 30253.</title>"));
 });
+
+test("Designers Guild : cartes du catalogue, collection et teinte", async () => {
+  const { dgCards, dgColours, DG_IMAGE } = await import("../app/domain/designersguild");
+  const html = `<ul class="grid"><li class="card">
+  <div class="img"><span class="new">New</span><img src="assets/img/fabric/178365.webp" alt="Pavin Delft fabric"></div>
+  <h3>Pavin Delft</h3><p class="type">Fabric</p><p class="meta">FDG3301/03</p>
+</li><li class="card"><div class="img"><img src="assets/img/fabric/178357.webp" alt=""></div>
+  <h3>Pavin Noir</h3><p class="meta">FDG3301/01</p>
+</li><li class="card"><div class="img"><img src="assets/img/fabric/1.webp" alt=""></div>
+  <h3>Brera Lino Duck Egg</h3><p class="meta">F1723/12</p>
+</li><li class="card"><div class="img"><img src="assets/img/fabric/2.webp" alt=""></div>
+  <h3>Brera Lino Chalk</h3><p class="meta">F1723/01</p></li></ul>`;
+  const cards = dgCards(html);
+  assert.equal(cards.length, 4);
+  assert.ok(cards.every((c) => DG_IMAGE.test(c.image)));
+  assert.deepEqual(dgColours(cards).map((c) => `${c.collection}|${c.colour}`), [
+    "Pavin|03 Delft",
+    "Pavin|01 Noir",
+    "Brera Lino|12 Duck Egg",
+    "Brera Lino|01 Chalk",
+  ]);
+});
