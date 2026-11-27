@@ -235,6 +235,21 @@ Variables en plus de celles de Mikado Devis (voir `.env.production.example`) :
   Admin s'obtient par le « client credentials grant », qui exige que l'app et la boutique
   soient dans la même organisation du Dev Dashboard.
 - `SHOPIFY_APP_URL` : l'adresse publique de l'outil (sert aux liens d'invitation).
+- `INTERNAL_TOKEN` : au moins 32 caractères aléatoires. Ouvre les routes de remplissage
+  de la bibliothèque (`/internal/dedar`, `designersguild`, `elitis`, `kvadrat`, `peek`,
+  `rubelli`) par `Authorization: Bearer <jeton>`. Sans lui, seule une session admin les
+  ouvre ; tout autre visiteur reçoit 404.
+
+## Sécurité
+
+- Connexion : 5 échecs sur un e-mail ou 20 depuis une même adresse IP en 15 minutes
+  bloquent les essais 15 minutes (table `AuthThrottle`).
+- Préversions Vercel : les branches `claude/**` et `codex/**` ne sont pas déployées
+  (`vercel.json`), et une préversion n'applique jamais les migrations : elle reçoit la
+  base de production.
+- En-têtes : HSTS, `nosniff`, `Referrer-Policy`, `Permissions-Policy` sur toutes les
+  réponses (`vercel.json`) ; en mode autonome, aucune page ne peut s'afficher dans le
+  cadre d'un autre site (`frame-ancestors 'none'`).
 
 Sans `APP_MODE`, l'application reste l'app intégrée à l'admin Shopify, comme avant.
 
