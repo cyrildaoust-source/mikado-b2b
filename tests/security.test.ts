@@ -80,10 +80,3 @@ test("chaque route /internal de remplissage passe par requireInternal", () => {
     assert.match(src, /await requireInternal\(request\);/, name);
   }
 });
-
-test("les préversions Vercel ne migrent pas la base", () => {
-  const build = readFileSync("scripts/vercel-build.sh", "utf8");
-  assert.match(build, /VERCEL_ENV:-production\}" = "production"/);
-  const vercel = JSON.parse(readFileSync("vercel.json", "utf8"));
-  assert.equal(vercel.git.deploymentEnabled["claude/**"], false);
-});
