@@ -17,12 +17,18 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  isRouteErrorResponse,
+  useRouteError,
   useRouteLoaderData,
 } from "react-router";
 import { isDemo } from "./services/context.server";
 import { isStandalone } from "./services/mode.server";
 
-export const meta = () => [{ title: "Mikado Deco Pro" }];
+export const meta = () => [
+  { title: "Mikado Deco Pro" },
+  // Outil privé : aucune page n'a à apparaître dans un moteur de recherche.
+  { name: "robots", content: "noindex, nofollow" },
+];
 
 // Une feuille de style par usage. L'outil pro (autonome ou démo) n'a que la
 // sienne, outil.css ; l'app intégrée à l'admin Shopify garde les anciennes.
@@ -84,6 +90,51 @@ export default function App() {
       <body>
         <Outlet />
         <ScrollRestoration />
+        <Scripts />
+      </body>
+    </html>
+  );
+}
+
+/**
+ * Erreur hors de /app (adresse inconnue, lien mal copié) : une page sobre en
+ * français, aux couleurs de l'outil. Sans elle, le visiteur voyait la page
+ * anglaise de React Router (« Unhandled Thrown Response! », audit 27/11).
+ */
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const status = isRouteErrorResponse(error) ? error.status : 500;
+  const missing = status === 404 || status === 410;
+  return (
+    <html lang="fr">
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <meta name="robots" content="noindex, nofollow" />
+        <title>{missing ? "Page introuvable" : "Erreur"} · Mikado Deco</title>
+        {STYLES.pro.map((href) => (
+          <link key={href} rel="stylesheet" href={href} />
+        ))}
+      </head>
+      <body>
+        <main className="workspace error-page">
+          <div className="error-card">
+            <p className="error-code">
+              {missing ? `Erreur ${status}` : "Erreur"}
+            </p>
+            <h1>{missing ? "Page introuvable" : "Une erreur est survenue"}</h1>
+            <p>
+              {missing
+                ? "Cette adresse ne mène à aucune page. Le lien est peut-être incomplet."
+                : "Rechargez la page. Si le problème persiste, prévenez Mikado Deco."}
+            </p>
+            <div className="error-actions">
+              <a className="button primary" href="/app">
+                Ouvrir Mikado Deco Pro
+              </a>
+            </div>
+          </div>
+        </main>
         <Scripts />
       </body>
     </html>

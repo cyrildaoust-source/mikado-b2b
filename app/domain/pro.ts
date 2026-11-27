@@ -40,6 +40,28 @@ export function withTax(cents: number, rate = DISPLAY_VAT) {
 }
 
 /**
+ * Prix TVAC d'origine retrouvé depuis le prix HTVA du catalogue. Shopify
+ * donne des prix TVAC (55,00 €) ; le catalogue les divise par 1,21 et arrondit
+ * (45,45 €). Remultiplier donnait 54,99 € : un prix qui n'est pas celui de la
+ * boutique. Parmi les montants TVAC qui redonnent ce même HTVA, on garde un
+ * euro rond, sinon une dizaine de centimes, sinon le plus proche du calcul.
+ */
+export function displayGross(net: number, rate = DISPLAY_VAT) {
+  const factor = 1 + rate / 100;
+  const exact = (net * (100 + rate)) / 100;
+  const candidates: number[] = [];
+  for (let g = Math.floor(exact) - 2; g <= Math.ceil(exact) + 2; g++)
+    if (g >= 0 && Math.round(g / factor) === net) candidates.push(g);
+  if (!candidates.length) return withTax(net, rate);
+  const pick = (ok: (g: number) => boolean) => candidates.find(ok);
+  return (
+    pick((g) => g % 100 === 0) ??
+    pick((g) => g % 10 === 0) ??
+    candidates.reduce((a, b) => (Math.abs(b - exact) < Math.abs(a - exact) ? b : a))
+  );
+}
+
+/**
  * Prix catalogue (public HTVA) dans la vue choisie. Sans remise connue, la
  * vue pro garde le prix public et le dit.
  */
@@ -48,7 +70,7 @@ export function viewPrice(
   view: PriceView,
   pro: ProPricing | null | undefined,
 ): { cents: number; kind: string; pending?: boolean } {
-  if (view === "tvac") return { cents: withTax(cents), kind: "TVAC" };
+  if (view === "tvac") return { cents: displayGross(cents), kind: "TVAC" };
   if (view === "pro" && pro) {
     if (pro.discount === null)
       return { cents, kind: "HTVA · prix pro à confirmer", pending: true };
