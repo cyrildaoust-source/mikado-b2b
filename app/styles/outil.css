@@ -4869,17 +4869,67 @@ label.cp-line {
   align-items: baseline;
   gap: 8px;
 }
-.pro-price-toggle select {
-  min-height: 36px;
-  padding: 0 28px 0 10px;
+/* Sélecteur des prix : trois boutons dans un même cadre, à la hauteur de
+   « Nouveau devis », le choix courant en encre pleine. */
+.price-switch {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 3px;
+  gap: 2px;
   border: 1px solid var(--line-strong);
-  border-radius: 8px;
-  background-color: var(--surface, #fff);
-  color: var(--ink);
-  font: inherit;
+  border-radius: var(--radius);
+  background: var(--paper, #fff);
+}
+.price-switch-label {
+  padding: 0 8px 0 7px;
+  color: var(--ink-3);
   font-size: var(--t-small, 0.8125rem);
 }
-.pro-nav-account .pro-price-toggle select {
+.pro-nav-end .price-switch button,
+.price-switch button {
+  min-width: 52px;
+  height: 32px;
+  min-height: 0;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-small);
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: var(--t-small, 0.8125rem);
+  font-weight: 500;
+  line-height: 32px;
+  cursor: pointer;
+  transition: background-color 0.12s, color 0.12s;
+}
+.price-switch button:hover:not(:disabled) {
+  border: 0;
+  background: var(--ground);
+  color: var(--ink);
+}
+.price-switch button[aria-pressed="true"],
+.price-switch button[aria-pressed="true"]:hover:not(:disabled) {
+  background: var(--ink);
+  color: #fff;
+}
+.price-switch button:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 1px;
+}
+.pro-nav.menu-open .pro-nav-account {
+  grid-template-columns: minmax(0, 1fr);
+}
+.pro-nav-account .price-switch {
+  display: flex;
   width: 100%;
-  min-height: 44px;
+  height: 48px;
+}
+.pro-nav.menu-open .pro-nav-account .price-switch button {
+  width: auto;
+  min-height: 0;
+  flex: 1;
+  height: 40px;
+  line-height: 40px;
 }

@@ -9,7 +9,9 @@ import {
 import { ClientProposal } from "../components/ClientProposal";
 import { resolveShare } from "../services/share.server";
 import { acceptProposal, decisionForShare } from "../services/decision.server";
+import { useMemo } from "react";
 import { ZodError } from "zod";
+import { clientQuote, fromClientQuote } from "../domain/client-quote";
 
 /**
  * Proposition en ligne, ouverte par le lien secret que l'architecte envoie à
@@ -54,7 +56,8 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       issuedAt: share.issuedAt?.toISOString() ?? null,
       expiresAt: share.expiresAt.toISOString(),
       seller: share.seller,
-      state: share.state,
+      // Liste blanche : jamais la révision interne complète.
+      quote: clientQuote(share.state),
       pdfHref: `/d/${String(params.token)}/pdf`,
       decision: await decisionForShare(share.shareId),
     },
@@ -91,6 +94,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 export default function SharedQuote() {
   const d = useLoaderData<typeof loader>();
   const result = useActionData<typeof action>();
+  const quote = d.status === "open" ? d.quote : null;
+  const state = useMemo(() => (quote ? fromClientQuote(quote) : null), [quote]);
   if (d.status !== "open")
     return (
       <main className="shared-closed">
@@ -110,7 +115,7 @@ export default function SharedQuote() {
   return (
     <main className="shared-quote">
       <ClientProposal
-        state={d.state}
+        state={state!}
         seller={d.seller}
         number={d.number}
         publishedNumber={d.publishedNumber}

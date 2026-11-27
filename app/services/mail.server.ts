@@ -8,13 +8,38 @@ export type Mail = {
   subject: string;
   text: string;
   replyTo?: string;
+  /** Clé d'idempotence Resend : un même envoi retenté ne part qu'une fois. */
+  idempotencyKey?: string;
 };
 
-export const mailEnabled = () => Boolean(process.env.RESEND_API_KEY);
+export type MailResult =
+  | { sent: true; id: string | null }
+  | { sent: false; reason: string };
 
-export async function sendMail(mail: Mail) {
+/**
+ * Simulation : MAIL_SIMULATE=true (préversions, essais) ou un transport posé
+ * par les tests. Rien ne sort ; le message est journalisé.
+ */
+type Transport = (mail: Mail & { to: string[] }) => Promise<MailResult>;
+let transport: Transport | null = null;
+export function setMailTransport(t: Transport | null) {
+  transport = t;
+}
+const simulated: Transport = async (mail) => {
+  console.info(`[mail] simulé → ${mail.to.join(", ")} : ${mail.subject}`);
+  return { sent: true, id: `simulated-${mail.idempotencyKey || Date.now()}` };
+};
+
+export const mailEnabled = () =>
+  Boolean(transport) ||
+  process.env.MAIL_SIMULATE === "true" ||
+  Boolean(process.env.RESEND_API_KEY);
+
+export async function sendMail(mail: Mail): Promise<MailResult> {
   const to = mail.to.map((t) => t.trim()).filter(Boolean);
   if (!to.length) return { sent: false as const, reason: "no-recipient" };
+  if (transport) return transport({ ...mail, to });
+  if (process.env.MAIL_SIMULATE === "true") return simulated({ ...mail, to });
   if (!mailEnabled()) {
     console.info(`[mail] non envoyé (Resend non configuré) : ${mail.subject}`);
     return { sent: false as const, reason: "disabled" };
@@ -25,6 +50,7 @@ export async function sendMail(mail: Mail) {
       headers: {
         Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
         "Content-Type": "application/json",
+        ...(mail.idempotencyKey ? { "Idempotency-Key": mail.idempotencyKey } : {}),
       },
       body: JSON.stringify({
         from: process.env.MAIL_FROM || "Mikado Deco Pro <noreply@mikadodeco.be>",
@@ -39,7 +65,9 @@ export async function sendMail(mail: Mail) {
       console.error(`[mail] Resend ${r.status} : ${mail.subject}`);
       return { sent: false as const, reason: `http-${r.status}` };
     }
-    return { sent: true as const };
+    // Envoyé seulement quand Resend l'a accepté et a rendu son identifiant.
+    const body = (await r.json().catch(() => null)) as { id?: string } | null;
+    return { sent: true as const, id: body?.id ?? null };
   } catch (e) {
     console.error(`[mail] échec : ${mail.subject}`, e);
     return { sent: false as const, reason: "network" };

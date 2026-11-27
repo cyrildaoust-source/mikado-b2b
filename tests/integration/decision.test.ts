@@ -7,6 +7,7 @@ import { publishQuote } from "../../app/services/conversion.server";
 import { saveFirm } from "../../app/services/firm.server";
 import { createShare } from "../../app/services/share.server";
 import { architectStatus } from "../../app/services/classes.server";
+import { setMailTransport, type Mail } from "../../app/services/mail.server";
 import {
   acceptProposal,
   currentDecision,
@@ -104,14 +105,46 @@ test("révision : l'architecte rouvre, le lien est retiré, rappel unique après
   const d = await acceptProposal(again.token, form({}));
   await db.quoteDecision.update({ where: { id: d.id }, data: { deadline: new Date(Date.now() - 1000) } });
   assert.equal((await currentDecision(q.id))?.late, true);
-  assert.ok((await remindOverdue()) >= 1);
-  assert.equal((await db.quoteDecision.findUniqueOrThrow({ where: { id: d.id } })).remindedAt !== null, true);
-  const before = await remindOverdue();
-  assert.equal(
-    (await db.quoteDecision.findMany({ where: { id: d.id, remindedAt: null } })).length,
-    0,
-  );
-  assert.ok(before >= 0);
-  // Rien n'est facturé : la ligne reste en attente de contresignature.
+
+  // E-mails simulés : le premier envoi à Mikado Deco échoue.
+  const outbox: (Mail & { to: string[] })[] = [];
+  let failMikado = true;
+  setMailTransport(async (mail) => {
+    if (failMikado && mail.subject.startsWith("[Mikado Pro]"))
+      return { sent: false, reason: "http-500" };
+    outbox.push(mail);
+    return { sent: true, id: `sim-${outbox.length}` };
+  });
+  try {
+    await remindOverdue();
+    const mine = () => outbox.filter((m) => m.idempotencyKey?.startsWith(`decision-${d.id}-`));
+    assert.deepEqual(mine().map((m) => m.idempotencyKey), [`decision-${d.id}-architect`]);
+    let rows = await db.decisionReminder.findMany({ where: { decisionId: d.id }, orderBy: { kind: "asc" } });
+    assert.match(rows.find((r) => r.kind === "architect")?.providerId ?? "", /^sim-/);
+    assert.equal(rows.find((r) => r.kind === "mikado")?.sentAt, null);
+    assert.equal(rows.find((r) => r.kind === "mikado")?.lastError, "http-500");
+    assert.equal((await db.quoteDecision.findUniqueOrThrow({ where: { id: d.id } })).remindedAt, null);
+
+    // Nouveau passage : seul le rappel en échec repart.
+    failMikado = false;
+    await remindOverdue();
+    assert.deepEqual(mine().map((m) => m.idempotencyKey), [
+      `decision-${d.id}-architect`,
+      `decision-${d.id}-mikado`,
+    ]);
+    rows = await db.decisionReminder.findMany({ where: { decisionId: d.id } });
+    assert.ok(rows.every((r) => r.sentAt));
+    assert.notEqual((await db.quoteDecision.findUniqueOrThrow({ where: { id: d.id } })).remindedAt, null);
+
+    // Troisième passage : plus rien.
+    await remindOverdue();
+    assert.equal(mine().length, 2);
+  } finally {
+    setMailTransport(null);
+  }
+  // Rien n'est facturé : la ligne reste en attente de contresignature,
+  // et l'architecte peut encore signer après 48 h (rappel seulement).
   assert.equal((await invoiceQueue(shop)).find((r) => r.id === d.id)?.status, "accepted");
+  await signDecision(shop, q.id, me, { name: "Archi Test", confirm: "on" });
+  assert.equal((await invoiceQueue(shop)).find((r) => r.id === d.id)?.status, "signed");
 });
