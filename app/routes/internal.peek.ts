@@ -1,4 +1,5 @@
 import type { LoaderFunctionArgs } from "react-router";
+import { requireInternal } from "../services/internal.server";
 import { nuxt2State } from "../domain/nuxt2";
 
 /*
@@ -14,6 +15,7 @@ const SITES: Record<string, string> = {
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
+  await requireInternal(request);
   const url = new URL(request.url);
   const headers = { "Cache-Control": "no-store" };
   const base = SITES[url.searchParams.get("site") || ""];
@@ -34,6 +36,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const code = url.searchParams.get("code");
     let nuxt: unknown = undefined;
     if (url.searchParams.get("nuxt")) {
+      // Motif court et sans répétition imbriquée : pas de blocage du serveur.
+      if (code && (code.length > 80 || /[+*}]\)?[+*{]/.test(code)))
+        return Response.json({ error: "Motif refusé." }, { status: 400, headers });
       const state = nuxt2State(text);
       const pattern = new RegExp(code || "^[A-Z]{1,4}_\\d+_\\d+$");
       const hits: unknown[] = [];

@@ -21,5 +21,11 @@ fi
 export DATABASE_URL_UNPOOLED="$direct"
 export DATABASE_URL="${DATABASE_URL:-$direct}"
 npx prisma generate
-npx prisma migrate deploy
+# Les préversions reçoivent la base de production : elles ne la migrent jamais.
+# Seul le déploiement de production applique les migrations, après fusion.
+if [ "${VERCEL_ENV:-production}" = "production" ]; then
+  npx prisma migrate deploy
+else
+  echo "Préversion (${VERCEL_ENV}) : migrations non appliquées." >&2
+fi
 npx react-router build

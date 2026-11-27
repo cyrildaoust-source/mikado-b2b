@@ -66,6 +66,10 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
+  // Acceptation envoyée depuis cette page seulement, pas depuis un autre site.
+  const origin = request.headers.get("origin");
+  if (origin && origin !== "null" && new URL(origin).host !== new URL(request.url).host)
+    return data({ ok: false as const, error: "Origine refusée." }, { status: 403, headers: PRIVATE });
   const form = Object.fromEntries(await request.formData());
   try {
     await acceptProposal(String(params.token), form, {

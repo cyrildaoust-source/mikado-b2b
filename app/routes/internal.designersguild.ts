@@ -1,4 +1,5 @@
 import type { LoaderFunctionArgs } from "react-router";
+import { requireInternal } from "../services/internal.server";
 import { DG_KINDS, type DgKind } from "../domain/designersguild";
 import { importDesignersGuild } from "../services/library.server";
 
@@ -10,6 +11,7 @@ import { importDesignersGuild } from "../services/library.server";
 export const config = { maxDuration: 300 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
+  await requireInternal(request);
   const url = new URL(request.url);
   const headers = { "Cache-Control": "no-store" };
   const kind = url.searchParams.get("kind") as DgKind;

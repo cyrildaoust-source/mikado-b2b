@@ -106,17 +106,98 @@ export async function requireUser(request: Request) {
   return user;
 }
 
+// Empreinte factice : un e-mail inconnu coûte le même calcul qu'un vrai compte,
+// la durée de la réponse ne dit pas si l'adresse existe.
+const DUMMY_HASH =
+  "scrypt$" + Buffer.alloc(16).toString("base64") + "$" + Buffer.alloc(64).toString("base64");
+
+/** Limitation des essais de connexion (fenêtre de 15 minutes). */
+export const THROTTLE = {
+  windowMs: 15 * 60_000,
+  lockMs: 15 * 60_000,
+  perEmail: 5,
+  perIp: 20,
+};
+
+type Throttle = { failures: number; windowStart: Date; lockedUntil: Date | null };
+
+/** État après un échec : compteur remis à zéro hors fenêtre, verrou au seuil. */
+export function nextThrottle(
+  t: Throttle | null,
+  limit: number,
+  now = new Date(),
+): Throttle {
+  const fresh = !t || now.getTime() - t.windowStart.getTime() > THROTTLE.windowMs;
+  const failures = fresh ? 1 : t.failures + 1;
+  return {
+    failures,
+    windowStart: fresh ? now : t.windowStart,
+    lockedUntil:
+      failures >= limit
+        ? new Date(now.getTime() + THROTTLE.lockMs)
+        : (t?.lockedUntil ?? null),
+  };
+}
+
+export const isLocked = (t: Throttle | null, now = new Date()) =>
+  !!t?.lockedUntil && t.lockedUntil > now;
+
+/** Adresse du visiteur ; sur Vercel, x-real-ip est posé par la plateforme. */
+export function clientIp(request: Request) {
+  return (
+    request.headers.get("x-real-ip") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    ""
+  ).slice(0, 100);
+}
+
+function throttleKeys(request: Request, email: string) {
+  const ip = clientIp(request);
+  return [
+    { key: `email:${email}`, limit: THROTTLE.perEmail },
+    ...(ip ? [{ key: `ip:${ip}`, limit: THROTTLE.perIp }] : []),
+  ];
+}
+
+async function lockedOut(request: Request, email: string) {
+  const rows = await db.authThrottle.findMany({
+    where: { key: { in: throttleKeys(request, email).map((k) => k.key) } },
+  });
+  return rows.some((r) => isLocked(r));
+}
+
+async function recordFailure(request: Request, email: string) {
+  for (const { key, limit } of throttleKeys(request, email)) {
+    const t = await db.authThrottle.findUnique({ where: { key } });
+    const n = nextThrottle(t, limit);
+    await db.authThrottle.upsert({
+      where: { key },
+      create: { key, ...n },
+      update: n,
+    });
+  }
+}
+
+export class TooManyAttempts extends Error {}
+
 export async function login(
   request: Request,
   email: string,
   password: string,
   next: string,
 ) {
-  const user = await db.user.findUnique({
-    where: { email: normalizeEmail(email) },
-  });
-  const ok = await verifyPassword(password, user?.passwordHash ?? null);
-  if (!user || !user.active || !ok) return null;
+  const address = normalizeEmail(email);
+  if (await lockedOut(request, address))
+    throw new TooManyAttempts(
+      "Trop d'essais. Réessayez dans un quart d'heure, ou demandez un nouveau lien à Mikado Deco.",
+    );
+  const user = await db.user.findUnique({ where: { email: address } });
+  const ok = await verifyPassword(password, user?.passwordHash || DUMMY_HASH);
+  if (!user || !user.active || !user.passwordHash || !ok) {
+    await recordFailure(request, address);
+    return null;
+  }
+  await db.authThrottle.deleteMany({ where: { key: `email:${address}` } });
   await db.user.update({
     where: { id: user.id },
     data: { lastLoginAt: new Date() },

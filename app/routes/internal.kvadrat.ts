@@ -1,4 +1,5 @@
 import type { LoaderFunctionArgs } from "react-router";
+import { requireInternal } from "../services/internal.server";
 import db from "../db.server";
 import { importKvadratProduct } from "../services/library.server";
 import { KVADRAT_PRODUCTS } from "../domain/kvadrat-products";
@@ -14,6 +15,7 @@ import { KVADRAT_PRODUCTS } from "../domain/kvadrat-products";
 export const config = { maxDuration: 300 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
+  await requireInternal(request);
   const url = new URL(request.url);
   const p = KVADRAT_PRODUCTS.find((x) => x.number === url.searchParams.get("product"));
   if (!p) return Response.json({ error: "Produit hors de la liste Kvadrat." }, { status: 404 });
