@@ -50,7 +50,19 @@ function InvoiceForm({ row }: { row: Row }) {
   const f = useFetcher<{ ok?: string; error?: string }>();
   const in30 = new Date(Date.now() + 30 * 86400_000).toISOString().slice(0, 10);
   return (
-    <f.Form method="post" className="invoice-form">
+    <f.Form
+      method="post"
+      className="invoice-form"
+      onSubmit={(e) => {
+        // Sans retour possible depuis l'écran : on demande confirmation.
+        if (
+          !window.confirm(
+            `Marquer le devis ${row.number} comme facturé ? Il quittera la liste « À facturer ».`,
+          )
+        )
+          e.preventDefault();
+      }}
+    >
       <input type="hidden" name="id" value={row.id} />
       <label>
         Échéance
