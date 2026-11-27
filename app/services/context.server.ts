@@ -5,7 +5,8 @@ import { isStandalone } from "./mode.server";
 export function isDemo() {
   if (
     process.env.APP_DEMO_MODE === "true" &&
-    process.env.NODE_ENV === "production"
+    process.env.NODE_ENV === "production" &&
+    !(process.env.VERCEL_ENV === "preview" && process.env.PREVIEW_URL)
   )
     throw new Error("Le mode de démonstration est interdit en production.");
   return process.env.APP_DEMO_MODE === "true";
@@ -32,7 +33,10 @@ const demoUser: SessionUser = {
 export async function context(request: Request): Promise<Context> {
   if (isDemo()) {
     const u = new URL(request.url);
-    if (!["localhost", "127.0.0.1", "[::1]"].includes(u.hostname))
+    // Démo : en local, ou dans une préversion Vercel, protégée par la
+    // connexion Vercel et reliée à la base de test (db.server, vercel-build).
+    const preview = process.env.VERCEL_ENV === "preview" && Boolean(process.env.PREVIEW_URL);
+    if (!preview && !["localhost", "127.0.0.1", "[::1]"].includes(u.hostname))
       throw new Response("Mode local uniquement", { status: 403 });
     const origin = request.headers.get("origin");
     if (

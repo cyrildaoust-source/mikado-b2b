@@ -10,10 +10,5 @@
       "path": "/internal/decisions",
       "schedule": "0 7 * * *"
     }
-  ],
-  "git": {
-    "deploymentEnabled": {
-      "claude/audit-lien-client": false
-    }
-  }
+  ]
 }
