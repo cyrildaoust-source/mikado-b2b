@@ -181,6 +181,7 @@ function ProNav({
         {user && user.role !== "admin" && (
           <NavLink to="/app/cabinet">Mon cabinet</NavLink>
         )}
+        {user && <NavLink to="/app/parrainage">Parrainage</NavLink>}
         {open && (
           <div className="pro-nav-account">
             <span className="muted">{account}</span>

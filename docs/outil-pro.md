@@ -230,6 +230,32 @@ remisée, prestations exclues, TVA par taux ; « Facturé »
 enregistre l'échéance. La commande Shopify et le brouillon Odoo viendront après
 un essai validé par Cyril.
 
+## Parrainage
+
+Page « Parrainage » (`/app/parrainage`), pour chaque compte. Une architecte y trouve son
+lien personnel (`/parrainage/<code>`, code de 8 caractères créé à la première visite),
+avec « Copier le lien », un e-mail et un message WhatsApp déjà rédigés. Le cabinet qui
+ouvre le lien laisse une demande d'accès (nom, cabinet, e-mail, téléphone, message) ;
+Mikado Deco reçoit une alerte et, dans « Parrainage », crée l'accès en un clic ou écarte
+la demande. Le compte créé reste relié à son parrain (`User.referredById`).
+
+- Commission : 2 % de la marchandise HTVA facturée au filleul (prix pro, hors livraison
+  et prestations, champ `merchandisePro` figé à la contresignature), sur chaque devis
+  contresigné dans les 12 mois qui suivent son arrivée. « À venir » une fois contresigné,
+  « acquise » une fois facturé. La page l'affiche ; le versement se règle à part.
+- Chaque filleul a sa frise : demande reçue, accès créé, compte ouvert, premier devis
+  signé. Un simulateur montre ce que rapporteraient 1 à 10 cabinets sur un an.
+- Mikado Deco voit les demandes, chaque parrain et ses filleuls, ouvre la page d'une
+  architecte (« Voir sa page ») et peut relier à la main un compte existant à un parrain
+  (sans boucle ; les 12 mois partent alors de l'ouverture du compte).
+- Limites de la page publique : 5 demandes par heure depuis une même adresse, une
+  demande ouverte par e-mail, aucune pour une adresse qui a déjà un accès, un champ piège
+  contre les robots. Un lien d'un accès retiré ne mène plus à rien.
+
+Code : `app/domain/referral.ts`, `app/services/referral.server.ts`,
+`app/routes/app.parrainage.tsx`, `app/routes/parrainage.$code.tsx`. Taux et durée sont
+deux constantes (`REFERRAL_RATE`, `REFERRAL_MONTHS`).
+
 ## Configuration
 
 Variables en plus de celles de Mikado Devis (voir `.env.production.example`) :

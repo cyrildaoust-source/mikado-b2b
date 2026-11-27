@@ -1,5 +1,6 @@
 import { Form, Link, useNavigation } from "react-router";
 import { money } from "../../domain/quote";
+import { REFERRAL_MONTHS, REFERRAL_RATE } from "../../domain/referral";
 import {
   FOLLOW_UP_DAYS,
   percent,
@@ -324,6 +325,18 @@ export function DashboardView({
         </p>
       )}
       {tier && <TierCard tier={tier} />}
+      {!admin && !demo && (
+        <Link to="/app/parrainage" className="ref-teaser">
+          <span>
+            <strong>Parrainez un confrère</strong>
+            <span className="muted">
+              {" "}· {REFERRAL_RATE} % de ses commandes pendant {REFERRAL_MONTHS}{" "}
+              mois
+            </span>
+          </span>
+          <span aria-hidden="true">→</span>
+        </Link>
+      )}
       {data.shopifyError && (
         <p className="notice">
           Les délais et l'état des commandes n'ont pas pu être lus dans Shopify.

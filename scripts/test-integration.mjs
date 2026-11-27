@@ -33,6 +33,7 @@ try {
       "tests/integration/share.test.ts",
       "tests/integration/decision.test.ts",
       "tests/integration/login-throttle.test.ts",
+      "tests/integration/referral.test.ts",
     ],
   ]) {
     const status = run(args);
