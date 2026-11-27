@@ -67,15 +67,23 @@ function InvoiceForm({ row }: { row: Row }) {
 function Amount({ row }: { row: Row }) {
   const b = row.billing;
   if (!b) return <span className="muted">Après contresignature</span>;
+  const gross = b.gross ?? (b.kind === "direct" ? row.clientGross : null);
   if (b.kind !== "architect")
-    return <strong>{money(b.net)} HTVA</strong>;
+    return (
+      <span className="invoice-amount">
+        <strong>{money(b.net)} HTVA</strong>
+        {gross !== null && <small>{money(gross)} TVAC</small>}
+      </span>
+    );
   return (
     <span className="invoice-amount">
       <strong>{money(b.net)} HTVA</strong>
       <small>
-        Marchandise {money(b.merchandisePublic!)} − {b.discount} %
-        {b.className ? ` (${b.className})` : ""} = {money(b.merchandisePro!)}
+        Marchandise publique {money(b.merchandisePublic!)}, prix pro − {b.discount} %
+        {b.className ? ` (${b.className})` : ""} ligne par ligne :{" "}
+        {money(b.merchandisePro!)}
         {b.delivery ? ` · livraison ${b.deliveryPercent} % : ${money(b.delivery)}` : ""}
+        {gross !== null ? ` · ${money(gross)} TVAC` : ""}
       </small>
     </span>
   );

@@ -189,13 +189,16 @@ Deco ouvre la fiche d'un architecte par « Fiche cabinet » dans « Accès ».
 
 ### Proposition en ligne
 
-Une fois le PDF prêt, « Créer le lien » donne une adresse privée `/d/…` à
+Une fois le PDF prêt, « Créer le lien » (bloc « Proposition en ligne », sous
+l'en-tête du devis) donne une adresse privée `/d/…` à
 envoyer au client. Le lien montre la révision figée : mêmes prix, alternatives
 et options, au nom du cabinet de l'architecte (ou de Mikado Deco pour ses propres
 devis). Il vaut jusqu'à la fin du jour de validité, et un mois au plus après
 l'émission. Un seul lien est actif par devis : « Remplacer le lien » retire
 l'ancien, « Retirer le lien » le ferme. La base ne garde que l'empreinte SHA-256
-du jeton, d'où un lien affiché une seule fois. La page n'est pas indexée et ne
+du jeton, d'où un lien affiché une seule fois. Le serveur n'envoie à la page qu'une liste blanche de champs
+(`app/domain/client-quote.ts`) : ni identifiants Shopify, ni prix source du
+catalogue, ni référence interne, adresses, e-mail ou TVA du client. La page n'est pas indexée et ne
 transmet pas son adresse aux sites tiers. Elle est faite pour le téléphone : le
 client compare les alternatives, coche les options et voit le total suivre
 (livraison recalculée sur la marchandise retenue), puis télécharge le PDF. Sur un
@@ -215,8 +218,15 @@ contresigne dans les 48 heures depuis le devis : nom, case de confirmation,
 public, remise de classe, prix pro, livraison). « Rouvrir pour réviser » remet le
 devis en brouillon et ferme le lien. Sans contresignature après 48 heures, rien
 n'est facturé : un rappel part une seule fois à l'architecte et une alerte à
-Mikado Deco. La page « À facturer » (Mikado Deco seul) liste les devis
-contresignés, ceux en attente et ceux facturés depuis 30 jours ; « Facturé »
+Mikado Deco. La contresignature reste possible après 48 heures : le délai
+déclenche un rappel, pas un blocage (Cyril, 27/11/2026). Chaque rappel
+(architecte, Mikado Deco) est marqué envoyé seulement quand Resend l'a accepté ;
+un envoi en échec repart au passage suivant sans renvoyer l'autre (table
+`DecisionReminder`, clé d'idempotence Resend). La page « À facturer » (Mikado Deco seul) liste les devis
+contresignés, ceux en attente et ceux facturés depuis 30 jours ; le montant
+facturé à l'architecte suit la règle d'arrondi de l'écran : prix pro arrondi
+ligne par ligne puis additionné, livraison (3 % ou 5 %) sur cette marchandise
+remisée, prestations exclues, TVA par taux ; « Facturé »
 enregistre l'échéance. La commande Shopify et le brouillon Odoo viendront après
 un essai validé par Cyril.
 
@@ -229,6 +239,7 @@ Variables en plus de celles de Mikado Devis (voir `.env.production.example`) :
 - `MAIL_FROM` : expéditeur, par défaut `Mikado Deco Pro <noreply@mikadodeco.be>`
 - `MIKADO_ALERT_EMAIL` : destinataire des alertes, par défaut `shop@mikadodeco.be`
 - `CRON_SECRET` : jeton du rappel quotidien `/internal/decisions` (Vercel Cron)
+- `MAIL_SIMULATE=true` : aucun e-mail ne part, chaque envoi est journalisé (essais, préversions)
 - `SHOPIFY_SHOP` : domaine `*.myshopify.com` de la boutique
 - `SESSION_SECRET` : au moins 32 caractères aléatoires
 - `SHOPIFY_API_KEY` et `SHOPIFY_API_SECRET` : ceux de l'app du Dev Dashboard. Le jeton

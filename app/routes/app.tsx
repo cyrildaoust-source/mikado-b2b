@@ -8,7 +8,6 @@ import {
   useLoaderData,
   useRouteError,
   useRouteLoaderData,
-  useSubmit,
 } from "react-router";
 import { useEffect, useRef, useState } from "react";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
@@ -59,8 +58,23 @@ function PriceViewPicker({
   view: PriceView;
   next: string;
 }) {
-  const submit = useSubmit();
   const current = !pro && view === "pro" ? "htva" : view;
+  const choices: { value: PriceView; label: string; title: string }[] = [
+    { value: "htva", label: "HTVA", title: "Prix public hors TVA" },
+    ...(pro
+      ? [
+          {
+            value: "pro" as const,
+            label: "Pro",
+            title:
+              pro.discount === null
+                ? "Prix pro : aucune classe attribuée, à confirmer"
+                : `Prix pro HTVA · ${pro.className} · remise de ${pro.discount} %`,
+          },
+        ]
+      : []),
+    { value: "tvac", label: "TVAC", title: "Prix public TVA comprise (21 %)" },
+  ];
   return (
     <Form
       method="post"
@@ -69,28 +83,22 @@ function PriceViewPicker({
       preventScrollReset
     >
       <input type="hidden" name="next" value={next} />
-      <select
-          name="view"
-          aria-label="Prix affichés"
-          value={current}
-          title={
-            pro
-              ? pro.discount === null
-                ? "Aucune classe attribuée : prix pro à confirmer"
-                : `${pro.className} · remise de ${pro.discount} %`
-              : undefined
-          }
-          onChange={(e) =>
-            submit(e.currentTarget.form, { preventScrollReset: true })
-          }
-        >
-          <option value="htva">Prix HTVA</option>
-          {pro && <option value="pro">Prix pro HTVA</option>}
-          <option value="tvac">Prix TVAC</option>
-        </select>
-      <noscript>
-        <button>Afficher</button>
-      </noscript>
+      <div className="price-switch" role="group" aria-label="Prix affichés">
+        <span className="price-switch-label" aria-hidden="true">
+          Prix
+        </span>
+        {choices.map((c) => (
+          <button
+            key={c.value}
+            name="view"
+            value={c.value}
+            title={c.title}
+            aria-pressed={current === c.value}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
     </Form>
   );
 }

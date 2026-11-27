@@ -2,7 +2,7 @@ import { z } from "zod";
 import db from "../db.server";
 import { fiscalTotals, money } from "../domain/quote";
 import { applyChoices, type Choices } from "../domain/proposal";
-import { proPrice, publicMerchandise } from "../domain/pro";
+import { proBilling } from "../domain/pro";
 import { architectStatus } from "./classes.server";
 import { resolveShare } from "./share.server";
 import { appUrl, mikadoAlertEmail, sendMail } from "./mail.server";
@@ -180,24 +180,14 @@ export async function signDecision(
   if (!allowed) throw Error("Seul l'architecte du devis peut contresigner.");
   if (d.status !== "accepted") throw Error("Cette acceptation est déjà contresignée.");
   const chosen = applyChoices(JSON.parse(d.revision.state), JSON.parse(d.choices));
-  const merchandise = publicMerchandise(chosen);
   let billing: Record<string, unknown>;
   if (ownedByArchitect && d.quote.ownerId) {
     const st = await architectStatus(shop, d.quote.ownerId);
     const discount = st?.current?.discount ?? 0;
-    const pro = proPrice(merchandise, discount);
-    const fee = chosen.extras.find((e) => e.deliveryFee && e.selected);
-    const percent = fee?.chargePercent ?? 0;
-    const delivery = Math.round((pro * percent) / 100);
     billing = {
       kind: "architect",
       className: st?.current?.name ?? null,
-      discount,
-      merchandisePublic: merchandise,
-      merchandisePro: pro,
-      deliveryPercent: percent,
-      delivery,
-      net: pro + delivery,
+      ...proBilling(chosen, discount),
     };
   } else {
     billing = { kind: "direct", net: d.net, gross: d.gross };
@@ -301,6 +291,7 @@ export async function invoiceQueue(shop: string) {
     architectSignedAt: d.architectSignedAt?.toISOString() ?? null,
     billing: d.billing ? (JSON.parse(d.billing) as BillingSnapshot) : null,
     clientNet: d.net,
+    clientGross: d.gross,
     dueDate: d.dueDate?.toISOString() ?? null,
     invoicedAt: d.invoicedAt?.toISOString() ?? null,
   }));
@@ -314,6 +305,8 @@ export type BillingSnapshot = {
   deliveryPercent?: number;
   delivery?: number;
   net: number;
+  tax?: number;
+  gross?: number;
 };
 
 async function contacts(quoteId: number) {
@@ -357,18 +350,24 @@ async function notifyAccepted(decisionId: number) {
  * Acceptations restées sans contresignature après 48 h : un rappel à
  * l'architecte et une alerte à Mikado Deco, une seule fois. Rien n'est facturé.
  */
+const CLAIM_MINUTES = 10;
+
+/**
+ * Rappels de contresignature après 48 h (Cyril, 27/11/2026 : rappel seulement,
+ * la contresignature reste possible et la facturation l'attend). Un rappel par
+ * destinataire, marqué envoyé seulement quand Resend l'a accepté. Un envoi en
+ * échec est retenté au passage suivant ; celui qui a réussi ne repart pas. La
+ * réservation (claimedAt) empêche deux passages simultanés d'envoyer deux fois,
+ * et la clé d'idempotence couvre une réponse Resend perdue.
+ */
 export async function remindOverdue(now = new Date()) {
   const late = await db.quoteDecision.findMany({
     where: { status: "accepted", deadline: { lte: now }, remindedAt: null },
     select: { id: true, quoteId: true, clientFirstName: true, clientLastName: true },
     take: 50,
   });
+  let sent = 0;
   for (const d of late) {
-    const claimed = await db.quoteDecision.updateMany({
-      where: { id: d.id, remindedAt: null },
-      data: { remindedAt: now },
-    });
-    if (claimed.count !== 1) continue;
     const { q, architect, link } = await contacts(d.quoteId);
     const who = `${d.clientFirstName} ${d.clientLastName}`;
     const subject = `${q.number || q.title} : contresignature en attente depuis 48 h`;
@@ -378,12 +377,63 @@ export async function remindOverdue(now = new Date()) {
       ``,
       link,
     ].join("\n");
-    if (architect) await sendMail({ to: [architect.email], subject, text });
-    await sendMail({
-      to: [mikadoAlertEmail()],
-      subject: `[Mikado Pro] ${subject}`,
-      text: `${text}\nArchitecte : ${architect?.name || "Mikado Deco"}`,
-    });
+    const mails = [
+      ...(architect
+        ? [{ kind: "architect", mail: { to: [architect.email], subject, text } }]
+        : []),
+      {
+        kind: "mikado",
+        mail: {
+          to: [mikadoAlertEmail()],
+          subject: `[Mikado Pro] ${subject}`,
+          text: `${text}\nArchitecte : ${architect?.name || "Mikado Deco"}`,
+        },
+      },
+    ];
+    let all = true;
+    for (const { kind, mail } of mails) {
+      const r = await db.decisionReminder.upsert({
+        where: { decisionId_kind: { decisionId: d.id, kind } },
+        create: { decisionId: d.id, kind },
+        update: {},
+      });
+      if (r.sentAt) continue;
+      const stale = new Date(now.getTime() - CLAIM_MINUTES * 60_000);
+      const claimed = await db.decisionReminder.updateMany({
+        where: {
+          id: r.id,
+          sentAt: null,
+          OR: [{ claimedAt: null }, { claimedAt: { lt: stale } }],
+        },
+        data: { claimedAt: now, attempts: { increment: 1 } },
+      });
+      if (claimed.count !== 1) {
+        all = false;
+        continue;
+      }
+      const res = await sendMail({
+        ...mail,
+        idempotencyKey: `decision-${d.id}-${kind}`,
+      });
+      if (res.sent) {
+        await db.decisionReminder.update({
+          where: { id: r.id },
+          data: { sentAt: new Date(), providerId: res.id, lastError: null },
+        });
+        sent++;
+      } else {
+        all = false;
+        await db.decisionReminder.update({
+          where: { id: r.id },
+          data: { claimedAt: null, lastError: res.reason },
+        });
+      }
+    }
+    if (all)
+      await db.quoteDecision.updateMany({
+        where: { id: d.id, remindedAt: null },
+        data: { remindedAt: now },
+      });
   }
-  return late.length;
+  return sent;
 }
