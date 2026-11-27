@@ -47,7 +47,7 @@ export function SharePanel({
         <strong>Proposition en ligne</strong>
         {live ? (
           <span className="muted">
-            Lien actif · R{share.publishedNumber} · valable jusqu'au{" "}
+            Lien actif · R{share.publishedNumber} · valable jusqu’au{" "}
             {day(share.expiresAt)} ·{" "}
             {share.views
               ? `ouvert ${share.views} fois, la dernière le ${day(share.lastViewedAt!)}`
@@ -58,14 +58,14 @@ export function SharePanel({
         ) : (
           <span className="muted">
             Votre client ouvre la proposition par un lien privé, sans compte.
-            Les prix sont figés jusqu'à la date de validité.
+            Les prix sont figés jusqu’à la date de validité.
           </span>
         )}
       </div>
       {older && (
         <p className="notice">
           Le lien montre encore R{share.publishedNumber}. Créez un nouveau lien
-          pour partager R{publishedNumber} ; l'ancien cessera de fonctionner.
+          pour partager R{publishedNumber} ; l’ancien cessera de fonctionner.
         </p>
       )}
       {url && (

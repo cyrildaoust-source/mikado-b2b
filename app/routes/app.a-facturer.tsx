@@ -57,7 +57,7 @@ function InvoiceForm({ row }: { row: Row }) {
         <input type="date" name="dueDate" defaultValue={in30} required />
       </label>
       <button className="primary" disabled={f.state !== "idle"}>
-        Facturé
+        {f.state !== "idle" ? "Enregistrement…" : "Marquer comme facturé"}
       </button>
       {f.data?.error && <span className="error">{f.data.error}</span>}
     </f.Form>
@@ -95,13 +95,13 @@ export default function ToInvoice() {
     {
       key: "signed",
       title: "À facturer",
-      help: "Contresignés par l'architecte. Fixez l'échéance une fois la facture faite.",
+      help: "Contresignés par l’architecte. Fixez l’échéance une fois la facture faite.",
       rows: rows.filter((r) => r.status === "signed"),
     },
     {
       key: "accepted",
       title: "En attente de contresignature",
-      help: "Le client a accepté ; l'architecte a 48 h pour contresigner. Rien n'est facturé avant.",
+      help: "Le client a accepté ; l’architecte a 48 h pour contresigner. Rien n’est facturé avant.",
       rows: rows.filter((r) => r.status === "accepted"),
     },
     {
@@ -113,12 +113,14 @@ export default function ToInvoice() {
   ];
   return (
     <main className="workspace invoice-page">
-      <header className="page-head">
-        <h1>À facturer</h1>
-        <p className="muted">
-          Les propositions acceptées en ligne par les clients des architectes.
-          Mikado Deco facture l'architecte au prix pro.
-        </p>
+      <header className="list-header">
+        <div>
+          <h1>À facturer</h1>
+          <p>
+            Les propositions acceptées en ligne par les clients des architectes.
+            Mikado Deco facture l’architecte au prix pro.
+          </p>
+        </div>
       </header>
       {groups.map((g) => (
         <section key={g.key} className="list-card invoice-group">
@@ -129,7 +131,7 @@ export default function ToInvoice() {
             {g.help && <p className="muted">{g.help}</p>}
           </div>
           {g.rows.length === 0 ? (
-            <p className="muted invoice-empty">Rien pour l'instant.</p>
+            <p className="muted invoice-empty">Rien pour l’instant.</p>
           ) : (
             <ul className="invoice-list">
               {g.rows.map((r) => (

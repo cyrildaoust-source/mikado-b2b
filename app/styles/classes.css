@@ -131,3 +131,8 @@
   font-size: var(--t-small);
   color: var(--ink-3);
 }
+
+/* Audit du 27/11 : le chiffre reste sur une ligne à l'iPad */
+.class-table td[data-label="Chiffre 12 mois"] {
+  white-space: nowrap;
+}

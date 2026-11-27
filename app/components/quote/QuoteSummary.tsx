@@ -23,7 +23,7 @@ export function QuoteSummary({ state: s }: { state: QuoteState }) {
       </div>
       {breakdown.options !== 0 && (
         <div className="sumrow">
-          <span>Options incluses</span>
+          <span>Options et prestations incluses</span>
           <span>{money(breakdown.options)}</span>
         </div>
       )}

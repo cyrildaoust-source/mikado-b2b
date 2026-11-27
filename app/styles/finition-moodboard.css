@@ -620,3 +620,280 @@ button.mood-material:hover:not(:disabled) .mood-material-color {
 .library-field-wide input {
   width: 100%;
 }
+
+/* ================================================================== */
+/* Passe du 27/11                                                      */
+/* ================================================================== */
+
+/* ——— Fil d'Ariane du mood board : une seule ligne, le nom du devis se coupe ——— */
+.mood-page .breadcrumb ol {
+  flex-wrap: nowrap;
+}
+.mood-page .breadcrumb li {
+  flex: 0 1 auto;
+}
+.mood-page .breadcrumb li:first-child,
+.mood-page .breadcrumb li:last-child {
+  flex: none;
+}
+.mood-page .breadcrumb li:nth-child(2) a {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: var(--compact);
+}
+
+/* ——— En-tête sur téléphone : Exporter à droite du titre, la planche remonte ——— */
+@media (max-width: 700px) {
+  .quote-header.mood-header {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .quote-header.mood-header > div:first-child {
+    flex: 1 1 0;
+  }
+  .quote-header.mood-header .header-actions {
+    flex: none;
+  }
+  .quote-header.mood-header .mood-export > div {
+    left: auto;
+    right: 0;
+  }
+}
+/* Pastille d'état : le nom du projet se coupe au lieu de passer à la ligne
+   (la planche ne saute plus à chaque enregistrement). */
+.mood-header .status-line {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+.mood-header .status-line > s-badge {
+  flex: none;
+}
+.mood-header .status-line > .muted {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ——— Messages : Réessayer et Fermer côte à côte ——— */
+.mood-message > span:first-child {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.mood-message-actions {
+  display: inline-flex;
+  gap: 4px;
+}
+
+/* ——— Retirer : toujours visible, à côté d'Annuler et Rétablir ——— */
+.mood-toolbar button.mood-history.danger {
+  color: var(--error);
+}
+.mood-toolbar button.mood-history.danger:hover:not(:disabled) {
+  border-color: var(--error);
+  background: var(--error-bg);
+}
+.mood-toolbar-end > .danger {
+  margin-right: 6px;
+}
+
+/* ——— Étiquettes des photos : lisibles ——— */
+.mood-tag {
+  font-size: 11px;
+}
+
+/* ——— Confirmation de suppression d'une photo ajoutée ——— */
+.mood-remove-confirm button {
+  width: 100%;
+}
+
+/* ——— Matières : un groupe dont aucune vignette ne s'affiche se retire ——— */
+.mood-material-group:not(:has(li:not([hidden]))) {
+  display: none;
+}
+button.mood-material:focus-visible {
+  outline-offset: 3px;
+}
+
+/* ——— Mot de confirmation quand la planche est hors de l'écran ——— */
+.mood-toast {
+  padding-left: 16px;
+}
+.mood-toast button.text-button {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ================================================================== */
+/* Page Matières                                                       */
+/* ================================================================== */
+.library-page .list-card.drop-over {
+  border-color: var(--brass);
+  box-shadow: 0 0 0 1px var(--brass);
+}
+.library-page .mood-message {
+  flex-wrap: nowrap;
+}
+/* Sélecteurs de fichiers : le champ reste atteignable au clavier */
+.library-pick input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+}
+.library-pick:focus-within {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+.library-pick:has(input:disabled) {
+  opacity: 0.5;
+  cursor: default;
+}
+.library-field input {
+  width: 100%;
+}
+.library-import-row > button,
+.library-import-row > .button {
+  flex: none;
+}
+
+/* Liste à vérifier avant l'envoi */
+.library-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.library-table th,
+.library-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+}
+.library-table th {
+  height: var(--compact);
+  background: var(--paper);
+  color: var(--ink-3);
+  font-size: var(--t-small);
+  font-weight: 500;
+}
+.library-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.library-table th:first-child,
+.library-table td:first-child {
+  width: 64px;
+}
+.library-table th:last-child,
+.library-table td:last-child {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
+}
+.library-thumb {
+  border-radius: var(--radius-small);
+  box-shadow: inset 0 0 0 1px rgba(22, 24, 26, 0.08);
+}
+.library-error {
+  color: var(--error);
+  font-size: var(--t-small);
+}
+@media (max-width: 700px) {
+  .library-table thead {
+    display: none;
+  }
+  .library-table,
+  .library-table tbody {
+    display: block;
+  }
+  .library-table tr {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "photo collection collection"
+      "photo coloris retirer";
+    gap: 6px 10px;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .library-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+  .library-table td,
+  .library-table td:first-child,
+  .library-table td:last-child {
+    width: auto;
+    padding: 0;
+    border: 0;
+  }
+  .library-table td:nth-child(1) {
+    grid-area: photo;
+    align-self: start;
+  }
+  .library-table td:nth-child(2) {
+    grid-area: collection;
+  }
+  .library-table td:nth-child(3) {
+    grid-area: coloris;
+  }
+  .library-table td:nth-child(4) {
+    grid-area: retirer;
+  }
+  .library-import-row > .library-field {
+    flex: 1 1 100%;
+  }
+  .library-import-row > button,
+  .library-import-row > .button {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+
+/* Bibliothèque : recherche à droite du titre, cartes régulières */
+.library-page .library-list-head input[type="search"] {
+  flex: 0 1 320px;
+  width: auto;
+  min-width: 0;
+}
+.library-maker + .library-maker {
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.library-grid li > strong,
+.library-grid li > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.library-grid img,
+.library-thumb {
+  border-radius: var(--radius-small);
+}
+.library-grid form input {
+  min-height: var(--compact);
+}
+@media (max-width: 700px) {
+  .library-page .list-card {
+    padding: 16px;
+  }
+  .library-page .library-list-head input[type="search"] {
+    flex-basis: 100%;
+  }
+  .library-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Téléphone : « Disposer » tient sans faire défiler la barre. */
+@media (max-width: 700px) {
+  .mood-long {
+    display: none;
+  }
+}

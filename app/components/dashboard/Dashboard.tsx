@@ -1,4 +1,4 @@
-import { Form, Link } from "react-router";
+import { Form, Link, useNavigation } from "react-router";
 import { money } from "../../domain/quote";
 import { REFERRAL_MONTHS, REFERRAL_RATE } from "../../domain/referral";
 import {
@@ -42,9 +42,12 @@ const plural = (n: number, one: string, many: string) =>
 type Todo = {
   q: DashboardQuote;
   text: string;
-  tone: "warning" | "critical" | "info";
+  tone: "warning" | "critical" | "info" | "success";
   rank: number;
 };
+
+// Libellé de la liste des devis quand le client a accepté en ligne.
+const ACCEPTED = "Accepté par le client";
 
 /** Ce qu'il y a à faire, du plus urgent au moins urgent. */
 function todos(quotes: DashboardQuote[]): Todo[] {
@@ -85,7 +88,15 @@ function todos(quotes: DashboardQuote[]): Todo[] {
         tone: "warning",
         text: `Relancer le client : devis envoyé ${ago(q.sentDays)}`,
       });
-    if (q.stage === "ready")
+    // Accepté en ligne : il reste à contresigner, plus rien à envoyer.
+    if (q.stage === "ready" && q.label === ACCEPTED)
+      out.push({
+        q,
+        rank: 0,
+        tone: "success",
+        text: "Accepté par le client : à contresigner dans les 48 h",
+      });
+    else if (q.stage === "ready")
       out.push({
         q,
         rank: 4,
@@ -247,6 +258,12 @@ export function DashboardView({
   error?: string;
 }) {
   const { quotes, counts } = data;
+  // Un seul devis par clic : le bouton attend la réponse du serveur.
+  const nav = useNavigation();
+  const creating =
+    nav.state !== "idle" &&
+    nav.formMethod === "POST" &&
+    !!nav.formAction?.startsWith("/app/devis");
   const sent = quotes
     .filter((q) => q.stage === "sent")
     .sort((a, b) => (a.sentAt || "").localeCompare(b.sentAt || ""));
@@ -290,7 +307,9 @@ export function DashboardView({
         </div>
         <div className="dash-actions">
           <Form method="post" action="/app/devis">
-            <button className="primary">Créer un devis</button>
+            <button className="primary" disabled={creating}>
+              Créer un devis
+            </button>
           </Form>
           <Link className="button" to="/app/catalogue">
             Parcourir le catalogue
@@ -335,7 +354,9 @@ export function DashboardView({
               statuts s'afficheront sur cette page.
             </p>
             <Form method="post" action="/app/devis">
-              <button className="primary">Créer un devis</button>
+              <button className="primary" disabled={creating}>
+              Créer un devis
+            </button>
             </Form>
           </div>
         </div>
@@ -392,7 +413,9 @@ export function DashboardView({
                 {todo.map((t) => (
                   <li key={`${t.q.id}-${t.rank}`}>
                     <s-badge tone={t.tone}>
-                      {t.tone === "info"
+                      {t.tone === "success"
+                        ? "À signer"
+                        : t.tone === "info"
                         ? "À envoyer"
                         : t.tone === "critical"
                           ? "Urgent"

@@ -73,7 +73,7 @@ export function PaymentTerms({
       </label>
       {s.payment === "deposit" && (
         <label>
-          Acompte (%)
+          Acompte %
           <input
             type="number"
             min="0"

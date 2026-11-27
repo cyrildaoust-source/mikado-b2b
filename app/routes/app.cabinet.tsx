@@ -8,6 +8,7 @@ import {
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
 } from "react-router";
+import { useEffect, useRef } from "react";
 import db from "../db.server";
 import { context, type Context } from "../services/context.server";
 import {
@@ -83,26 +84,34 @@ export default function Cabinet() {
   const { firm, missing, who } = useLoaderData<typeof loader>();
   const result = useActionData<typeof action>();
   const busy = useNavigation().state !== "idle";
+  // Le message est en haut de page : on y revient après chaque envoi.
+  const feedback = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (result) feedback.current?.scrollIntoView({ block: "center" });
+  }, [result]);
   const logoSrc = `/app/cabinet/logo?v=${firm.version}${who.own ? "" : `&compte=${who.id}`}`;
   return (
     <main className="workspace cabinet-page">
-      <header className="page-head">
-        <h1>{who.own ? "Mon cabinet" : `Cabinet de ${who.name}`}</h1>
-        <p className="muted">
-          Ces informations figurent sur les propositions envoyées à vos clients.
-          Mikado Deco n'y apparaît pas.
-        </p>
-      </header>
       {!who.own && (
-        <p>
-          <Link to="/app/utilisateurs">← Retour aux accès</Link>
-        </p>
+        <Link className="back-link" to="/app/utilisateurs">
+          ← Retour aux accès
+        </Link>
       )}
+      <header className="list-header">
+        <div>
+          <h1>{who.own ? "Mon cabinet" : `Cabinet de ${who.name}`}</h1>
+          <p>
+            Ces informations figurent sur les propositions envoyées à{" "}
+            {who.own ? "vos" : "ses"} clients. Mikado Deco n'y apparaît pas.
+          </p>
+        </div>
+      </header>
       {missing.length > 0 && (
         <p className="notice" role="status">
           À compléter pour partager une proposition : {missing.join(", ")}.
         </p>
       )}
+      <div ref={feedback}>
       {result && "error" in result && (
         <p role="alert" className="error">
           {result.error}
@@ -113,6 +122,7 @@ export default function Cabinet() {
           {result.ok}
         </p>
       )}
+      </div>
       <div className="cabinet-grid">
         <Form
           method="post"

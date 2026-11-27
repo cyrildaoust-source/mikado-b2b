@@ -93,7 +93,7 @@ export default function Brands() {
         </table>
         <p className="muted brand-note">
           Toutes les fiches encodées sont visibles, actives ou en brouillon,
-          gold ou non. Décochez « Visible » pour retirer une marque du catalogue
+          gold ou non. Désactivez « Visible » pour retirer une marque du catalogue
           des architectes. Les fiches archivées n'apparaissent jamais.
         </p>
       </div>

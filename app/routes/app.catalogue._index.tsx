@@ -140,7 +140,7 @@ export default function Catalogue() {
   const [added, setAdded] = useState<{ title: string; product: string; where: string } | null>(null);
   const lastRoom = openQuote?.sections.at(-1)?.title || "";
   type Card = { id: string; numericId: string; title: string; variants: number };
-  const quickAdd = async (p: Card, placement = "end", where = lastRoom ? `à ${lastRoom}` : "") => {
+  const quickAdd = async (p: Card, placement = "end", where = lastRoom ? `dans ${lastRoom}` : "") => {
     if (!openQuote) return;
     // Plusieurs finitions : on choisit avant d'ajouter, comme sur la fiche.
     const variant =
@@ -365,7 +365,7 @@ export default function Catalogue() {
                   type="button"
                   className="catalogue-add"
                   aria-label={`Ajouter ${p.title} au devis ${openQuote.title}`}
-                  title={lastRoom ? `Ajouter à ${lastRoom}` : "Ajouter au devis"}
+                  title={lastRoom ? `Ajouter dans ${lastRoom}` : "Ajouter au devis"}
                   disabled={adder.state !== "idle"}
                   onClick={() => void quickAdd(p)}
                 >
@@ -432,7 +432,7 @@ export default function Catalogue() {
             <section
               key={section.id}
               className={dropKey === `s:${section.id}` ? "over" : ""}
-              {...dropZone(`s:${section.id}`, `section:${section.id}`, `à ${section.title}`)}
+              {...dropZone(`s:${section.id}`, `section:${section.id}`, `dans ${section.title}`)}
             >
               <h3>{section.title}</h3>
               <p className="drop-hint">Nouveau produit dans cette pièce</p>
@@ -502,7 +502,10 @@ export default function Catalogue() {
                 <>Annulation…</>
               ) : (
                 <>
-                  <span className="dock-added">
+                  <span
+                    className="dock-added"
+                    title={`${added.title} ajouté${added.where ? ` ${added.where}` : ""}`}
+                  >
                     {added.title} ajouté{added.where ? ` ${added.where}` : ""}
                   </span>
                   <button type="button" className="text-button" onClick={undo}>
@@ -514,7 +517,7 @@ export default function Catalogue() {
               <span className="dock-error">{chooser.data.error}</span>
             ) : openQuote ? (
               <span className="dock-hint">
-                Le bouton <b>+</b> d'une carte l'ajoute {lastRoom ? `à ${lastRoom}` : "au devis"}.
+                Le bouton <b>+</b> d'une carte l'ajoute {lastRoom ? `dans ${lastRoom}` : "au devis"}.
                 <span className="hint-fine"> Glissez une carte pour choisir la pièce, une alternative ou une option.</span>
               </span>
             ) : (
@@ -547,7 +550,8 @@ export default function Catalogue() {
                     >
                       <span>
                         {q.title}
-                        {q.customer && <small>{q.customer}</small>}
+                        {/* Le numéro distingue deux devis du même nom. */}
+                        <small>{[q.customer, q.number].filter(Boolean).join(" · ")}</small>
                       </span>
                     </button>
                   ))}

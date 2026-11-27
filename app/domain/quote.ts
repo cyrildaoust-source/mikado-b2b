@@ -36,6 +36,15 @@ export const lineSchema = z.object({
   sourceIncludesTax: z.boolean().default(false),
   deliveryFee: z.boolean().optional(),
   chargePercent: z.number().min(0).max(100).nullable().default(null),
+  // Montant fixe d'une prestation, gardé le temps qu'elle est en pourcentage :
+  // le retour à « Montant fixe » le rétablit au lieu du montant calculé.
+  fixed: z
+    .object({
+      price: z.number().int().min(0).max(100000000),
+      qty: z.number().int().min(1).max(10000),
+      discount: z.number().min(0).max(100),
+    })
+    .optional(),
   sourceVatRate: z.number().min(0).max(100).nullable().default(null),
   // Ligne calculée depuis le prix TVAC de la boutique (Cyril, 27/11/2026).
   // Absent sur les révisions plus anciennes : leurs montants restent tels quels.
@@ -569,6 +578,39 @@ function chargeBase(s: {
       )
       .reduce((n, e) => n + lineTotal(e), 0)
   );
+}
+/** Mode de calcul d'une prestation. Vers le pourcentage, le montant fixe est
+ * mis de côté ; au retour il est rétabli. Sans montant mis de côté (devis
+ * antérieur), le prix repart de zéro, à confirmer : jamais le montant calculé. */
+export function setChargeMode(
+  s: QuoteState,
+  id: string,
+  mode: "fixed" | "percent",
+): QuoteState {
+  return repriceExtras({
+    ...s,
+    extras: s.extras.map((e) => {
+      if (e.id !== id || e.deliveryFee) return e;
+      if (mode === "percent") {
+        if (e.chargePercent !== null) return e;
+        return {
+          ...e,
+          chargePercent: 5,
+          fixed: { price: e.price, qty: e.qty, discount: e.discount },
+        };
+      }
+      if (e.chargePercent === null) return e;
+      const { fixed, ...rest } = e;
+      return {
+        ...rest,
+        chargePercent: null,
+        price: fixed?.price ?? 0,
+        qty: fixed?.qty ?? 1,
+        discount: fixed?.discount ?? 0,
+        priceConfirmed: Boolean(fixed),
+      };
+    }),
+  });
 }
 export function repriceExtras(s: QuoteState): QuoteState {
   const base = chargeBase(s);
