@@ -22,6 +22,7 @@ import {
   lineSchema,
   quoteSections,
   removeLine,
+  setChargeMode,
   setQuantity,
   money,
   lineTotal,
@@ -962,10 +963,15 @@ export default function Editor({
                               e.chargePercent === null ? "fixed" : "percent"
                             }
                             onChange={(ev) =>
-                              patch(e.id, {
-                                chargePercent:
-                                  ev.target.value === "percent" ? 5 : null,
-                              })
+                              change(
+                                setChargeMode(
+                                  s,
+                                  e.id,
+                                  ev.target.value === "percent"
+                                    ? "percent"
+                                    : "fixed",
+                                ),
+                              )
                             }
                           >
                             <option value="fixed">Montant fixe</option>
