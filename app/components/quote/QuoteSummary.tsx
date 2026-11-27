@@ -5,7 +5,7 @@ import {
   type QuoteState,
 } from "../../domain/quote";
 import { billingMilestones } from "../../domain/billing";
-import { publicMerchandise } from "../../domain/pro";
+import { proBilling, publicMerchandise } from "../../domain/pro";
 import { ProPrice } from "../ProPrice";
 export function QuoteSummary({ state: s }: { state: QuoteState }) {
   const f = fiscalTotals(s),
@@ -47,6 +47,7 @@ export function QuoteSummary({ state: s }: { state: QuoteState }) {
       <ProPrice
         always
         cents={publicMerchandise(s)}
+              compute={(d) => proBilling(s, d).merchandisePro}
         label="Marchandise au prix pro, HTVA :"
         className="summary-pro"
       />

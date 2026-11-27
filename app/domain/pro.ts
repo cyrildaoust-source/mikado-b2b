@@ -151,3 +151,69 @@ export function lockPrices<
     extras: s.extras.map(lock),
   };
 }
+
+/**
+ * Montant que Mikado Deco facture à l'architecte, avec la même règle d'arrondi
+ * que l'écran : le prix pro est arrondi ligne par ligne, puis additionné (deux
+ * lignes à 11,11 € avec 12 % : 9,78 + 9,78 = 19,56 €). La livraison (3 % ou
+ * 5 %) se calcule sur cette marchandise remisée ; les prestations n'y entrent
+ * pas. TVA par taux, arrondie une fois par taux, comme le devis.
+ */
+export function proBilling(
+  s: {
+    groups: { id: string; selected: string; items: MerchLine[] }[];
+    extras: (MerchLine & {
+      selected: boolean;
+      parent?: string | null;
+      deliveryFee?: boolean;
+      taxable?: boolean;
+      vatRate?: number | null;
+    })[];
+  },
+  discount: number,
+) {
+  type Taxed = MerchLine & { taxable?: boolean; vatRate?: number | null };
+  const lines: Taxed[] = [
+    ...s.groups.flatMap((g) => {
+      const l = g.items.find((i) => i.id === g.selected);
+      return l ? [l as Taxed] : [];
+    }),
+    ...s.extras.filter(
+      (e) =>
+        e.selected &&
+        (e.chargePercent ?? null) === null &&
+        s.groups.some((g) => g.id === e.parent),
+    ),
+  ];
+  const bins = new Map<number, number>();
+  const add = (l: { taxable?: boolean; vatRate?: number | null }, cents: number) => {
+    if (l.taxable === false) return;
+    const rate = l.vatRate ?? DISPLAY_VAT;
+    bins.set(rate, (bins.get(rate) || 0) + cents);
+  };
+  let merchandisePublic = 0;
+  let merchandisePro = 0;
+  for (const l of lines) {
+    const pub = publicUnitPrice(l) * l.qty;
+    const pro = proPrice(pub, discount);
+    merchandisePublic += pub;
+    merchandisePro += pro;
+    add(l, pro);
+  }
+  const fee = s.extras.find((e) => e.deliveryFee && e.selected);
+  const deliveryPercent = fee?.chargePercent ?? 0;
+  const delivery = Math.round((merchandisePro * deliveryPercent) / 100);
+  if (fee) add(fee, delivery);
+  const net = merchandisePro + delivery;
+  const tax = [...bins].reduce((n, [rate, cents]) => n + Math.round((cents * rate) / 100), 0);
+  return {
+    discount,
+    merchandisePublic,
+    merchandisePro,
+    deliveryPercent,
+    delivery,
+    net,
+    tax,
+    gross: net + tax,
+  };
+}

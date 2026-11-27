@@ -59,12 +59,15 @@ export function ProPrice({
   className = "",
   label = "Pro",
   always = false,
+  compute,
 }: {
   cents: number;
   from?: boolean;
   className?: string;
   label?: string;
   always?: boolean;
+  /** Montant pro calculé autrement (total du devis : arrondi ligne par ligne). */
+  compute?: (discount: number) => number;
 }) {
   const found = useProPricing();
   const pro = found && always ? { ...found, show: true } : found;
@@ -84,7 +87,7 @@ export function ProPrice({
   return (
     <small className={`pro-price ${className}`}>
       {label} {from ? "dès " : ""}
-      {money(proPrice(cents, pro.discount))}
+      {money(compute ? compute(pro.discount) : proPrice(cents, pro.discount))}
     </small>
   );
 }

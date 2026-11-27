@@ -3,7 +3,7 @@ import { DecisionPanel } from "./quote/DecisionPanel";
 import type { CurrentDecision } from "../services/decision.server";
 import type { ActiveShare } from "../services/share.server";
 import { ProPrice } from "./ProPrice";
-import { publicMerchandise } from "../domain/pro";
+import { proBilling, publicMerchandise } from "../domain/pro";
 import { NumberField } from "./quote/NumberField";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -1616,6 +1616,7 @@ export default function Editor({
             <ProPrice
               always
               cents={publicMerchandise(s)}
+              compute={(d) => proBilling(s, d).merchandisePro}
               className="total-bar-pro"
               label="Marchandise au prix pro"
             />
