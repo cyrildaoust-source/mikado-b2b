@@ -146,6 +146,36 @@ model User {
   classId      Int?
   class        ArchitectClass? @relation(fields: [classId], references: [id], onDelete: SetNull)
   firm         FirmProfile?
+  // Parrainage : code du lien personnel, créé à la première visite de la page.
+  referralCode String?   @unique
+  // Parrain qui a fait venir ce compte, et depuis quand.
+  referredById Int?
+  referredBy   User?     @relation("Referral", fields: [referredById], references: [id], onDelete: SetNull)
+  referredAt   DateTime?
+  referrals    User[]    @relation("Referral")
+  referralRequests ReferralRequest[] @relation("ReferralRequestReferrer")
+}
+
+/// Demande d'accès laissée par un cabinet sur le lien de parrainage d'une
+/// architecte. Mikado Deco crée l'accès (le filleul est alors relié à son
+/// parrain) ou écarte la demande.
+model ReferralRequest {
+  id         Int       @id @default(autoincrement())
+  referrerId Int
+  referrer   User      @relation("ReferralRequestReferrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  name       String
+  firm       String    @default("")
+  email      String
+  phone      String    @default("")
+  message    String    @default("")
+  /// open : à traiter ; invited : accès créé ; dismissed : écartée.
+  status     String    @default("open")
+  userId     Int?
+  ip         String    @default("")
+  createdAt  DateTime  @default(now())
+  handledAt  DateTime?
+  @@index([status])
+  @@index([referrerId])
 }
 
 // Fiche du cabinet de l'architecte : l'identité de ses propositions client.
