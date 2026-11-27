@@ -160,7 +160,7 @@ export default function Product() {
             quote: String(panel.id),
             placement: `section:${section.id}`,
             label: `Nouveau produit dans ${section.title}`,
-            button: `Ajouter à ${section.title}`,
+            button: `Ajouter dans ${section.title}`,
           },
           ...section.groups.flatMap((g) => [
             {

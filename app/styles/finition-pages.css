@@ -428,3 +428,186 @@
     min-height: var(--touch);
   }
 }
+
+/* ================================================================== */
+/* Audit du 27/11 : états interactifs et page client                  */
+/* ================================================================== */
+
+/* Menu téléphone et iPad : les trois choix de prix à hauteur de doigt */
+@media (max-width: 1180px) {
+  .pro-nav.menu-open .pro-nav-account .price-switch button {
+    min-height: var(--touch);
+  }
+}
+
+/* Accès : « Fiche cabinet » se touche sans viser, en-têtes alignés */
+@media (max-width: 900px) {
+  .user-table td small a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch);
+    margin: -4px 0 -8px;
+  }
+}
+@media (max-width: 700px) {
+  .class-head {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* Fiche cabinet */
+.cabinet-page .list-header {
+  margin-bottom: 16px;
+}
+.cabinet-logo input[type="file"] {
+  height: auto;
+  min-height: var(--control);
+  padding: 7px 10px;
+}
+@media (max-width: 700px) {
+  /* La phrase dit que Mikado Deco n'apparaît pas : elle reste visible */
+  .cabinet-page .list-header p {
+    display: block;
+  }
+  .cabinet-page .back-link,
+  .cabinet-form button.primary,
+  .cabinet-logo button {
+    min-height: var(--touch);
+  }
+  .cabinet-form button.primary,
+  .cabinet-logo button:not(.text-button) {
+    justify-self: stretch;
+  }
+}
+
+/* Proposition indisponible : même carte que les pages d'erreur */
+.shared-closed {
+  display: grid;
+  justify-items: center;
+  padding-top: 72px;
+}
+.shared-closed .error-card h1 {
+  margin: 0 0 8px;
+  font-size: var(--t-title);
+}
+.shared-closed .error-card p {
+  margin: 0;
+}
+@media (max-width: 700px) {
+  .shared-closed {
+    padding-top: 32px;
+  }
+  .shared-closed .error-card h1 {
+    font-size: 24px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Page client de la proposition                                       */
+/* ------------------------------------------------------------------ */
+/* Alternatives et options : même lisibilité que les autres produits
+   (le style des libellés de formulaire les rendait petites et grises) */
+.cp label.cp-line {
+  color: var(--ink);
+  font-size: var(--t-body);
+}
+.cp-line:has(input:disabled) {
+  cursor: default;
+}
+/* « Détails » : un chevron dit que la ligne s'ouvre */
+.cp-detail summary {
+  gap: 8px;
+  list-style: none;
+  min-height: var(--touch);
+}
+.cp-detail summary::-webkit-details-marker {
+  display: none;
+}
+.cp-detail summary::after,
+.cp-total summary::after {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+}
+.cp-detail[open] summary::after {
+  transform: translateY(2px) rotate(-135deg);
+}
+/* Confirmation d'acceptation : reçoit le focus après l'envoi */
+.cp-accepted {
+  font-weight: 500;
+}
+.cp-accepted:focus {
+  outline: none;
+}
+/* Formulaire d'acceptation : rien ne dépasse à 320 px */
+.cp-form {
+  grid-template-columns: minmax(0, 1fr);
+}
+.cp-names {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.cp-form button {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  white-space: normal;
+  line-height: 1.3;
+}
+.cp-form label.cp-agree {
+  color: var(--ink);
+  font-size: var(--t-body);
+  line-height: 1.45;
+}
+@media (max-width: 420px) {
+  .cp-names {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* Téléphone et tablette : la barre du total montre qu'elle se déplie,
+   respecte la zone sûre, et son lien d'acceptation est un vrai bouton */
+@media (max-width: 1023px) {
+  .cp {
+    padding-bottom: calc(120px + env(safe-area-inset-bottom));
+  }
+  .cp-total {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .cp-total summary strong {
+    margin-left: auto;
+  }
+  .cp-total summary::after {
+    color: var(--ink-3);
+    transform: translateY(2px) rotate(-135deg);
+  }
+  .cp-total details[open] summary::after {
+    transform: translateY(-2px) rotate(45deg);
+  }
+  .cp-to-accept {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    justify-self: stretch;
+    min-height: var(--touch);
+    margin-top: 10px;
+    border-radius: var(--radius);
+    background: var(--ink);
+    color: var(--surface);
+    text-decoration: none;
+  }
+}
+@media (min-width: 1024px) {
+  .cp-total summary::after {
+    display: none;
+  }
+  /* iPad paysage : le lien de la colonne se touche sans viser */
+  .cp-to-accept {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch);
+    margin-top: 0;
+  }
+}

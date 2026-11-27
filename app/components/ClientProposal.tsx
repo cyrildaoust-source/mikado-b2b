@@ -32,9 +32,13 @@ function Price({ l }: { l: Line }) {
     <span className="cp-price">
       {money(lineTotal(l))}
       <small>
-        {l.qty > 1 && `${l.qty} × ${money(l.price)} `}
-        {l.discount > 0 && `remise ${l.discount} % `}
-        HTVA
+        {[
+          l.qty > 1 && `${l.qty} × ${money(l.price)}`,
+          l.discount > 0 && `remise ${String(l.discount).replace(".", ",")} %`,
+          "HTVA",
+        ]
+          .filter(Boolean)
+          .join(" · ")}
       </small>
     </span>
   );
@@ -86,6 +90,17 @@ export function ClientProposal({
     if (window.matchMedia("(min-width: 1024px)").matches && summary.current)
       summary.current.open = true;
   }, []);
+  // Après l'acceptation, la confirmation est en haut de page : on y remonte,
+  // sinon le client reste devant un formulaire disparu, sans retour visible.
+  const banner = useRef<HTMLParagraphElement>(null);
+  const wasLocked = useRef(locked);
+  useEffect(() => {
+    if (locked && !wasLocked.current) {
+      window.scrollTo({ top: 0 });
+      banner.current?.focus({ preventScroll: true });
+    }
+    wasLocked.current = locked;
+  }, [locked]);
   const s = useMemo(() => applyChoices(state, choices), [state, choices]);
   const f = fiscalTotals(s);
   const schedule = paymentSchedule(s, f.gross);
@@ -100,7 +115,7 @@ export function ClientProposal({
   return (
     <div className="cp">
       {decision && (
-        <p className="cp-accepted" role="status">
+        <p className="cp-accepted" role="status" tabIndex={-1} ref={banner}>
           Proposition acceptée par {decision.name} le{" "}
           {new Date(decision.acceptedAt).toLocaleString("fr-BE", {
             dateStyle: "long",
@@ -135,8 +150,9 @@ export function ClientProposal({
                 {g.items.length > 1 ? (
                   <fieldset className="cp-choices">
                     <legend>
-                      {g.items.length} propositions, choisissez celle qui vous
-                      convient
+                      {locked
+                        ? `Votre choix parmi ${g.items.length} propositions`
+                        : `${g.items.length} propositions, choisissez celle qui vous convient`}
                     </legend>
                     {g.items.map((item) => {
                       const diff = lineTotal(item) - lineTotal(chosen);
@@ -339,7 +355,18 @@ export function ClientProposal({
               </div>
             ))}
             {!locked && (
-              <a className="cp-to-accept" href="#accepter">
+              <a
+                className="cp-to-accept"
+                href="#accepter"
+                onClick={() => {
+                  // Téléphone : le détail se replie pour laisser voir le formulaire.
+                  if (
+                    summary.current &&
+                    !window.matchMedia("(min-width: 1024px)").matches
+                  )
+                    summary.current.open = false;
+                }}
+              >
                 Accepter la proposition
               </a>
             )}

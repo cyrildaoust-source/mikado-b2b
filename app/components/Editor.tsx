@@ -1028,7 +1028,7 @@ export default function Editor({
                       )}
                       {e.chargePercent === null && (
                         <label>
-                          Remise (%)
+                          Remise %
                           <NumberField
                             aria-label={`Remise ${e.name}`}
                             type="number"
@@ -1475,6 +1475,13 @@ export default function Editor({
           <button className="text-button" onClick={draft.undo}>
             Annuler
           </button>
+        </div>
+      )}
+      {(q.status === "deleted" || q.status === "archived") && (
+        <div className="notice">
+          {q.status === "deleted"
+            ? "Ce devis est dans la corbeille, en lecture seule. Pour le modifier, restaurez-le depuis « Autres actions »."
+            : "Devis archivé, en lecture seule. Pour le modifier, restaurez-le depuis « Autres actions »."}
         </div>
       )}
       {legacy && (
@@ -1942,7 +1949,7 @@ export default function Editor({
       )}
       {modal === "leave" && (
         <Modal
-          title="Quitter sans enregistrer ?"
+          title="Quitter sans enregistrer ?"
           onClose={() => setModal(null)}
         >
           <p>
@@ -1965,7 +1972,7 @@ export default function Editor({
       )}
       {modal === "trash" && (
         <Modal
-          title="Mettre ce devis à la corbeille ?"
+          title="Mettre ce devis à la corbeille ?"
           onClose={() => setModal(null)}
         >
           <p>
@@ -1985,7 +1992,7 @@ export default function Editor({
         </Modal>
       )}
       {modal === "archive" && (
-        <Modal title="Archiver ce devis ?" onClose={() => setModal(null)}>
+        <Modal title="Archiver ce devis ?" onClose={() => setModal(null)}>
           <p>Vous pourrez le retrouver et le restaurer depuis les archives.</p>
           <footer className="modal-actions">
             <button onClick={() => setModal(null)}>Annuler</button>

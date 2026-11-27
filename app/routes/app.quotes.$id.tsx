@@ -47,7 +47,7 @@ import {
   CatalogueBrowser,
   type CatalogueTarget,
 } from "../components/quote/CatalogueBrowser";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFetchers } from "react-router";
 import { rememberQuote } from "../services/current-quote.server";
 import {
@@ -162,7 +162,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }
     if (intent === "trash") {
       await trashQuote(c.shop, id, version);
-      return redirect("/app?status=deleted");
+      // Outil pro : la liste des devis est /app/devis (/app est l'accueil).
+      return redirect(
+        c.embedded ? "/app?status=deleted" : "/app/devis?status=deleted",
+      );
     }
     if (intent === "restore-trash") {
       await restoreTrashedQuote(c.shop, id, version);
@@ -353,6 +356,24 @@ export default function Quote() {
       );
     } else if (matchMedia("(max-width: 1000px)").matches) setCatalogue(false);
   };
+  // Catalogue en volet (iPad vertical, téléphone) : Échap le referme, sauf
+  // si une fenêtre ou un menu déroulant est ouvert par-dessus.
+  useEffect(() => {
+    if (!catalogue) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (
+        e.key !== "Escape" ||
+        e.defaultPrevented ||
+        !matchMedia("(max-width: 1000px)").matches ||
+        document.querySelector("dialog[open], .catalogue-pane details[open]")
+      )
+        return;
+      setCatalogue(false);
+      setAlternative(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [catalogue]);
   // Outil pro : le catalogue à gauche du devis, tant que le devis se modifie.
   const editable =
     data.q.status === "draft" &&

@@ -112,7 +112,27 @@ function HistoryIcon({ redo }: { redo?: boolean }) {
     </svg>
   );
 }
+function TrashIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+      <path
+        d="M2.5 4.5h11M6.5 4.5V3h3v1.5M4 4.5l.6 8.5h6.8l.6-8.5M6.7 7v3.5M9.3 7v3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 const MAX_SIDE = 2000;
+
+/** Message d'erreur lisible : une coupure réseau ne s'affiche pas en anglais. */
+function errorText(e: unknown, fallback: string) {
+  if (e instanceof TypeError) return "Connexion interrompue. Vérifiez votre réseau, puis réessayez.";
+  return e instanceof Error && e.message ? e.message : fallback;
+}
 
 /** Nouveau fond : les textes aux couleurs par défaut restent lisibles. */
 const SWAP: Record<string, string> = {
@@ -150,7 +170,9 @@ export function MoodBoardEditor({
   const [future, setFuture] = useState<Board[][]>([]);
   const [uploads, setUploads] = useState(initialUploads);
   const [status, setStatus] = useState<"saved" | "saving" | "error">("saved");
-  const [message, setMessage] = useState<{ tone: "error" | "ok"; text: string } | null>(null);
+  const [message, setMessage] = useState<{ tone: "error" | "ok"; text: string; save?: boolean } | null>(null);
+  // Ajout fait pendant que la planche est hors de l'écran (téléphone) : un mot en bas le confirme.
+  const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [dropping, setDropping] = useState(false);
@@ -193,6 +215,11 @@ export function MoodBoardEditor({
     const t = setTimeout(() => setMessage(null), 6000);
     return () => clearTimeout(t);
   }, [message]);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const resolve = useCallback(
     (src: string) =>
@@ -223,11 +250,13 @@ export function MoodBoardEditor({
       } catch (e) {
         dirty.current = true;
         setStatus("error");
-        setMessage({ tone: "error", text: e instanceof Error ? e.message : "Enregistrement impossible." });
+        setMessage({ tone: "error", save: true, text: errorText(e, "Enregistrement impossible.") });
         return;
       }
     }
     setStatus("saved");
+    // L'enregistrement a repris : l'erreur affichée n'a plus lieu d'être.
+    setMessage((m) => (m?.save ? null : m));
   }, [id]);
   const flush = useCallback(async () => {
     clearTimeout(timer.current);
@@ -374,6 +403,9 @@ export function MoodBoardEditor({
     const it = keepInside(made);
     updateBoard((b) => ({ ...b, items: [...b.items, it] }));
     setSelected(it.id);
+    const r = boardRef.current?.getBoundingClientRect();
+    if (r && (r.bottom < 120 || r.top > innerHeight - 120))
+      setToast(`Ajouté à la planche${section ? ` « ${section.title} »` : ""}.`);
     return it;
   };
   const addPhoto = async (p: { src: string; alt: string }, at?: { x: number; y: number }) => {
@@ -641,7 +673,7 @@ export function MoodBoardEditor({
         else await addPhoto({ src: `upload:${u.id}`, alt: u.name }, at);
       }
     } catch (e) {
-      setMessage({ tone: "error", text: e instanceof Error ? e.message : "Envoi impossible." });
+      setMessage({ tone: "error", text: errorText(e, "Envoi impossible.") });
     } finally {
       setBusy(null);
     }
@@ -652,9 +684,9 @@ export function MoodBoardEditor({
     const body = new FormData();
     body.set("intent", "delete-upload");
     body.set("upload", u.id);
-    const r = await fetch(`/app/quotes/${id}/moodboard/api`, { method: "POST", body });
-    if (!r.ok) {
-      setMessage({ tone: "error", text: "Suppression impossible." });
+    const r = await fetch(`/app/quotes/${id}/moodboard/api`, { method: "POST", body }).catch(() => null);
+    if (!r?.ok) {
+      setMessage({ tone: "error", text: "Suppression impossible. Vérifiez votre réseau, puis réessayez." });
       return;
     }
     const src = `upload:${u.id}`;
@@ -695,7 +727,7 @@ export function MoodBoardEditor({
       setTimeout(() => URL.revokeObjectURL(a.href), 10000);
       setMessage({ tone: "ok", text: `${name} est téléchargé.` });
     } catch (e) {
-      setMessage({ tone: "error", text: e instanceof Error ? e.message : "Export impossible." });
+      setMessage({ tone: "error", text: errorText(e, "Export impossible.") });
     } finally {
       setBusy(null);
     }
@@ -789,9 +821,11 @@ export function MoodBoardEditor({
           <div className="eyebrow">{number}</div>
           <h1>Mood board</h1>
           <div className="status-line">
-            <s-badge tone={status === "error" ? "critical" : status === "saving" ? "info" : "success"}>
-              {saveLabel}
-            </s-badge>
+            {sections.length > 0 && (
+              <s-badge tone={status === "error" ? "critical" : status === "saving" ? "info" : "success"}>
+                {saveLabel}
+              </s-badge>
+            )}
             <span className="muted">{project}</span>
           </div>
         </div>
@@ -833,9 +867,23 @@ export function MoodBoardEditor({
         >
           <span>{message.text}</span>
           {message.tone === "error" && (
-            <button type="button" className="text-button" onClick={() => setMessage(null)}>
-              Fermer
-            </button>
+            <span className="mood-message-actions">
+              {message.save && (
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => {
+                    setStatus("saving");
+                    void flush();
+                  }}
+                >
+                  Réessayer
+                </button>
+              )}
+              <button type="button" className="text-button" onClick={() => setMessage(null)}>
+                Fermer
+              </button>
+            </span>
           )}
         </p>
       )}
@@ -928,7 +976,8 @@ export function MoodBoardEditor({
               {palette.length > 0 ? (
                 <>
                   <p className="muted mood-hint">
-                    Touchez une photo pour l'ajouter, ou glissez-la sur la planche.
+                    <span className="hint-fine">Cliquez sur une photo pour l'ajouter, ou glissez-la sur la planche.</span>
+                    <span className="hint-coarse">Touchez une photo pour l'ajouter à la planche.</span>
                   </p>
                   <ul className="mood-photos">
                     {palette.map((p) => {
@@ -954,11 +1003,20 @@ export function MoodBoardEditor({
                           </button>
                           {u &&
                             (confirmDelete === u.id ? (
-                              <span className="mood-remove-confirm">
+                              <span
+                                className="mood-remove-confirm"
+                                role="group"
+                                aria-label={`Supprimer la photo ${u.name} ?`}
+                                onKeyDown={(e) => {
+                                  if (e.key !== "Escape") return;
+                                  e.stopPropagation();
+                                  setConfirmDelete(null);
+                                }}
+                              >
                                 <button type="button" className="danger" onClick={() => void removeUpload(u)}>
                                   Supprimer
                                 </button>
-                                <button type="button" onClick={() => setConfirmDelete(null)}>
+                                <button type="button" autoFocus onClick={() => setConfirmDelete(null)}>
                                   Garder
                                 </button>
                               </span>
@@ -1093,8 +1151,13 @@ export function MoodBoardEditor({
                         ))}
                       </span>
                       <span className="mood-sep" aria-hidden="true" />
-                      <button type="button" disabled={preparing} onClick={() => void relayout()}>
-                        Disposer automatiquement
+                      <button
+                        type="button"
+                        disabled={preparing}
+                        title="Disposer automatiquement"
+                        onClick={() => void relayout()}
+                      >
+                        Disposer<span className="mood-long"> automatiquement</span>
                       </button>
                     </>
                   )}
@@ -1210,13 +1273,22 @@ export function MoodBoardEditor({
                       <button type="button" onClick={duplicate}>
                         Dupliquer
                       </button>
-                      <button type="button" className="danger" onClick={removeSelected}>
-                        Retirer
-                      </button>
                     </>
                   )}
                 </div>
                 <span className="mood-toolbar-end">
+                  {/* Hors de la zone qui défile : Retirer reste à portée de doigt sur téléphone. */}
+                  {item && (
+                    <button
+                      type="button"
+                      className="mood-history danger"
+                      onClick={removeSelected}
+                      title="Retirer de la planche (Suppr)"
+                    >
+                      <TrashIcon />
+                      <span className="mood-btn-label">Retirer</span>
+                    </button>
+                  )}
                   <button type="button" className="mood-history" disabled={!past.length} onClick={undo} title="Annuler (Ctrl Z)">
                     <HistoryIcon />
                     <span className="mood-btn-label">Annuler</span>
@@ -1260,18 +1332,39 @@ export function MoodBoardEditor({
                 ) : (
                   !board.items.length && (
                     <div className="mood-board-state">
-                      Planche vide. Touchez une photo pour la poser ici, ou ajoutez un texte.
+                      <span>
+                        Planche vide. <span className="hint-fine">Cliquez sur</span>
+                        <span className="hint-coarse">Touchez</span> une photo pour la poser ici, ou ajoutez un
+                        texte.
+                      </span>
                     </div>
                   )
                 )}
               </div>
               <p className="muted mood-hint">
-                Glissez pour déplacer, tirez le rond du coin pour agrandir, touchez à nouveau un texte pour
-                l'écrire. Le mood board s'enregistre tout seul et ne change pas le devis.
+                Glissez pour déplacer, tirez le rond du coin pour agrandir,{" "}
+                <span className="hint-fine">double-cliquez sur un texte</span>
+                <span className="hint-coarse">touchez à nouveau un texte</span> pour l'écrire. Le mood board
+                s'enregistre tout seul et ne change pas le devis.
               </p>
             </section>
           </div>
         </>
+      )}
+      {toast && (
+        <div className="catalogue-toast mood-toast" role="status">
+          <span>{toast}</span>
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => {
+              setToast(null);
+              boardRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+            }}
+          >
+            Voir
+          </button>
+        </div>
       )}
     </main>
   );

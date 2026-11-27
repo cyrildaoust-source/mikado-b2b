@@ -286,3 +286,242 @@ dialog:has(> .picker-search) {
 .delivery-choice{border:0;margin:0;padding:0;display:grid;gap:0;min-width:0}
 .delivery-choice legend{font-weight:600;padding:0;margin-bottom:.25rem}
 .delivery-choice .check{min-height:44px;align-items:center}
+
+/* ================================================================== */
+/* Passe du 27/11                                                      */
+/* ================================================================== */
+
+/* Récapitulatif et bloc Shopify : même écart qu'entre les autres cartes */
+.recap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.summary-footnote {
+  text-align: left;
+}
+
+/* Lignes en deux rangs (iPad, catalogue ouvert) : libellés et montants
+   partent du même haut, même quand le prix pro ajoute une ligne. */
+@container devis (max-width: 760px) {
+  .product-row > label,
+  .product-row > .line-fixed-price,
+  .product-row > .line-amount {
+    align-self: start;
+  }
+}
+@container devis (min-width: 521px) and (max-width: 760px) {
+  .product-row > .line-amount > strong {
+    min-height: var(--control);
+  }
+}
+
+/* Détails ouverts : la description ne touche plus les boutons du dessous */
+.product-details > details[open] {
+  padding-bottom: 8px;
+}
+
+/* Pied de produit : « Choisissez l'alternative… » et « Organiser » sur
+   la même ligne de base. */
+.group-footer {
+  align-items: center;
+}
+.group-footer > details[open] {
+  align-self: stretch;
+}
+
+/* Nom du projet : il prend la largeur de son texte, et les boutons passent
+   dessous plutôt que de le couper (iPad vertical, titres longs). */
+@supports (field-sizing: content) {
+  @media (min-width: 701px) {
+    .quote-title input:not([type="checkbox"]) {
+      field-sizing: content;
+      width: auto;
+      min-width: min(300px, 100%);
+      max-width: 100%;
+    }
+    .quote-header > div:first-child {
+      flex: 1 1 auto;
+    }
+  }
+}
+
+/* Catalogue à côté du devis sur iPad horizontal : les deux filtres l'un
+   sous l'autre, leurs libellés ne sont plus coupés (« Toutes les ma… »). */
+@media (min-width: 1001px) and (max-width: 1180px) {
+  .catalogue-pane .brand-picker {
+    flex: 1 1 100%;
+  }
+}
+
+/* Liste des devis : l'en-tête « Dernière activité » tient sur une ligne */
+.quote-table th {
+  white-space: nowrap;
+}
+/* Pagination : le bouton sans destination reste en place, grisé */
+.pagination .button[aria-disabled="true"] {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control);
+  opacity: 0.45;
+  box-shadow: none;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* À facturer : le lien du devis est une vraie cible tactile */
+@media (pointer: coarse) {
+  .invoice-what > a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch);
+    justify-self: start;
+  }
+}
+
+/* Aperçu du PDF sur téléphone : le tableau rend sa largeur à la colonne
+   « Produit », et le bas du document passe en une colonne. */
+@media (max-width: 600px) {
+  .preview-scroll {
+    padding: 8px;
+  }
+  .preview-scroll .b2b-paper table td:nth-child(2) {
+    width: auto;
+  }
+  .preview-scroll .b2b-paper table td:last-child {
+    min-width: 0;
+  }
+  .preview-scroll .doc-bottom {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 380px) {
+  .preview-scroll {
+    margin-inline: -12px;
+    padding: 4px;
+  }
+  .preview-scroll .paper {
+    padding: 16px 8px;
+  }
+  .preview-scroll .paper th,
+  .preview-scroll .paper td {
+    padding: 8px 2px;
+  }
+  .preview-scroll .b2b-paper table td:first-child {
+    width: auto;
+  }
+}
+
+/* Titres trop longs pour leur champ : points de suspension plutôt qu'une
+   lettre coupée net (le texte entier revient dès qu'on clique dedans). */
+.quote-title input:not([type="checkbox"]),
+.lot-heading input:not([type="checkbox"]) {
+  text-overflow: ellipsis;
+}
+
+/* Fil d'Ariane du devis : une seule ligne, le nom du projet se raccourcit */
+.quote-editor .breadcrumb ol {
+  flex-wrap: nowrap;
+}
+.quote-editor .breadcrumb li:last-child {
+  flex: 1 1 auto;
+}
+.quote-editor .breadcrumb li:first-child {
+  flex: none;
+}
+
+/* Sommaire des pièces : le montant reste sous le nom, même quand une
+   pièce voisine a un nom sur trois lignes. */
+.lot-summary a {
+  align-content: start;
+}
+
+/* Fin de page, catalogue en volet : le total s'aligne sur le bouton
+   Catalogue au lieu de rester 80 px plus haut. */
+@media (max-width: 1000px) {
+  .quote-pane .quote-editor {
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}
+
+/* Téléphone très étroit : un prix à six chiffres tient dans son champ */
+@container devis (max-width: 300px) {
+  .product-row > label input:not([type="checkbox"]):not([type="radio"]) {
+    padding: 0 4px;
+  }
+}
+
+/* Catalogue en volet : les messages flottants passent au-dessus de la
+   bande « Catalogue / Total », sur une seule ligne. */
+@media (max-width: 1000px) {
+  .quote-pane .quote-editor > .undo-notice {
+    bottom: calc(max(16px, env(safe-area-inset-bottom)) + 56px);
+    width: max-content;
+  }
+  .quote-pane .quote-editor > .error[role="alert"] {
+    bottom: calc(max(16px, env(safe-area-inset-bottom)) + 132px);
+  }
+}
+
+/* Devis verrouillé (accepté, archivé, converti) : les champs des lignes
+   se lisent comme non modifiables, comme les autres champs désactivés. */
+.quote-editor .product-row > label input:not([type="checkbox"]):not([type="radio"]):disabled,
+.quote-editor .fields input:not([type="checkbox"]):not([type="radio"]):disabled,
+.quote-editor fieldset:disabled textarea,
+.quote-editor .option-fields input:disabled,
+.quote-editor .option-fields select:disabled {
+  background: var(--paper);
+  color: var(--ink-2);
+  box-shadow: none;
+}
+.quote-editor fieldset:disabled button.icon-button {
+  opacity: 0.4;
+}
+/* Sans bouton Catalogue (devis verrouillé), le total reprend toute la bande */
+@media (max-width: 700px) {
+  .quote-editor .total-bar {
+    margin-left: 0;
+  }
+  .quote-pane .quote-editor .total-bar {
+    margin-left: 112px;
+  }
+}
+/* « 27 devis · page 1 sur 2 » ne se coupe plus : les boutons passent dessous */
+.pagination {
+  flex-wrap: wrap;
+}
+.pagination > span {
+  white-space: nowrap;
+}
+
+/* À facturer sur iPad vertical : le devis sur un rang, le montant et
+   l'échéance dessous (trois colonnes écrasaient le détail du montant). */
+@media (min-width: 761px) and (max-width: 900px) {
+  .invoice-list li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .invoice-what {
+    grid-column: 1 / -1;
+  }
+}
+.invoice-form .error {
+  flex-basis: 100%;
+}
+.invoice-form {
+  flex-wrap: wrap;
+}
+
+/* Téléphone : le nom du projet garde la taille d'un titre (il retombait à
+   16 px, comme un champ ordinaire). */
+@media (max-width: 700px) {
+  .pro-app .quote-title input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+    font-size: 20px;
+  }
+}
+/* Prestation : la croix a la même cible tactile que celle des lignes */
+@media (pointer: coarse) {
+  .optional-row .card-title > button.icon-button {
+    flex: none;
+    width: var(--touch);
+  }
+}

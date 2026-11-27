@@ -11,7 +11,7 @@ export type FinishRequest = {
   variantId?: string;
   /** Variantes déjà proposées pour ce produit du devis (identifiant ou désignation). */
   taken?: string[];
-  /** Texte du bouton, « Ajouter à Salon » par exemple. */
+  /** Texte du bouton, « Ajouter dans Salon » par exemple. */
   action?: string;
 };
 
@@ -114,6 +114,18 @@ export function FinishChooserHost() {
       onCancel={(e) => {
         e.preventDefault();
         finish(null);
+      }}
+      // Un clic sur le fond, hors de la fenêtre, la referme.
+      onClick={(e) => {
+        if (e.target !== e.currentTarget) return;
+        const r = e.currentTarget.getBoundingClientRect();
+        if (
+          e.clientX < r.left ||
+          e.clientX > r.right ||
+          e.clientY < r.top ||
+          e.clientY > r.bottom
+        )
+          finish(null);
       }}
     >
       {req && (

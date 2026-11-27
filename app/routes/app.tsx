@@ -6,6 +6,7 @@ import {
   isRouteErrorResponse,
   useLocation,
   useLoaderData,
+  useNavigation,
   useRouteError,
   useRouteLoaderData,
 } from "react-router";
@@ -123,6 +124,22 @@ function ProNav({
   const { pathname, search } = useLocation();
   const toggle = useRef<HTMLButtonElement>(null);
   useEffect(() => setOpen(false), [pathname]);
+  // Menu ouvert : la page derrière ne défile pas.
+  useEffect(() => {
+    if (!open) return;
+    const root = document.documentElement;
+    const before = root.style.overflow;
+    root.style.overflow = "hidden";
+    return () => {
+      root.style.overflow = before;
+    };
+  }, [open]);
+  // Un seul devis par clic : le bouton attend la réponse du serveur.
+  const nav = useNavigation();
+  const creating =
+    nav.state !== "idle" &&
+    nav.formMethod === "POST" &&
+    !!nav.formAction?.startsWith("/app?index");
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -178,7 +195,7 @@ function ProNav({
       </div>
       <div className="pro-nav-end">
         <Form method="post" action="/app?index" className="pro-new-quote">
-          <button aria-label="Nouveau devis">
+          <button aria-label="Nouveau devis" disabled={creating}>
             <span>
               Nouveau<span className="nav-new-suffix"> devis</span>
             </span>
@@ -300,7 +317,10 @@ function ErrorPage({ error }: { error: unknown }) {
         <h1>{title}</h1>
         <p>{text}</p>
         <div className="error-actions">
-          <a className="button primary" href="/app">
+          <a
+            className="button primary"
+            href={app && !app.embedded ? "/app/devis" : "/app"}
+          >
             Voir les devis
           </a>
           <a className="button" href="/app/catalogue">

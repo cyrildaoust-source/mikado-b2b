@@ -13,8 +13,27 @@ export function Modal({
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dialog = ref.current;
+    // Élément qui a ouvert la fenêtre : il reprend le focus à la fermeture.
+    const opener = document.activeElement as HTMLElement | null;
     dialog?.showModal();
-    return () => dialog?.close();
+    // Le focus va au premier champ à remplir, pas au bouton « Fermer ».
+    // Sur écran tactile on le laisse : le clavier masquerait la fenêtre.
+    if (matchMedia("(pointer: fine)").matches)
+      dialog
+        ?.querySelector<HTMLElement>(
+          'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not(:disabled), textarea:not(:disabled)',
+        )
+        ?.focus();
+    return () => {
+      dialog?.close();
+      if (!opener?.isConnected) return;
+      // Ouvreur rangé dans un menu refermé (« Autres actions ») : le focus
+      // revient au bouton du menu.
+      const menu = opener.closest("details:not([open])");
+      (menu?.querySelector<HTMLElement>("summary") ?? opener).focus({
+        preventScroll: true,
+      });
+    };
   }, []);
   return (
     <dialog

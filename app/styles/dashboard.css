@@ -480,3 +480,19 @@ s-badge[tone="info"] {
   font-size: var(--t-small);
   color: var(--ink-2);
 }
+
+/* Audit du 27/11 : au doigt, les lignes et les liens de section font 44 px */
+@media (pointer: coarse) {
+  .dash-todo li a,
+  .dash-recent li a {
+    justify-content: center;
+    min-height: var(--touch);
+  }
+  .dash-section-head a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch);
+    margin: -14px 0;
+    padding-left: 12px;
+  }
+}
