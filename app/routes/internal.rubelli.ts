@@ -1,4 +1,5 @@
 import type { LoaderFunctionArgs } from "react-router";
+import { requireInternal } from "../services/internal.server";
 import { RUBELLI_SLUG } from "../domain/rubelli";
 import { importRubelliPage, importRubelliProduct } from "../services/library.server";
 
@@ -12,6 +13,7 @@ import { importRubelliPage, importRubelliProduct } from "../services/library.ser
 export const config = { maxDuration: 300 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
+  await requireInternal(request);
   const url = new URL(request.url);
   const headers = { "Cache-Control": "no-store" };
   const dry = url.searchParams.get("dry") === "1";

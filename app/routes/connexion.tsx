@@ -13,6 +13,7 @@ import {
   currentUser,
   login,
   safeNext,
+  TooManyAttempts,
 } from "../services/auth.server";
 
 export const meta = () => [{ title: "Connexion · Mikado Deco Pro" }];
@@ -31,7 +32,13 @@ export async function action({ request }: ActionFunctionArgs) {
     email = String(form.get("email") || "").slice(0, 250),
     password = String(form.get("password") || "").slice(0, 200),
     next = String(form.get("next") || "");
-  const response = await login(request, email, password, next);
+  let response: Response | null;
+  try {
+    response = await login(request, email, password, next);
+  } catch (e) {
+    if (e instanceof TooManyAttempts) return { error: e.message };
+    throw e;
+  }
   if (response) return response;
   // Ralentit les essais répétés sans révéler si l'e-mail existe.
   await new Promise((r) => setTimeout(r, 800));

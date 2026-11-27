@@ -5,6 +5,7 @@ import { createReadableStreamFromReadable } from "@react-router/node";
 import { type EntryContext } from "react-router";
 import { isbot } from "isbot";
 import { addDocumentResponseHeaders } from "./shopify.server";
+import { isStandalone } from "./services/mode.server";
 
 export const streamTimeout = 5000;
 
@@ -14,7 +15,11 @@ export default async function handleRequest(
   responseHeaders: Headers,
   reactRouterContext: EntryContext,
 ) {
-  addDocumentResponseHeaders(request, responseHeaders);
+  if (isStandalone()) {
+    // Outil pro autonome : aucune page ne s'affiche dans le cadre d'un autre site.
+    responseHeaders.set("Content-Security-Policy", "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'");
+    responseHeaders.set("X-Frame-Options", "DENY");
+  } else addDocumentResponseHeaders(request, responseHeaders);
   const userAgent = request.headers.get("user-agent");
   const callbackName = isbot(userAgent ?? "") ? "onAllReady" : "onShellReady";
 

@@ -291,3 +291,11 @@ model QuoteDecision {
   @@index([quoteId])
   @@index([status])
 }
+
+/// Échecs de connexion récents, par e-mail et par adresse IP (limitation des essais).
+model AuthThrottle {
+  key         String   @id
+  failures    Int      @default(0)
+  windowStart DateTime @default(now())
+  lockedUntil DateTime?
+}

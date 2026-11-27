@@ -1,4 +1,5 @@
 import type { LoaderFunctionArgs } from "react-router";
+import { requireInternal } from "../services/internal.server";
 import { DEDAR_SLUG } from "../domain/dedar";
 import { dedarSlugs, importDedarBatch, importDedarProduct } from "../services/library.server";
 
@@ -13,6 +14,7 @@ import { dedarSlugs, importDedarBatch, importDedarProduct } from "../services/li
 export const config = { maxDuration: 300 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
+  await requireInternal(request);
   const url = new URL(request.url);
   const headers = { "Cache-Control": "no-store" };
   try {
