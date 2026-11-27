@@ -9,6 +9,7 @@ import {
   totals,
   fiscalTotals,
   assertPriced,
+  grossUnit,
   type QuoteState,
   type Line,
 } from "../domain/quote";
@@ -307,9 +308,11 @@ export function draftInput(
     allowDiscountCodesInCheckout: false,
     visibleToCustomer: false,
     lineItems: lines.map((l) => {
+      // Prix TVAC de la boutique repris tel quel : Shopify retrouve le même
+      // total que le devis, sans ajustement d'arrondi.
       const basePrice =
         shopTaxesIncluded && l.taxable
-          ? Math.round(l.price * (1 + l.vatRate! / 100))
+          ? (grossUnit(l) ?? Math.round(l.price * (1 + l.vatRate! / 100)))
           : l.price;
       const price =
         l.id === adjustmentLine?.id
@@ -589,6 +592,7 @@ function catalogLine(v: CatalogVariant, taxesIncluded: boolean) {
     sourceIncludesTax: taxesIncluded,
     priceConfirmed: true,
     sourceVatRate: taxesIncluded && v.taxable ? 21 : null,
+    exactGross: true,
     discount: 0,
     variantId: v.id,
     image: v.image?.url || v.product.featuredMedia?.preview?.image?.url || "",

@@ -10,7 +10,50 @@
 .pro-nav .pro-user {
   max-width: 220px;
 }
-@media (max-width: 700px) {
+/* Écran moyen (portable 13 pouces, iPad Pro paysage) : la barre complète
+   d'un compte Mikado Deco ne tient pas. Le nom du compte reste dans le menu
+   et en infobulle, le libellé « Prix » s'efface, les trois choix restent. */
+@media (max-width: 1440px) {
+  .pro-nav-end .pro-user {
+    display: none;
+  }
+  .pro-nav-end .price-switch-label {
+    display: none;
+  }
+}
+/* iPad (portrait et paysage) : la barre passe au menu, comme sur téléphone.
+   Sinon le sélecteur des prix sortait de l'écran à 1024 px (audit 27/11). */
+@media (min-width: 701px) and (max-width: 1180px) {
+  .pro-nav {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .pro-nav .pro-brand,
+  .pro-nav .pro-brand:hover,
+  .pro-nav .pro-brand.active {
+    margin-right: auto;
+  }
+  .pro-nav-toggle {
+    display: inline-flex;
+    align-items: center;
+  }
+  .pro-nav-links,
+  .pro-nav-end .pro-user,
+  .pro-nav-end .pro-logout-form,
+  .pro-nav-end .pro-price-toggle {
+    display: none;
+  }
+  .pro-nav-end {
+    gap: 8px;
+    margin-left: 0;
+  }
+  .pro-nav.menu-open .pro-nav-links a {
+    min-height: var(--touch);
+    display: flex;
+    align-items: center;
+  }
+}
+@media (max-width: 1180px) {
   /* Le bouton garde sa largeur entre « Menu » et « Fermer » */
   .pro-nav-toggle {
     justify-content: center;
@@ -68,6 +111,17 @@
     height: 100dvh;
     z-index: 1;
     background: rgba(22, 24, 26, 0.35);
+  }
+}
+/* iPad : le menu s'ouvre en panneau à droite, pas sur toute la largeur. */
+@media (min-width: 701px) and (max-width: 1180px) {
+  .pro-nav.menu-open .pro-nav-links {
+    left: auto;
+    width: 380px;
+    border-left: 1px solid var(--line);
+  }
+  .pro-nav.menu-open .pro-nav-scrim {
+    height: calc(100dvh - 56px);
   }
 }
 

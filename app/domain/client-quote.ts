@@ -1,4 +1,4 @@
-import type { QuoteState } from "./quote";
+import { grossUnit, type QuoteState } from "./quote";
 
 /**
  * Ce que la page du client reçoit d'une révision figée : une liste blanche de
@@ -22,6 +22,9 @@ const lineFields = (l: Line) => ({
   vatRate: l.vatRate,
   priceConfirmed: l.priceConfirmed,
   chargePercent: l.chargePercent,
+  // Prix public TVAC de la boutique (celui du site), quand la ligne en part :
+  // le total du client tombe alors au centime sur le prix du site.
+  gross: grossUnit(l),
   ...(l.deliveryFee ? { deliveryFee: true } : {}),
 });
 
@@ -61,14 +64,15 @@ export function clientQuote(s: QuoteState) {
 export type ClientQuote = ReturnType<typeof clientQuote>;
 
 /** Champs internes neutres : les calculs du devis tournent sans eux. */
-const blankLine = (l: ClientLine): Line => ({
+const blankLine = ({ gross, ...l }: ClientLine): Line => ({
   ...l,
   sku: "",
   variantId: null,
   requiresShipping: true,
-  sourcePrice: null,
-  sourceIncludesTax: false,
-  sourceVatRate: null,
+  sourcePrice: gross ?? null,
+  sourceIncludesTax: gross != null,
+  sourceVatRate: gross != null ? l.vatRate : null,
+  ...(gross != null ? { exactGross: true } : {}),
 });
 const blankAddress = {
   address1: "",

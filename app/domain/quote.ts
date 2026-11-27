@@ -37,6 +37,9 @@ export const lineSchema = z.object({
   deliveryFee: z.boolean().optional(),
   chargePercent: z.number().min(0).max(100).nullable().default(null),
   sourceVatRate: z.number().min(0).max(100).nullable().default(null),
+  // Ligne calculée depuis le prix TVAC de la boutique (Cyril, 27/11/2026).
+  // Absent sur les révisions plus anciennes : leurs montants restent tels quels.
+  exactGross: z.boolean().optional(),
   // Famille du produit (type Shopify) : filtre du catalogue pour ses alternatives.
   family: z.string().max(150).optional(),
 });
@@ -208,10 +211,60 @@ export const quoteSchema = z
 
 export type QuoteState = z.infer<typeof quoteSchema>;
 export type Line = z.infer<typeof lineSchema>;
-export const lineTotal = (l: Line) =>
-  Math.round((l.price * l.qty * (100 - l.discount)) / 100);
-export const lineTax = (l: Line) => {
+type PricedLine = Pick<
+  Line,
+  | "price"
+  | "qty"
+  | "discount"
+  | "taxable"
+  | "vatRate"
+  | "sourcePrice"
+  | "sourceIncludesTax"
+  | "sourceVatRate"
+  | "exactGross"
+>;
+/**
+ * Prix unitaire TVAC de la boutique quand la ligne en part sans changement :
+ * prix Shopify TVAC, même taux de TVA, prix HTVA non modifié. Sinon null.
+ */
+export function grossUnit(l: PricedLine): number | null {
+  if (
+    !l.exactGross ||
+    !l.taxable ||
+    l.vatRate === null ||
+    !l.sourceIncludesTax ||
+    l.sourcePrice === null ||
+    l.sourceVatRate !== l.vatRate ||
+    l.price !== Math.round(l.sourcePrice / (1 + l.vatRate / 100))
+  )
+    return null;
+  return l.sourcePrice;
+}
+/** Total TVAC d'une ligne au prix de la boutique, remise client déduite. */
+const lineGross = (l: PricedLine) => {
+  const g = grossUnit(l);
+  return g === null ? null : Math.round((g * l.qty * (100 - l.discount)) / 100);
+};
+/**
+ * TVA comprise dans un montant TVAC, arrondie par ligne : la règle de Shopify
+ * pour une boutique aux prix TVAC (vérifiée le 27/11/2026 par draftOrderCalculate :
+ * 3 × 50 € + 55 € + 10 € + 2 × 1 249 € à −7 % donnent 440,51 € de TVA).
+ */
+const includedTax = (gross: number, rate: number) =>
+  Math.round((gross * rate) / (100 + rate));
+/**
+ * Total HTVA d'une ligne. Une ligne au prix TVAC de la boutique part de ce
+ * prix : deux chaises à 50 € font 100,00 € TVAC, pas 99,99 €.
+ */
+export const lineTotal = (l: PricedLine) => {
+  const g = lineGross(l);
+  if (g !== null) return g - includedTax(g, l.vatRate!);
+  return Math.round((l.price * l.qty * (100 - l.discount)) / 100);
+};
+export const lineTax = (l: PricedLine) => {
   if (!l.taxable || l.vatRate === null) return 0;
+  const g = lineGross(l);
+  if (g !== null) return includedTax(g, l.vatRate);
   return Math.round((lineTotal(l) * l.vatRate) / 100);
 };
 export function selectedLines(s: QuoteState) {
@@ -369,6 +422,23 @@ export function fromGross(l: Line, rate: number): Line {
     price: Math.round(l.sourcePrice / (1 + rate / 100)),
     sourceVatRate: rate,
     priceConfirmed: true,
+  };
+}
+/**
+ * Brouillon enregistré : ses lignes du catalogue aux prix TVAC passent au
+ * calcul depuis le prix de la boutique. Une révision figée n'est jamais
+ * réécrite, son PDF et son lien gardent leurs montants.
+ */
+export function withExactGross(s: QuoteState): QuoteState {
+  if (s.schemaVersion !== 2) return s;
+  const mark = <L extends Line>(l: L): L =>
+    l.sourceIncludesTax && l.sourcePrice !== null && !l.exactGross
+      ? { ...l, exactGross: true }
+      : l;
+  return {
+    ...s,
+    groups: s.groups.map((g) => ({ ...g, items: g.items.map(mark) })),
+    extras: s.extras.map(mark),
   };
 }
 export function upgradeQuote(s: QuoteState): QuoteState {

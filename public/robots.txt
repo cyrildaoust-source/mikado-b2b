@@ -1,0 +1,3 @@
+# Outil privé de Mikado Deco : rien à indexer.
+User-agent: *
+Disallow: /

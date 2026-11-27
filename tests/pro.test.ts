@@ -8,6 +8,7 @@ import {
   lockPrices,
   readPriceView,
   viewPrice,
+  displayGross,
 } from "../app/domain/pro";
 
 test("prix affiché : cookie du sélecteur, puis ancien interrupteur, puis HTVA", () => {
@@ -101,4 +102,17 @@ test("architecte : prix du catalogue rétabli, remise client conservée", () => 
   assert.equal(s.groups[0].items[0].discount, 10);
   assert.equal(s.extras[0].price, 30000);
   assert.equal(s.extras[0].discount, 15);
+});
+
+test("prix TVAC affiché : le prix de la boutique, pas 54,99 € pour 55 €", () => {
+  // Toute la gamme d'un catalogue TVAC en euros ronds : 5 € à 20 000 €.
+  for (let gross = 500; gross <= 2_000_000; gross += 100) {
+    const net = Math.round(gross / 1.21);
+    assert.equal(displayGross(net), gross, `TVAC ${gross / 100} €`);
+  }
+  assert.equal(viewPrice(Math.round(5500 / 1.21), "tvac", null).cents, 5500);
+  // Prix TVAC au centime (49,95 €) : retrouvé lui aussi.
+  assert.equal(displayGross(Math.round(4995 / 1.21)), 4995);
+  // Un HTVA saisi tel quel reste proche du calcul exact (moins d'un centime).
+  assert.ok(Math.abs(displayGross(12345) - 12345 * 1.21) < 1.5);
 });
