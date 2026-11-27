@@ -80,3 +80,20 @@ test("chaque route /internal de remplissage passe par requireInternal", () => {
     assert.match(src, /await requireInternal\(request\);/, name);
   }
 });
+
+test("un compte externe ne lit jamais les clients Shopify", async () => {
+  const { isExternal } = await import("../app/services/context.server");
+  const base = { shop: "s", admin: null, demo: false, actor: null, embedded: false };
+  const u = (role: string) =>
+    ({ ...base, user: { id: 1, email: "a@b.be", name: "A", role } }) as never;
+  assert.equal(isExternal(u("architect")), true);
+  assert.equal(isExternal(u("autre")), true);
+  assert.equal(isExternal(u("admin")), false);
+  assert.equal(isExternal({ ...base, user: null } as never), false);
+
+  const catalog = readFileSync("app/routes/app.catalog.tsx", "utf8");
+  assert.match(catalog, /"customers" && isExternal\(c\)\)/);
+  const quote = readFileSync("app/routes/app.quotes.$id.tsx", "utf8");
+  assert.match(quote, /customerId: null/);
+  assert.doesNotMatch(quote, /role === "architect" \? lockPrices/);
+});
