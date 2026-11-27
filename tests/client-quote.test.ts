@@ -25,7 +25,8 @@ test("lien client : liste blanche, sans identifiants Shopify ni données interne
   ];
   s = setDeliveryFee(s, true, "liv", 5);
   const sent = JSON.stringify(clientQuote(s));
-  for (const secret of ["gid://", "INT-SKU-9", "121000", "anne@example.be", "BE0123456789", "Rue secrète", "Canapés", "sourcePrice", "variantId", "customerId"])
+  // 1 210,00 € TVAC est le prix public du site : il peut partir (règle TVAC du 27/11).
+  for (const secret of ["gid://", "INT-SKU-9", "anne@example.be", "BE0123456789", "Rue secrète", "Canapés", "sourcePrice", "variantId", "customerId"])
     assert.ok(!sent.includes(secret), `fuite : ${secret}`);
   // Les montants du client restent exacts.
   const back = fromClientQuote(JSON.parse(sent));
@@ -33,4 +34,22 @@ test("lien client : liste blanche, sans identifiants Shopify ni données interne
     fiscalTotals(applyChoices(back, {})),
     fiscalTotals(applyChoices(s, {})),
   );
+});
+
+test("lien client : même total TVAC que le devis pour une ligne au prix de la boutique", () => {
+  const s = emptyQuote();
+  s.groups = [
+    {
+      id: "g", section: "Salon", sectionId: "s", selected: "a", syncQty: true,
+      items: [
+        lineSchema.parse({
+          id: "a", name: "Chaise", qty: 2, price: 4132, discount: 0, vatRate: 21,
+          sourcePrice: 5000, sourceIncludesTax: true, sourceVatRate: 21, exactGross: true,
+        }),
+      ],
+    },
+  ];
+  const back = fromClientQuote(JSON.parse(JSON.stringify(clientQuote(s))));
+  assert.equal(fiscalTotals(applyChoices(back, {})).gross, 10000);
+  assert.equal(fiscalTotals(applyChoices(s, {})).gross, 10000);
 });

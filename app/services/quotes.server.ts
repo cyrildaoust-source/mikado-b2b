@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import db from "../db.server";
-import { quoteSchema, emptyQuote, type QuoteState } from "../domain/quote";
+import { quoteSchema, emptyQuote, withExactGross, type QuoteState } from "../domain/quote";
 import { followUpCutoff } from "../domain/dashboard";
 export async function listQuotes(
   shop: string,
@@ -137,7 +137,8 @@ export async function saveQuote(
   raw: unknown,
   forceRevision = false,
 ) {
-  const s = quoteSchema.parse(raw);
+  // Deuxième lecture : la livraison en % se recalcule sur les montants marqués.
+  const s = quoteSchema.parse(withExactGross(quoteSchema.parse(raw)));
   return db.$transaction(async (tx) => {
     const q = await tx.quote.findFirst({
       where: { id, shop, version, status: "draft" },

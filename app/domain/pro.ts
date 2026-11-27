@@ -117,7 +117,10 @@ export function publicMerchandise(s: {
   groups: { id: string; selected: string; items: MerchLine[] }[];
   extras: (MerchLine & { selected: boolean; parent?: string | null })[];
 }) {
-  const unit = (l: MerchLine) => publicUnitPrice(l) * l.qty;
+  // Lignes saisies à la main exclues : Mikado Deco ne les fournit pas
+  // (Cyril, 27/11/2026).
+  const unit = (l: MerchLine) =>
+    isCataloguePrice(l) ? publicUnitPrice(l) * l.qty : 0;
   return (
     s.groups.reduce((n, g) => {
       const l = g.items.find((i) => i.id === g.selected);
@@ -195,6 +198,8 @@ export function proBilling(
   discount: number,
 ) {
   type Taxed = MerchLine & { taxable?: boolean; vatRate?: number | null };
+  // Produits du catalogue seulement : une ligne saisie à la main n'est pas
+  // fournie par Mikado Deco et ne lui est pas facturée (Cyril, 27/11/2026).
   const lines: Taxed[] = [
     ...s.groups.flatMap((g) => {
       const l = g.items.find((i) => i.id === g.selected);
@@ -206,7 +211,7 @@ export function proBilling(
         (e.chargePercent ?? null) === null &&
         s.groups.some((g) => g.id === e.parent),
     ),
-  ];
+  ].filter(isCataloguePrice);
   const bins = new Map<number, number>();
   const add = (l: { taxable?: boolean; vatRate?: number | null }, cents: number) => {
     if (l.taxable === false) return;
