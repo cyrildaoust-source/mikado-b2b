@@ -164,24 +164,49 @@ function ProNav({
       </NavLink>
       <div className="pro-nav-links" id="pro-nav-links">
         <NavLink to="/app" end>
+          <svg className="nav-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 7 8 2.5 13.5 7v6a.5.5 0 0 1-.5.5H9.5v-4h-3v4H3a.5.5 0 0 1-.5-.5z"/></svg>
           Accueil
         </NavLink>
         <NavLink to="/app/devis">
+          <svg className="nav-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1.5h5.5L12.5 4.5v9.5a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5V2a.5.5 0 0 1 .5-.5z"/><path d="M9.5 1.5v3h3M5.5 8h5M5.5 10.5h5"/></svg>
           {user?.role === "admin" ? "Devis" : "Mes devis"}
         </NavLink>
-        <NavLink to="/app/catalogue">Catalogue</NavLink>
+        <NavLink to="/app/catalogue">
+          <svg className="nav-icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+          Catalogue
+        </NavLink>
         {user?.role === "admin" && (
           <>
-            <NavLink to="/app/marques">Marques</NavLink>
-            <NavLink to="/app/matieres">Matières</NavLink>
-            <NavLink to="/app/a-facturer">À facturer</NavLink>
-            <NavLink to="/app/utilisateurs">Accès</NavLink>
+            <NavLink to="/app/marques">
+              <svg className="nav-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8.6V2.5a.5.5 0 0 1 .5-.5h6.1a1 1 0 0 1 .7.3l4.4 4.4a1 1 0 0 1 0 1.4l-5.6 5.6a1 1 0 0 1-1.4 0L2.3 9.3a1 1 0 0 1-.3-.7z"/><circle cx="5.2" cy="5.2" r=".9"/></svg>
+              Marques
+            </NavLink>
+            <NavLink to="/app/matieres">
+              <svg className="nav-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="m8 1.8 6 3.2-6 3.2L2 5z"/><path d="m2 8 6 3.2L14 8M2 11l6 3.2 6-3.2"/></svg>
+              Matières
+            </NavLink>
+            <NavLink to="/app/a-facturer">
+              <svg className="nav-icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3.5" width="13" height="9" rx="1.5"/><path d="M1.5 6.5h13M4 10h3"/></svg>
+              À facturer
+            </NavLink>
+            <NavLink to="/app/utilisateurs">
+              <svg className="nav-icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="6" cy="5.5" r="2.5"/><path d="M1.5 13.5c.3-2.4 2.1-4 4.5-4s4.2 1.6 4.5 4M11 3.2a2.5 2.5 0 0 1 0 4.6M12.5 9.9c1.2.6 1.9 1.9 2 3.6"/></svg>
+              Accès
+            </NavLink>
           </>
         )}
         {user && user.role !== "admin" && (
-          <NavLink to="/app/cabinet">Mon cabinet</NavLink>
+          <NavLink to="/app/cabinet">
+            <svg className="nav-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 14V3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 .5.5v11M9.5 6.5H13a.5.5 0 0 1 .5.5v7M1.5 14h13M5 5.5h2M5 8h2M5 10.5h2"/></svg>
+            Mon cabinet
+          </NavLink>
         )}
-        {user && <NavLink to="/app/parrainage">Parrainage</NavLink>}
+        {user && (
+          <NavLink to="/app/parrainage">
+            <svg className="nav-icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="6" width="12" height="8" rx="1"/><path d="M1.5 4h13v2h-13zM8 4v10M8 4C7 2 5.5 1.5 4.8 2.2 4 3 5 4 8 4zm0 0c1-2 2.5-2.5 3.2-1.8C12 3 11 4 8 4z"/></svg>
+            Parrainage
+          </NavLink>
+        )}
         {open && (
           <div className="pro-nav-account">
             <span className="muted">{account}</span>
