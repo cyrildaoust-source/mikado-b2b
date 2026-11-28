@@ -7,6 +7,8 @@ import proCss from "./styles/pro.css?url";
 import outilCss from "./styles/outil.css?url";
 import dashboardCss from "./styles/dashboard.css?url";
 import classesCss from "./styles/classes.css?url";
+import systemeCss from "./styles/systeme.css?url";
+import parrainageCss from "./styles/parrainage.css?url";
 import finitionCatalogueCss from "./styles/finition-catalogue.css?url";
 import finitionDevisCss from "./styles/finition-devis.css?url";
 import finitionMoodboardCss from "./styles/finition-moodboard.css?url";
@@ -43,6 +45,9 @@ const STYLES = {
     finitionMoodboardCss,
     dashboardCss,
     classesCss,
+    parrainageCss,
+    // Base visuelle commune, chargée en dernier : elle a le dernier mot.
+    systemeCss,
   ],
   admin: [appCss, documentCss, refonteCss, proCss],
 };

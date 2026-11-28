@@ -99,6 +99,7 @@ export default function SharedQuote() {
   if (d.status !== "open")
     return (
       <main className="shared-closed">
+        <div className="error-card">
         <h1>Proposition indisponible</h1>
         <p>
           {d.status === "expired"
@@ -110,6 +111,7 @@ export default function SharedQuote() {
             ? `Demandez un nouveau lien à ${d.from}.`
             : "Demandez un nouveau lien à la personne qui vous l'a envoyé."}
         </p>
+        </div>
       </main>
     );
   return (

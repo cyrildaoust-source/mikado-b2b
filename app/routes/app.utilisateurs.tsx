@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Form,
   Link,
@@ -189,6 +189,12 @@ export async function action({ request }: ActionFunctionArgs) {
 export default function Users() {
   const { users, me, classes } = useLoaderData<typeof loader>();
   const result = useActionData<typeof action>();
+  // Le message (et le lien d'invitation) est en haut de page : on y revient
+  // après chaque action, sinon il reste hors de l'écran sur téléphone.
+  const feedback = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (result) feedback.current?.scrollIntoView({ block: "center" });
+  }, [result]);
   return (
     <main className="workspace">
       <header className="list-header">
@@ -197,6 +203,7 @@ export default function Users() {
           <p>Les personnes qui peuvent ouvrir l'outil pro.</p>
         </div>
       </header>
+      <div ref={feedback}>
       {result && "error" in result && (
         <p role="alert" className="error">
           {result.error}
@@ -224,6 +231,7 @@ export default function Users() {
           )}
         </div>
       )}
+      </div>
       <div className="list-card">
         {users.length > 0 ? (
           <table className="quote-table user-table">
@@ -274,7 +282,20 @@ export default function Users() {
                           </button>
                         )}
                         {u.id !== me && (
-                          <button name="intent" value="toggle">
+                          <button
+                            name="intent"
+                            value="toggle"
+                            onClick={(e) => {
+                              // Retrait immédiat : on demande confirmation.
+                              if (
+                                u.active &&
+                                !window.confirm(
+                                  `Retirer l'accès de ${u.name} ? Ses devis sont conservés et l'accès peut être rouvert.`,
+                                )
+                              )
+                                e.preventDefault();
+                            }}
+                          >
                             {u.active ? "Retirer l'accès" : "Rouvrir l'accès"}
                           </button>
                         )}
@@ -293,8 +314,9 @@ export default function Users() {
         )}
       </div>
       <div className="list-card">
-        <Form method="post" className="user-form">
-          <h2>Ajouter un architecte</h2>
+        {/* La clé vide le formulaire une fois l'accès créé. */}
+        <Form method="post" className="user-form" key={users.length}>
+          <h2>Ajouter une personne</h2>
           <label>
             Nom
             <input name="name" required maxLength={150} autoComplete="off" />
@@ -353,13 +375,16 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       type="button"
-      onClick={async () => {
+      onClick={async (e) => {
+        const field = e.currentTarget.parentElement?.querySelector("input");
         try {
           await navigator.clipboard.writeText(text);
           setDone(true);
           setTimeout(() => setDone(false), 2500);
         } catch {
+          // Presse-papiers refusé : le lien est sélectionné, prêt à copier.
           setDone(false);
+          field?.select();
         }
       }}
     >
@@ -462,6 +487,14 @@ function Classes({
                       name="intent"
                       value="class-delete"
                       className="text-button"
+                      onClick={(e) => {
+                        if (
+                          !window.confirm(
+                            `Supprimer la classe ${k.name} ? Ses architectes suivront leur chiffre.`,
+                          )
+                        )
+                          e.preventDefault();
+                      }}
                     >
                       Supprimer
                     </button>

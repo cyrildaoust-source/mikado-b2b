@@ -154,7 +154,7 @@ export default function Quotes() {
                   <td>
                     <s-badge
                       tone={
-                        commercialStatus(q).startsWith("Prêt")
+                        /^(Prêt|Accepté)/.test(commercialStatus(q))
                           ? "success"
                           : "info"
                       }
@@ -179,15 +179,25 @@ export default function Quotes() {
             </span>
             {pages > 1 && (
               <div>
-                {page > 1 && (
+                {/* Les deux boutons restent en place ; celui qui ne mène
+                    nulle part est grisé, pour ne pas déplacer l’autre. */}
+                {page > 1 ? (
                   <Link className="button" to={href(page - 1)}>
                     Précédent
                   </Link>
+                ) : (
+                  <span className="button" aria-disabled="true">
+                    Précédent
+                  </span>
                 )}
-                {page < pages && (
+                {page < pages ? (
                   <Link className="button" to={href(page + 1)}>
                     Suivant
                   </Link>
+                ) : (
+                  <span className="button" aria-disabled="true">
+                    Suivant
+                  </span>
                 )}
               </div>
             )}
@@ -199,6 +209,12 @@ export default function Quotes() {
 }
 
 const EMPTY: Record<string, [string, string]> = {
+  open: ["Aucun devis ouvert", "Les devis pas encore envoyés au client apparaîtront ici."],
+  relance: [
+    "Aucun devis à relancer",
+    `Un devis envoyé depuis ${FOLLOW_UP_DAYS} jours sans réponse apparaîtra ici.`,
+  ],
+  accepted: ["Aucun devis accepté", "Les propositions acceptées en ligne par le client apparaîtront ici."],
   draft: ["Aucun brouillon", "Les devis en cours de rédaction apparaîtront ici."],
   ready: ["Aucun devis prêt à envoyer", "Un devis complet, pas encore envoyé, apparaîtra ici."],
   sent: ["Aucun devis envoyé", "Les devis envoyés au client apparaîtront ici."],
@@ -215,7 +231,7 @@ function EmptyList({ search, filter }: { search: string; filter: string }) {
     return (
       <div className="empty-state">
         <h2>Aucun devis pour « {search} »</h2>
-        <p>Vérifiez l'orthographe, ou cherchez un client ou une référence.</p>
+        <p>Vérifiez l’orthographe, ou cherchez un client ou une référence.</p>
         <Link
           className="button"
           to={filter === "all" ? base : `${base}?status=${filter}`}

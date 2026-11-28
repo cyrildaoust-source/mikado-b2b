@@ -1,0 +1,677 @@
+/*
+ * Parrainage (/app/parrainage) et page publique du lien (/parrainage/:code).
+ * Reprend les variables et composants d'outil.css (list-card, price-switch,
+ * boutons, empty-state) ; n'ajoute que la mise en page propre à ces pages.
+ */
+
+.ref-page {
+  display: grid;
+  gap: 20px;
+}
+.ref-page > .list-header {
+  margin-bottom: 0;
+}
+.ref-page > .list-header p {
+  max-width: 62ch;
+}
+.ref-eyebrow {
+  margin: 0 0 6px;
+  font-size: var(--t-small);
+  color: var(--ink-3);
+}
+.ref-page h2 {
+  margin: 0;
+}
+.ref-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* ---------- Bandeau : lien et commissions ---------- */
+.ref-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 24px;
+  padding: 24px;
+  background: var(--brass-bg);
+  border: 1px solid #ebe1d0;
+  border-radius: var(--radius);
+}
+.ref-hero-text {
+  margin: 6px 0 16px;
+  color: var(--ink-2);
+  max-width: 52ch;
+}
+.ref-link {
+  display: flex;
+  gap: 8px;
+}
+.ref-link input:not([type="checkbox"]):not([type="radio"]) {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: var(--t-small);
+  background: var(--surface);
+}
+.ref-link button {
+  flex: none;
+  min-height: var(--control);
+}
+.ref-share-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.ref-share-buttons .button,
+.ref-share-buttons button {
+  min-height: var(--compact);
+  background: var(--surface);
+}
+
+.ref-hero-stats,
+.ref-admin-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+.ref-stat {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.ref-stat dt {
+  font-size: var(--t-small);
+  color: var(--ink-2);
+}
+.ref-stat dd {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.ref-stat-main {
+  grid-column: 1 / -1;
+}
+.ref-stat-main dd {
+  font-size: 34px;
+  color: var(--brass);
+}
+.ref-admin-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* ---------- Comment ça marche ---------- */
+.ref-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ref-steps li {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  padding: 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.ref-steps li > span:last-child {
+  color: var(--ink-2);
+  font-size: var(--t-small);
+  line-height: 1.5;
+}
+.ref-step-n {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-bottom: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--ink);
+  color: #fff;
+  font-size: var(--t-small);
+  font-weight: 500;
+}
+
+/* ---------- Filleuls ---------- */
+.ref-filleuls {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ref-filleul {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr) 150px;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 20px;
+}
+.ref-filleul + .ref-filleul {
+  border-top: 1px solid var(--line);
+}
+.ref-filleul-who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.ref-filleul-who > div {
+  display: grid;
+  min-width: 0;
+}
+.ref-filleul-who strong {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ref-avatar {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  background: var(--ground);
+  color: var(--ink-2);
+  font-weight: 500;
+}
+.ref-filleul-gain {
+  display: grid;
+  justify-items: end;
+  text-align: right;
+}
+.ref-filleul-gain strong {
+  font-size: var(--t-section);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Frise des étapes : un trait qui se remplit, une pastille par étape. */
+.ref-track {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ref-track li {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding-top: 18px;
+  font-size: 11px;
+  line-height: 1.3;
+  text-align: center;
+  color: var(--ink-3);
+}
+.ref-track li::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: -50%;
+  right: 50%;
+  height: 2px;
+  background: var(--line);
+}
+.ref-track li:first-child::before {
+  display: none;
+}
+.ref-track li::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: calc(50% - 6px);
+  width: 12px;
+  height: 12px;
+  box-sizing: border-box;
+  border: 2px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+}
+.ref-track li.done::before,
+.ref-track li.now::before {
+  background: var(--ok);
+}
+.ref-track li.done::after {
+  border-color: var(--ok);
+  background: var(--ok);
+}
+.ref-track li.now::after {
+  border-color: var(--ok);
+  box-shadow: 0 0 0 4px var(--ok-bg);
+}
+.ref-track li.done,
+.ref-track li.now {
+  color: var(--ink-2);
+}
+.ref-track li.now {
+  color: var(--ink);
+  font-weight: 500;
+}
+.ref-empty {
+  padding: 28px 20px;
+}
+.ref-empty p {
+  margin: 0 0 4px;
+  max-width: 60ch;
+}
+
+/* ---------- Simulateur ---------- */
+.ref-sim {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  padding: 24px;
+  background: var(--ink);
+  border-radius: var(--radius);
+  color: #fff;
+}
+.ref-sim h2 {
+  color: #fff;
+}
+.ref-sim .muted {
+  color: rgba(255, 255, 255, 0.7);
+}
+.ref-sim-controls {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+.ref-sim-range {
+  display: grid;
+  gap: 8px;
+  color: #fff;
+  font-size: var(--t-body);
+}
+.ref-sim-range strong {
+  font-size: 22px;
+  font-weight: 500;
+}
+.ref-sim-range input[type="range"] {
+  width: 100%;
+  accent-color: var(--brass-bg);
+  margin: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.ref-sim-volumes {
+  display: grid;
+  gap: 8px;
+}
+.ref-sim .price-switch {
+  justify-self: start;
+  max-width: 100%;
+  border-color: rgba(255, 255, 255, 0.25);
+  background: transparent;
+}
+.ref-sim .price-switch button {
+  color: rgba(255, 255, 255, 0.8);
+}
+.ref-sim .price-switch button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+.ref-sim .price-switch button[aria-pressed="true"],
+.ref-sim .price-switch button[aria-pressed="true"]:hover:not(:disabled) {
+  background: #fff;
+  color: var(--ink);
+}
+.ref-sim-result {
+  display: grid;
+  align-content: center;
+  gap: 6px;
+}
+.ref-sim-result p {
+  margin: 0;
+}
+.ref-sim-dots {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.ref-sim-dots span {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-small);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: background-color 0.2s, border-color 0.2s;
+}
+.ref-sim-dots span.on {
+  background: #d8bf94;
+  border-color: #d8bf94;
+}
+.ref-sim-amount {
+  font-size: 44px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: #f1e3c8;
+}
+
+/* ---------- Vue Mikado Deco ---------- */
+.ref-requests {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ref-request {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 20px;
+}
+.ref-request + .ref-request {
+  border-top: 1px solid var(--line);
+}
+.ref-request-who {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.ref-request-who strong {
+  font-weight: 500;
+}
+.ref-request-from {
+  font-size: var(--t-small);
+  color: var(--brass);
+}
+.ref-request-msg {
+  margin: 6px 0 0;
+  padding: 8px 12px;
+  background: var(--paper);
+  border-radius: var(--radius-small);
+  color: var(--ink-2);
+  font-size: var(--t-small);
+  white-space: pre-wrap;
+}
+.ref-request-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex: none;
+}
+.ref-request-actions form {
+  margin: 0;
+}
+.ref-group + .ref-group {
+  border-top: 1px solid var(--line-strong);
+}
+.ref-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 14px 20px 0;
+}
+.ref-group-head strong {
+  font-weight: 500;
+}
+.ref-group-head .text-button {
+  margin-left: auto;
+}
+.ref-link-form > .muted {
+  margin: 12px 20px 0;
+}
+.ref-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 12px 20px 20px;
+}
+.ref-link-row label {
+  flex: 1 1 200px;
+}
+
+/* ---------- Page publique du lien ---------- */
+.ref-landing {
+  min-height: 100vh;
+  padding: 56px var(--gutter);
+  background: var(--paper);
+}
+.ref-landing-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 420px);
+  gap: 48px;
+  align-items: start;
+  max-width: 1040px;
+  margin: 0 auto;
+}
+.ref-landing-intro {
+  display: grid;
+  gap: 16px;
+  padding-top: 8px;
+}
+.ref-landing-intro p {
+  margin: 0;
+}
+.ref-landing-intro h1 {
+  font-size: 36px;
+}
+.ref-landing-from {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink-2);
+}
+.ref-landing-from .ref-avatar {
+  background: var(--brass-bg);
+  color: var(--brass);
+}
+.ref-landing-lead {
+  max-width: 48ch;
+  color: var(--ink-2);
+  font-size: var(--t-name);
+  line-height: 1.6;
+}
+.ref-perks {
+  display: grid;
+  gap: 12px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ref-perks li {
+  display: grid;
+  gap: 2px;
+  padding: 0 0 0 16px;
+  border-left: 2px solid var(--brass);
+}
+.ref-perks strong {
+  font-weight: 500;
+}
+.ref-perks span {
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+.ref-landing-card {
+  padding: 28px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-float);
+}
+.ref-form {
+  display: grid;
+  gap: 14px;
+}
+.ref-form p,
+.ref-form .error {
+  margin: 0;
+}
+.ref-form button.primary {
+  min-height: var(--touch);
+}
+.ref-trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.ref-done {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+.ref-done p {
+  margin: 0;
+  color: var(--ink-2);
+}
+.ref-done-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+  background: var(--ok-bg);
+  color: var(--ok);
+  font-size: 18px;
+}
+
+/* ---------- Tablette et téléphone ---------- */
+@media (max-width: 1000px) {
+  .ref-hero,
+  .ref-sim {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ref-hero-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .ref-stat-main {
+    grid-column: auto;
+  }
+  .ref-stat-main dd {
+    font-size: 26px;
+  }
+  .ref-filleul {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .ref-track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .ref-landing-inner {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+}
+@media (max-width: 700px) {
+  .ref-hero,
+  .ref-sim {
+    padding: 20px 16px;
+  }
+  /* Téléphone : le nom sur toute la largeur, le montant dessous, à gauche. */
+  .ref-filleul {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ref-filleul-gain {
+    grid-row: 3;
+    justify-items: start;
+    text-align: left;
+    padding-left: 48px;
+  }
+  .ref-hero-stats,
+  .ref-admin-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ref-stat-main {
+    grid-column: 1 / -1;
+  }
+  .ref-link {
+    flex-direction: column;
+  }
+  .ref-link input:not([type="checkbox"]):not([type="radio"]) {
+    font-size: 16px;
+  }
+  .ref-link button,
+  .ref-share-buttons .button,
+  .ref-share-buttons button {
+    min-height: var(--touch);
+  }
+  .ref-share-buttons > * {
+    flex: 1 1 0;
+  }
+  .ref-steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ref-filleul {
+    gap: 14px;
+    padding: 14px 16px;
+  }
+  .ref-section-head,
+  .ref-request,
+  .ref-group-head {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .ref-request {
+    flex-direction: column;
+  }
+  .ref-sim-amount {
+    font-size: 36px;
+  }
+  .ref-sim .price-switch {
+    justify-self: stretch;
+  }
+  .ref-sim .price-switch button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .ref-landing {
+    padding: 32px var(--gutter);
+  }
+  .ref-landing-intro h1 {
+    font-size: 28px;
+  }
+  .ref-landing-card {
+    padding: 20px 16px;
+  }
+  .ref-form input:not([type="checkbox"]):not([type="radio"]),
+  .ref-form textarea {
+    font-size: 16px;
+  }
+}
+
+/* Rappel sur l'accueil d'une architecte */
+.ref-teaser {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  background: var(--brass-bg);
+  border: 1px solid #ebe1d0;
+  border-radius: var(--radius);
+  color: var(--ink);
+  text-decoration: none;
+}
+.ref-teaser strong {
+  font-weight: 500;
+}
+.ref-teaser:hover {
+  border-color: var(--brass);
+}

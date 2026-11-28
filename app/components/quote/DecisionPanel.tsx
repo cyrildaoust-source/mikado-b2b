@@ -42,7 +42,7 @@ export function DecisionPanel({
         <>
           <p className={d.late ? "notice" : "muted"}>
             {d.late
-              ? `Le délai de 48 h est dépassé depuis le ${when(d.deadline)}. Rien n'est facturé tant que vous n'avez pas contresigné.`
+              ? `Le délai de 48 h est dépassé depuis le ${when(d.deadline)}. Rien n’est facturé tant que vous n’avez pas contresigné.`
               : `À contresigner avant le ${when(d.deadline)}. Si une révision est nécessaire, rouvrez le devis : le client recevra une nouvelle proposition.`}
           </p>
           {canSign ? (
@@ -54,7 +54,7 @@ export function DecisionPanel({
               <label className="decision-confirm">
                 <input type="checkbox" name="confirm" required />
                 <span>
-                  Je confirme la commande telle qu'acceptée par mon client et
+                  Je confirme la commande telle qu’acceptée par mon client et
                   la transmets à Mikado Deco pour facturation.
                 </span>
               </label>
@@ -74,7 +74,7 @@ export function DecisionPanel({
               </div>
             </f.Form>
           ) : (
-            <p className="muted">En attente de la contresignature de l'architecte.</p>
+            <p className="muted">En attente de la contresignature de l’architecte.</p>
           )}
         </>
       )}

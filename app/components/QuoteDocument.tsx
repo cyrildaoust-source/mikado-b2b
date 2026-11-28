@@ -60,6 +60,16 @@ export function QuoteDocument({
     roundingAdjustment = net - breakdown.total,
     taxLines = f.taxLines,
     schedule = f.complete ? billingMilestones(s) : [];
+  // « Belgique » plutôt que « BE » ; le code reste si le nom est inconnu.
+  const countryName = (code: string) => {
+    try {
+      return (
+        new Intl.DisplayNames(["fr"], { type: "region" }).of(code) || code
+      );
+    } catch {
+      return code;
+    }
+  };
   const addr = (a: QuoteState["shipping"]) =>
     [
       a.company,
@@ -67,7 +77,7 @@ export function QuoteDocument({
       a.address1,
       a.address2,
       [a.zip, a.city].filter(Boolean).join(" "),
-      a.countryCode,
+      countryName(a.countryCode),
     ]
       .filter(Boolean)
       .join("\n");

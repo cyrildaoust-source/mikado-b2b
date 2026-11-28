@@ -17,16 +17,18 @@ export function AddressFields({
     <div className="fields">
       {(
         [
-          ["company", "Entreprise"],
-          ["address1", "Adresse"],
-          ["address2", "Complément"],
-          ["zip", "Code postal"],
-          ["city", "Ville"],
+          ["company", "Entreprise", "organization"],
+          ["address1", "Adresse", "address-line1"],
+          ["address2", "Complément", "address-line2"],
+          ["zip", "Code postal", "postal-code"],
+          ["city", "Ville", "address-level2"],
         ] as const
-      ).map(([k, label]) => (
+      ).map(([k, label, auto]) => (
         <label key={k}>
           {label}
           <input
+            autoComplete={auto}
+            maxLength={k === "zip" ? 20 : 150}
             value={value[k]}
             onChange={(e) => onChange({ ...value, [k]: e.target.value })}
           />
@@ -35,6 +37,7 @@ export function AddressFields({
       <label>
         Pays
         <select
+          autoComplete="country"
           value={value.countryCode}
           onChange={(e) => onChange({ ...value, countryCode: e.target.value })}
         >

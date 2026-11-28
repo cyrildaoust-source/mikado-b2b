@@ -4933,3 +4933,16 @@ label.cp-line {
   height: 40px;
   line-height: 40px;
 }
+
+/* Téléphone : 16 px dans tous les champs, sinon iOS zoome sur la page à
+ * chaque saisie et ne revient pas en arrière. */
+@media (max-width: 700px) and (pointer: coarse) {
+  :is(.pro-app, .cp, .auth-card)
+    :is(
+      input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+      select,
+      textarea
+    ) {
+    font-size: 16px;
+  }
+}

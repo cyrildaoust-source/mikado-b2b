@@ -9,6 +9,7 @@ import {
   quoteSchema,
   removeLine,
   repriceExtras,
+  setChargeMode,
   setDeliveryFee,
   services,
   type QuoteState,
@@ -82,4 +83,38 @@ test("la livraison à 5 % compte les options cochées, pas celles hors total ni 
   assert.equal(fee(included), 1250);
   // La validation du devis (enregistrement, PDF) recalcule de la même façon.
   assert.equal(fee(quoteSchema.parse(included)), 1250);
+});
+
+test("une prestation repassée en montant fixe retrouve son montant, pas le montant calculé", () => {
+  let s = quote();
+  s = {
+    ...s,
+    extras: s.extras.map((e) =>
+      e.id === "menuisier" ? { ...e, price: 38000, qty: 2, discount: 10 } : e,
+    ),
+  };
+  const percent = setChargeMode(s, "menuisier", "percent");
+  const p = percent.extras.find((e) => e.id === "menuisier")!;
+  assert.equal(p.chargePercent, 5);
+  assert.equal(p.price, 1000); // 5 % de 200,00 €
+  const back = setChargeMode(quoteSchema.parse(percent), "menuisier", "fixed");
+  const f = back.extras.find((e) => e.id === "menuisier")!;
+  assert.equal(f.chargePercent, null);
+  assert.deepEqual([f.price, f.qty, f.discount], [38000, 2, 10]);
+  assert.equal(f.priceConfirmed, true);
+  assert.equal(f.fixed, undefined);
+});
+
+test("sans montant mis de côté, le retour en montant fixe repart de zéro, à confirmer", () => {
+  const s = quote();
+  const old = repriceExtras({
+    ...s,
+    extras: s.extras.map((e) =>
+      e.id === "menuisier" ? { ...e, chargePercent: 5 } : e,
+    ),
+  });
+  const f = setChargeMode(old, "menuisier", "fixed").extras.find(
+    (e) => e.id === "menuisier",
+  )!;
+  assert.deepEqual([f.price, f.qty, f.priceConfirmed], [0, 1, false]);
 });

@@ -50,14 +50,26 @@ function InvoiceForm({ row }: { row: Row }) {
   const f = useFetcher<{ ok?: string; error?: string }>();
   const in30 = new Date(Date.now() + 30 * 86400_000).toISOString().slice(0, 10);
   return (
-    <f.Form method="post" className="invoice-form">
+    <f.Form
+      method="post"
+      className="invoice-form"
+      onSubmit={(e) => {
+        // Sans retour possible depuis l'écran : on demande confirmation.
+        if (
+          !window.confirm(
+            `Marquer le devis ${row.number} comme facturé ? Il quittera la liste « À facturer ».`,
+          )
+        )
+          e.preventDefault();
+      }}
+    >
       <input type="hidden" name="id" value={row.id} />
       <label>
         Échéance
         <input type="date" name="dueDate" defaultValue={in30} required />
       </label>
       <button className="primary" disabled={f.state !== "idle"}>
-        Facturé
+        {f.state !== "idle" ? "Enregistrement…" : "Marquer comme facturé"}
       </button>
       {f.data?.error && <span className="error">{f.data.error}</span>}
     </f.Form>
@@ -95,13 +107,13 @@ export default function ToInvoice() {
     {
       key: "signed",
       title: "À facturer",
-      help: "Contresignés par l'architecte. Fixez l'échéance une fois la facture faite.",
+      help: "Contresignés par l’architecte. Fixez l’échéance une fois la facture faite.",
       rows: rows.filter((r) => r.status === "signed"),
     },
     {
       key: "accepted",
       title: "En attente de contresignature",
-      help: "Le client a accepté ; l'architecte a 48 h pour contresigner. Rien n'est facturé avant.",
+      help: "Le client a accepté ; l’architecte a 48 h pour contresigner. Rien n’est facturé avant.",
       rows: rows.filter((r) => r.status === "accepted"),
     },
     {
@@ -113,12 +125,14 @@ export default function ToInvoice() {
   ];
   return (
     <main className="workspace invoice-page">
-      <header className="page-head">
-        <h1>À facturer</h1>
-        <p className="muted">
-          Les propositions acceptées en ligne par les clients des architectes.
-          Mikado Deco facture l'architecte au prix pro.
-        </p>
+      <header className="list-header">
+        <div>
+          <h1>À facturer</h1>
+          <p>
+            Les propositions acceptées en ligne par les clients des architectes.
+            Mikado Deco facture l’architecte au prix pro.
+          </p>
+        </div>
       </header>
       {groups.map((g) => (
         <section key={g.key} className="list-card invoice-group">
@@ -129,7 +143,7 @@ export default function ToInvoice() {
             {g.help && <p className="muted">{g.help}</p>}
           </div>
           {g.rows.length === 0 ? (
-            <p className="muted invoice-empty">Rien pour l'instant.</p>
+            <p className="muted invoice-empty">Rien pour l’instant.</p>
           ) : (
             <ul className="invoice-list">
               {g.rows.map((r) => (

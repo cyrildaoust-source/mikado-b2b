@@ -120,11 +120,13 @@ export default function Product() {
   const submit = useSubmit();
   // Un clic dans le devis ouvert ajoute tout de suite le produit à cet endroit.
   const [here, setHere] = useState("");
+  const [hereAt, setHereAt] = useState("");
   const addHere = (where: string, label: string) => {
     if (!panel || !variant || busy) return;
     setHere(label);
-    setQuoteId(String(panel.id));
-    setPlacement(where);
+    // Le bouton principal garde sa cible : un second clic n'ajoute pas une
+    // deuxième alternative par mégarde.
+    setHereAt(where);
     submit(
       { variant: variant.id, qty: String(qty), quote: String(panel.id), placement: where },
       { method: "post", preventScrollReset: true },
@@ -160,7 +162,7 @@ export default function Product() {
             quote: String(panel.id),
             placement: `section:${section.id}`,
             label: `Nouveau produit dans ${section.title}`,
-            button: `Ajouter à ${section.title}`,
+            button: `Ajouter dans ${section.title}`,
           },
           ...section.groups.flatMap((g) => [
             {
@@ -438,8 +440,11 @@ export default function Product() {
                       key={g.id}
                       className={
                         inPanel &&
-                        (placement === `alternative:${g.id}` ||
-                          placement === `option:${g.id}`)
+                        [placement, hereAt].some(
+                          (w) =>
+                            w === `alternative:${g.id}` ||
+                            w === `option:${g.id}`,
+                        )
                           ? "active"
                           : ""
                       }

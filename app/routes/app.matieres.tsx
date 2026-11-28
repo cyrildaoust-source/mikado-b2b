@@ -42,6 +42,13 @@ async function shrink(file: File): Promise<File> {
   return new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" });
 }
 
+/** Message d'erreur lisible : une coupure réseau ne s'affiche pas en anglais. */
+function errorText(e: unknown, fallback: string) {
+  if (e instanceof TypeError) return "Connexion interrompue. Vérifiez votre réseau, puis réessayez.";
+  return e instanceof Error && e.message ? e.message : fallback;
+}
+const plural = (n: number, one: string, many: string) => `${n} ${n > 1 ? many : one}`;
+
 async function post(body: FormData) {
   const r = await fetch(API, { method: "POST", body });
   const json = await r.json().catch(() => ({}));
@@ -63,6 +70,14 @@ export default function Materials() {
   const [editing, setEditing] = useState<string | null>(null);
   const [kvadrat, setKvadrat] = useState("");
   const [loading, setLoading] = useState(false);
+  const [dropping, setDropping] = useState(false);
+
+  // Un message de réussite s'efface tout seul ; une erreur reste affichée.
+  useEffect(() => {
+    if (message?.tone !== "ok") return;
+    const t = setTimeout(() => setMessage(null), 8000);
+    return () => clearTimeout(t);
+  }, [message]);
 
   useEffect(() => () => pending.forEach((p) => URL.revokeObjectURL(p.preview)), []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -75,7 +90,7 @@ export default function Materials() {
       const p = parseKvadratProduct(kvadrat);
       z.arrayBuffer()
         .then((b) => openZip(b, p?.number || "", p?.collection || ""))
-        .catch((e) => setMessage({ tone: "error", text: e instanceof Error ? e.message : "Archive illisible." }));
+        .catch((e) => setMessage({ tone: "error", text: errorText(e, "Archive illisible.") }));
     }
     files = files.filter((f) => !/\.zip$/i.test(f.name));
     if (!files.length) return;
@@ -127,9 +142,12 @@ export default function Materials() {
       if (!r.ok) throw Error((await r.text()) || "Pack d'images indisponible.");
       const n = await openZip(await r.arrayBuffer(), p.number, p.collection);
       setMaker("Kvadrat");
-      setMessage({ tone: "ok", text: `${n} photo(s) chargée(s). Vérifiez la collection et le coloris, retirez les photos d'ambiance, puis ajoutez.` });
+      setMessage({
+        tone: "ok",
+        text: `${plural(n, "photo chargée", "photos chargées")}. Vérifiez la collection et le coloris, retirez les photos d'ambiance, puis ajoutez.`,
+      });
     } catch (e) {
-      setMessage({ tone: "error", text: e instanceof Error ? e.message : "Pack d'images indisponible." });
+      setMessage({ tone: "error", text: errorText(e, "Pack d'images indisponible.") });
     } finally {
       setLoading(false);
     }
@@ -153,7 +171,7 @@ export default function Materials() {
         URL.revokeObjectURL(p.preview);
         done++;
       } catch (e) {
-        failed.push({ ...p, error: e instanceof Error ? e.message : "Envoi impossible." });
+        failed.push({ ...p, error: errorText(e, "Envoi impossible.") });
       }
       setProgress(done + failed.length);
     }
@@ -161,23 +179,34 @@ export default function Materials() {
     setBusy(false);
     setMessage(
       failed.length
-        ? { tone: "error", text: `${done} matière(s) ajoutée(s), ${failed.length} en erreur : voir la liste.` }
-        : { tone: "ok", text: `${done} matière(s) ajoutée(s) à la bibliothèque ${maker}.` },
+        ? {
+            tone: "error",
+            text: `${plural(done, "matière ajoutée", "matières ajoutées")}, ${failed.length} en erreur : voir la liste.`,
+          }
+        : { tone: "ok", text: `${plural(done, "matière ajoutée", "matières ajoutées")} à la bibliothèque ${maker}.` },
     );
     revalidator.revalidate();
   }
 
-  async function remove(ids: string[], label: string) {
-    if (!window.confirm(`Retirer ${label} de la bibliothèque ? Elle disparaîtra aussi des mood boards.`)) return;
+  async function remove(ids: string[], label: string, all = false) {
+    const question = all
+      ? `Retirer ${label} de la bibliothèque ? Elles disparaîtront aussi des mood boards.`
+      : `Retirer ${label} de la bibliothèque ? Cette matière disparaîtra aussi des mood boards.`;
+    if (!window.confirm(question)) return;
     const body = new FormData();
     body.set("intent", "delete");
     ids.forEach((id) => body.append("id", id));
     try {
       await post(body);
-      setMessage({ tone: "ok", text: `${label} : retiré.` });
+      setMessage({
+        tone: "ok",
+        text: all
+          ? `${label[0].toUpperCase()}${label.slice(1)} sont retirées de la bibliothèque.`
+          : `${label} : matière retirée de la bibliothèque.`,
+      });
       revalidator.revalidate();
     } catch (e) {
-      setMessage({ tone: "error", text: e instanceof Error ? e.message : "Retrait impossible." });
+      setMessage({ tone: "error", text: errorText(e, "Retrait impossible.") });
     }
   }
 
@@ -190,7 +219,7 @@ export default function Materials() {
       setEditing(null);
       revalidator.revalidate();
     } catch (e) {
-      setMessage({ tone: "error", text: e instanceof Error ? e.message : "Enregistrement impossible." });
+      setMessage({ tone: "error", text: errorText(e, "Enregistrement impossible.") });
     }
   }
 
@@ -207,8 +236,16 @@ export default function Materials() {
       </header>
 
       {message && (
-        <p role={message.tone === "error" ? "alert" : "status"} className={message.tone === "error" ? "error" : "success"}>
-          {message.text}
+        <p
+          role={message.tone === "error" ? "alert" : "status"}
+          className={`mood-message ${message.tone === "error" ? "error" : "success"}`}
+        >
+          <span>{message.text}</span>
+          {message.tone === "error" && (
+            <button type="button" className="text-button" onClick={() => setMessage(null)}>
+              Fermer
+            </button>
+          )}
         </p>
       )}
 
@@ -239,10 +276,28 @@ export default function Materials() {
         </form>
       </section>
 
-      <section className="list-card library-import" aria-labelledby="library-import-title">
+      <section
+        className={`list-card library-import${dropping ? " drop-over" : ""}`}
+        aria-labelledby="library-import-title"
+        // Des fichiers déposés ici rejoignent la liste, au lieu d'ouvrir la photo à la place de la page.
+        onDragOver={(e) => {
+          if (!e.dataTransfer.types.includes("Files")) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = busy ? "none" : "copy";
+          setDropping(!busy);
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropping(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDropping(false);
+          if (!busy) choose([...e.dataTransfer.files]);
+        }}
+      >
         <h2 id="library-import-title">Ajouter des photos</h2>
         <p className="muted">
-          Choisissez un dossier, plusieurs photos ou un zip. Le nom du fichier donne la collection et le coloris,
+          Choisissez un dossier, plusieurs photos ou un zip, ou déposez-les dans ce cadre. Le nom du fichier donne la collection et le coloris,
           par exemple « Hallingdal 65 - 130.jpg ». Vérifiez la liste avant l'envoi. Une photo déjà présente
           (même éditeur, collection et coloris) est remplacée.
         </p>
@@ -262,7 +317,7 @@ export default function Materials() {
               type="file"
               accept="image/jpeg,image/png,image/webp,.zip,application/zip"
               multiple
-              style={{ display: "none" }}
+              className="visually-hidden"
               disabled={busy}
               onChange={(e) => {
                 choose([...(e.target.files || [])]);
@@ -275,7 +330,7 @@ export default function Materials() {
             <input
               type="file"
               multiple
-              style={{ display: "none" }}
+              className="visually-hidden"
               disabled={busy}
               // @ts-expect-error attribut non standard, reconnu par Chrome, Safari et Firefox
               webkitdirectory=""
@@ -289,7 +344,7 @@ export default function Materials() {
 
         {pending.length > 0 && (
           <>
-            <table className="quote-table library-table">
+            <table className="library-table">
               <thead>
                 <tr>
                   <th>
@@ -311,6 +366,7 @@ export default function Materials() {
                     <td>
                       <input
                         aria-label={`Collection de ${p.file.name}`}
+                        placeholder="Collection"
                         value={p.collection}
                         onChange={(e) =>
                           setPending((cur) => cur.map((x) => (x.key === p.key ? { ...x, collection: e.target.value } : x)))
@@ -321,6 +377,7 @@ export default function Materials() {
                     <td>
                       <input
                         aria-label={`Coloris de ${p.file.name}`}
+                        placeholder="Coloris"
                         value={p.colour}
                         onChange={(e) =>
                           setPending((cur) => cur.map((x) => (x.key === p.key ? { ...x, colour: e.target.value } : x)))
@@ -332,6 +389,7 @@ export default function Materials() {
                         type="button"
                         className="text-button"
                         disabled={busy}
+                        aria-label={`Retirer ${p.file.name} de la liste`}
                         onClick={() => {
                           URL.revokeObjectURL(p.preview);
                           setPending((cur) => cur.filter((x) => x.key !== p.key));
@@ -352,7 +410,6 @@ export default function Materials() {
               </button>
               <button
                 type="button"
-               
                 disabled={busy}
                 onClick={() => {
                   pending.forEach((p) => URL.revokeObjectURL(p.preview));
@@ -387,7 +444,14 @@ export default function Materials() {
             dans les mood boards.
           </p>
         ) : (
-          groups.map((g) => (
+          groups.length === 0 ? (
+            <p className="muted" role="status">
+              Aucune matière ne correspond à « {query.trim()} ».{" "}
+              <button type="button" className="text-button" onClick={() => setQuery("")}>
+                Effacer la recherche
+              </button>
+            </p>
+          ) : groups.map((g) => (
             <div key={g.maker} className="library-maker">
               <div className="library-list-head">
                 <h3>
@@ -397,7 +461,7 @@ export default function Materials() {
                   <button
                     type="button"
                     className="text-button"
-                    onClick={() => void remove(g.items.map((m) => m.id), `Toutes les matières ${g.maker}`)}
+                    onClick={() => void remove(g.items.map((m) => m.id), `toutes les matières ${g.maker}`, true)}
                   >
                     Tout retirer
                   </button>
@@ -413,10 +477,17 @@ export default function Materials() {
                           e.preventDefault();
                           void save(m, e.currentTarget);
                         }}
+                        onKeyDown={(e) => e.key === "Escape" && setEditing(null)}
                       >
-                        <input name="maker" aria-label="Éditeur" defaultValue={m.maker} />
-                        <input name="collection" aria-label="Collection" defaultValue={m.collection} />
-                        <input name="colour" aria-label="Coloris" defaultValue={m.colour} />
+                        <input name="maker" aria-label="Éditeur" placeholder="Éditeur" defaultValue={m.maker} />
+                        <input
+                          name="collection"
+                          aria-label="Collection"
+                          placeholder="Collection"
+                          defaultValue={m.collection}
+                          autoFocus
+                        />
+                        <input name="colour" aria-label="Coloris" placeholder="Coloris" defaultValue={m.colour} />
                         <div>
                           <button className="text-button">Enregistrer</button>
                           <button type="button" className="text-button" onClick={() => setEditing(null)}>
@@ -429,12 +500,18 @@ export default function Materials() {
                         <strong>{m.collection}</strong>
                         <span className="muted">{m.colour || "—"}</span>
                         <div>
-                          <button type="button" className="text-button" onClick={() => setEditing(m.id)}>
+                          <button
+                            type="button"
+                            className="text-button"
+                            aria-label={`Modifier ${[m.collection, m.colour].filter(Boolean).join(" ")}`}
+                            onClick={() => setEditing(m.id)}
+                          >
                             Modifier
                           </button>
                           <button
                             type="button"
                             className="text-button"
+                            aria-label={`Retirer ${[m.collection, m.colour].filter(Boolean).join(" ")}`}
                             onClick={() => void remove([m.id], [m.collection, m.colour].filter(Boolean).join(" "))}
                           >
                             Retirer
