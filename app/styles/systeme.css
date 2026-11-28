@@ -1,0 +1,923 @@
+/*
+ * Base visuelle commune de l'outil pro, chargée après toutes les autres.
+ *
+ * Elle reprend la rigueur des tableaux de bord de référence relevés sur
+ * Mobbin : colonne de navigation à gauche, page blanche, texte de 14 px,
+ * titres francs, filets fins, commandes basses, pastilles d'état sobres,
+ * tableaux sans cadre. Les feuilles d'écran gardent leur mise en page ;
+ * celle-ci règle les couleurs, la typographie et les composants partagés.
+ */
+@import "@fontsource/inter/700.css";
+
+/* ------------------------------------------------------------------ */
+/* Jetons                                                              */
+/* ------------------------------------------------------------------ */
+:root {
+  --paper: #ffffff;
+  --surface: #ffffff;
+  --ground: #f5f6f8;
+  --line: #ebeef1;
+  --line-strong: #d8dee4;
+  --line-hover: #b9c2cc;
+  --ink: #1a1b25;
+  --ink-hover: #30313d;
+  --ink-2: #596171;
+  --ink-3: #6c7688;
+  --brass: #8a6a3d;
+  --brass-bg: #f5f6f8;
+  --ok: #217005;
+  --ok-bg: #eaf7e4;
+  --warn: #a8500a;
+  --warn-bg: #fdf3e2;
+  --error: #c0123c;
+  --error-bg: #fdeef2;
+  --info: #0b5cab;
+  --info-bg: #e9f2fc;
+  --t-title: 28px;
+  --t-section: 16px;
+  --t-name: 14px;
+  --t-body: 14px;
+  --t-small: 12px;
+  --radius: 6px;
+  --radius-small: 4px;
+  --control: 36px;
+  --compact: 28px;
+  --gutter: 32px;
+  --shadow-control: 0 1px 1px rgba(26, 27, 37, 0.06);
+  --shadow-float:
+    0 0 0 1px rgba(26, 27, 37, 0.06), 0 8px 24px rgba(26, 27, 37, 0.12);
+  --side: 0px;
+  --nav-h: 57px;
+}
+@media (pointer: coarse) {
+  :root {
+    --control: var(--touch);
+    --compact: var(--touch);
+  }
+}
+@media (max-width: 700px) {
+  :root {
+    --gutter: 16px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Typographie                                                         */
+/* ------------------------------------------------------------------ */
+body {
+  line-height: 1.43;
+  color: var(--ink);
+}
+h1 {
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  line-height: 1.2;
+}
+h2 {
+  font-weight: 600;
+  letter-spacing: -0.006em;
+}
+h3 {
+  font-weight: 600;
+}
+strong,
+b {
+  font-weight: 600;
+}
+p {
+  line-height: 1.5;
+}
+label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-hover);
+}
+a {
+  text-decoration-color: transparent;
+  font-weight: 500;
+}
+a:hover {
+  text-decoration-color: currentColor;
+}
+
+/* ------------------------------------------------------------------ */
+/* Commandes                                                           */
+/* ------------------------------------------------------------------ */
+button,
+.button {
+  font-weight: 600;
+}
+button.primary,
+.button.primary {
+  box-shadow:
+    var(--shadow-control),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+select {
+  font-weight: 500;
+}
+
+/* ------------------------------------------------------------------ */
+/* Navigation : colonne à gauche sur ordinateur                        */
+/* ------------------------------------------------------------------ */
+.nav-icon {
+  display: none;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pro-nav.menu-open .nav-icon {
+  display: block;
+}
+.pro-nav.menu-open .pro-nav-links a {
+  gap: 10px;
+}
+@media (min-width: 1181px) {
+  :root {
+    --side: 232px;
+    --nav-h: 0px;
+  }
+  .pro-app {
+    padding-left: var(--side);
+  }
+  .pro-nav {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: var(--side);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    min-height: 0;
+    padding: 16px 12px 12px;
+    border-bottom: 0;
+    border-right: 1px solid var(--line);
+    background: var(--surface);
+    overflow-y: auto;
+  }
+  .pro-nav .pro-brand,
+  .pro-nav .pro-brand:hover,
+  .pro-nav .pro-brand.active {
+    order: 0;
+    min-height: 32px;
+    margin: 0 0 16px;
+    padding: 0 8px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .pro-nav-end {
+    display: contents;
+  }
+  .pro-nav .pro-new-quote {
+    order: 1;
+    margin: 0 0 16px;
+  }
+  .pro-nav .pro-new-quote button {
+    width: 100%;
+    min-height: 36px;
+    border-color: var(--ink);
+    background: var(--ink);
+    color: #fff;
+  }
+  .pro-nav .pro-new-quote button::before {
+    content: "+";
+    font-size: 17px;
+    font-weight: 400;
+    line-height: 1;
+    margin-top: -2px;
+  }
+  .pro-nav .pro-new-quote button:hover:not(:disabled) {
+    background: var(--ink-hover);
+    border-color: var(--ink-hover);
+  }
+  .pro-nav-links {
+    order: 2;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+  }
+  .nav-icon {
+    display: block;
+  }
+  .pro-nav .pro-nav-links a {
+    gap: 10px;
+    min-height: 32px;
+    padding: 0 8px;
+    color: var(--ink-2);
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .pro-nav .pro-nav-links a:hover {
+    background: var(--ground);
+    color: var(--ink);
+  }
+  .pro-nav .pro-nav-links a.active {
+    background: var(--ground);
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .pro-nav .pro-price-toggle {
+    order: 3;
+    margin: auto 0 0;
+    padding-top: 16px;
+  }
+  .pro-nav .pro-price-toggle .price-switch {
+    display: flex;
+    width: 100%;
+  }
+  .pro-nav .pro-price-toggle .price-switch button {
+    flex: 1;
+  }
+  .pro-nav .pro-user {
+    order: 4;
+    margin-top: 12px;
+    padding: 12px 8px 0;
+    border-top: 1px solid var(--line);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .pro-nav .pro-user::before {
+    display: none;
+  }
+  .pro-nav .pro-logout-form {
+    order: 5;
+    padding: 0 8px;
+  }
+  .pro-nav .pro-logout {
+    min-height: 28px;
+    padding: 0;
+    font-size: 13px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Pages                                                               */
+/* ------------------------------------------------------------------ */
+.workspace {
+  max-width: 1280px;
+  padding-top: 32px;
+}
+.list-header,
+.catalogue-head {
+  margin-bottom: 24px;
+}
+.list-header p {
+  font-size: 14px;
+}
+.demo-ribbon {
+  border-style: solid;
+  border-color: var(--line);
+  background: var(--ground);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ------------------------------------------------------------------ */
+/* Pastilles d'état : petites, rectangulaires, une teinte par sens      */
+/* ------------------------------------------------------------------ */
+s-badge,
+.badge,
+.dash-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 1px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-small);
+  background: var(--ground);
+  border-color: var(--line-strong);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  white-space: nowrap;
+}
+s-badge[tone="success"],
+.badge.ok {
+  background: var(--ok-bg);
+  border-color: #c6e8b9;
+  color: var(--ok);
+}
+s-badge[tone="warning"],
+s-badge[tone="caution"] {
+  background: var(--warn-bg);
+  border-color: #f5dcb0;
+  color: var(--warn);
+}
+s-badge[tone="critical"] {
+  background: var(--error-bg);
+  border-color: #f7c6d2;
+  color: var(--error);
+}
+
+/* ------------------------------------------------------------------ */
+/* Listes et tableaux : pas de cadre, des filets, des lignes basses    */
+/* ------------------------------------------------------------------ */
+.list-card {
+  border-radius: 8px;
+  box-shadow: var(--shadow-control);
+}
+.list-card:has(> table),
+.list-card:has(> .list-toolbar) {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  overflow: visible;
+}
+.list-card:has(> table) > :not(table) {
+  padding-inline: 0;
+}
+.list-toolbar {
+  padding: 0 0 16px;
+  border-bottom: 0;
+  gap: 8px;
+}
+.list-toolbar input[type="search"] {
+  max-width: 360px;
+}
+.list-toolbar select {
+  width: auto;
+  min-width: 220px;
+  margin-left: auto;
+}
+.quote-table {
+  width: 100%;
+  border-top: 1px solid var(--line);
+}
+.quote-table th {
+  padding: 8px 12px;
+  background: none;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+.quote-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+  vertical-align: middle;
+}
+.quote-table th:first-child,
+.quote-table td:first-child {
+  padding-left: 0;
+}
+.quote-table th:last-child,
+.quote-table td:last-child {
+  padding-right: 0;
+}
+.quote-table tbody tr:last-child td {
+  border-bottom: 1px solid var(--line);
+}
+.quote-table td:first-child a {
+  font-weight: 600;
+  text-decoration: none;
+}
+.quote-table td small {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.quote-table:not(.brand-table) tbody tr:hover {
+  background: var(--ground);
+  box-shadow:
+    -12px 0 0 var(--ground),
+    12px 0 0 var(--ground);
+}
+.pagination {
+  padding: 12px 0 0;
+  border-top: 0;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Décalages liés à la barre du haut                                   */
+/* ------------------------------------------------------------------ */
+.quote-workspace {
+  height: calc(100dvh - var(--nav-h));
+}
+s-badge[tone="info"],
+.dash-todo s-badge[tone="info"] {
+  background: var(--ground);
+  border-color: var(--line-strong);
+  color: var(--ink-2);
+}
+s-badge[tone="warning"] {
+  background: var(--warn-bg);
+  border-color: #f5dcb0;
+  color: var(--warn);
+}
+.quote-table td {
+  padding-block: 8px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Accueil                                                             */
+/* ------------------------------------------------------------------ */
+.dash-head {
+  align-items: center;
+  margin-bottom: 20px;
+}
+.dash-head h1,
+.dash-name {
+  font-size: var(--t-title);
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  line-height: 1.2;
+}
+.dash-date {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.dash-summary {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.dash-tier {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow-control);
+}
+.dash-tier-label {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+.dash-tier-now strong {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.dash-tier-bar {
+  height: 6px;
+  background: var(--ground);
+}
+.dash-tier-bar span {
+  background: var(--ink);
+}
+.dash-stats {
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow-control);
+  overflow: hidden;
+}
+.dash-stat {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 16px 20px;
+}
+.dash-stat + .dash-stat {
+  border-left: 1px solid var(--line);
+}
+.dash-stat span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.dash-stat strong {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.dash-stat small {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.dash-section {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  padding: 0;
+}
+.dash-section + .dash-section {
+  margin-top: 40px;
+}
+.dash-section h2,
+.dash-section-head {
+  padding-inline: 0;
+}
+.dash-section > h2,
+.dash-section-head {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 0;
+}
+.dash-section-head h2 {
+  padding: 0;
+  border: 0;
+}
+.dash-section-head a {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.dash-recent li a {
+  padding: 10px 0;
+}
+.dash-recent li a:hover {
+  background: var(--ground);
+  box-shadow:
+    -12px 0 0 var(--ground),
+    12px 0 0 var(--ground);
+}
+.dash-recent strong {
+  font-weight: 600;
+}
+.dash-table th,
+.dash-table td {
+  padding: 10px 12px;
+}
+.dash-table th:first-child,
+.dash-table td:first-child {
+  padding-left: 0;
+}
+.dash-table th:last-child,
+.dash-table td:last-child {
+  padding-right: 0;
+}
+.dash-table th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.dash-table td:first-child a {
+  font-weight: 600;
+  text-decoration: none;
+}
+.dash-table td {
+  white-space: normal;
+}
+.dash-table td:nth-child(3),
+.dash-table td:nth-child(4) {
+  white-space: nowrap;
+}
+.dash-note {
+  padding-inline: 0;
+}
+.dash-section h2 {
+  font-weight: 600;
+}
+.dash-recent li {
+  padding-inline: 0;
+}
+.dash-recent li a {
+  padding: 0;
+}
+.dash-recent li {
+  padding-block: 10px;
+}
+.dash-recent li a:hover {
+  background: none;
+  box-shadow: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* Catalogue                                                           */
+/* ------------------------------------------------------------------ */
+.catalogue-head {
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 12px;
+}
+.catalogue-filters {
+  gap: 8px;
+  padding-top: 0;
+  border-top: 0;
+}
+.catalogue-filters input[type="search"] {
+  max-width: 360px;
+}
+.catalogue-grid {
+  gap: 32px 20px;
+}
+/* Vignette : fond gris uni, le blanc des packshots s'y fond. */
+.catalogue-photo,
+.product-photo {
+  border: 0;
+  border-radius: 8px;
+  background: var(--ground);
+}
+.catalogue-photo {
+  aspect-ratio: 1;
+}
+.catalogue-photo img,
+.product-photo img {
+  mix-blend-mode: multiply;
+}
+.catalogue-meta {
+  padding-top: 10px;
+  gap: 2px;
+}
+.catalogue-meta small {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.catalogue-meta strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.catalogue-finish {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.catalogue-price {
+  font-size: 14px;
+  font-weight: 500;
+}
+/* La barre du bas se centre sur la page, pas sur la fenêtre. */
+.catalogue-dock {
+  left: calc(50% + var(--side) / 2);
+  width: min(920px, calc(100vw - var(--side) - 64px));
+  border-color: var(--line);
+  border-radius: 10px;
+}
+.catalogue-toast {
+  left: calc(50% + var(--side) / 2);
+}
+@media (max-width: 700px) {
+  .catalogue-dock {
+    width: calc(100vw - 16px);
+  }
+}
+
+/* Fiche produit */
+.product-vendor {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+}
+.product-info h1 {
+  font-size: 28px;
+}
+.product-price {
+  font-weight: 600;
+}
+.product-thumbs button {
+  border-radius: 6px;
+  background: var(--ground);
+  border-color: transparent;
+}
+.product-thumbs button.active,
+.product-thumbs button[aria-pressed="true"] {
+  border-color: var(--ink);
+}
+.product-values button {
+  min-height: 36px;
+  border-radius: 6px;
+  box-shadow: none;
+  font-weight: 500;
+}
+.product-values button[aria-pressed="true"] {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+/* ------------------------------------------------------------------ */
+/* Éditeur de devis : la colonne de navigation se réduit à ses icônes  */
+/* pour laisser la largeur au catalogue et au devis.                   */
+/* ------------------------------------------------------------------ */
+@media (min-width: 1181px) {
+  .pro-app:has(.quote-workspace) {
+    --side: 56px;
+  }
+  .pro-app:has(.quote-workspace) .pro-nav {
+    padding-inline: 10px;
+    align-items: center;
+    overflow-x: hidden;
+  }
+  .pro-app:has(.quote-workspace) .pro-brand {
+    padding: 0;
+    justify-content: center;
+    width: 36px;
+  }
+  .pro-app:has(.quote-workspace) .pro-brand > span {
+    font-size: 0;
+  }
+  .pro-app:has(.quote-workspace) .pro-brand > span::before {
+    content: "M";
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--ink);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .pro-app:has(.quote-workspace) .pro-new-quote button {
+    width: 36px;
+    padding: 0;
+    font-size: 0;
+    gap: 0;
+  }
+  .pro-app:has(.quote-workspace) .pro-new-quote button::before {
+    font-size: 18px;
+  }
+  .pro-app:has(.quote-workspace) .pro-nav-links a {
+    width: 36px;
+    min-height: 36px;
+    padding: 0;
+    justify-content: center;
+    gap: 0;
+    font-size: 0;
+  }
+  .pro-app:has(.quote-workspace) .pro-user,
+  .pro-app:has(.quote-workspace) .pro-logout-form,
+  .pro-app:has(.quote-workspace) .price-switch-label {
+    display: none;
+  }
+  .pro-app:has(.quote-workspace) .pro-price-toggle .price-switch {
+    flex-direction: column;
+    width: 36px;
+    height: auto;
+    padding: 2px;
+  }
+  .pro-app:has(.quote-workspace) .pro-price-toggle .price-switch button {
+    width: 100%;
+    min-height: 28px;
+    padding: 0;
+    font-size: 10px;
+  }
+}
+@media (min-width: 1181px) {
+  .pro-app:has(.quote-workspace) .pro-price-toggle {
+    width: 36px;
+    padding-top: 12px;
+  }
+  .pro-app:has(.quote-workspace) .pro-price-toggle .price-switch {
+    border-radius: 8px;
+    overflow: hidden;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Éditeur de devis                                                    */
+/* ------------------------------------------------------------------ */
+.quote-header {
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+.quote-header .eyebrow {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-3);
+  letter-spacing: 0;
+}
+.quote-title input:not([type="checkbox"]) {
+  font-weight: 700;
+  letter-spacing: -0.022em;
+}
+.quote-header .header-actions {
+  padding-top: 20px;
+}
+.quote-header + .muted {
+  font-size: 13px;
+}
+s-section {
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: var(--shadow-control);
+}
+s-section[heading]::before {
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+/* Le bloc des pièces n'est plus une carte qui contient des cartes. */
+s-section:has(> .section-toolbar) {
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+.section-toolbar {
+  margin-bottom: 12px;
+}
+.quote-lot {
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow-control);
+  overflow: clip;
+}
+.lot-heading {
+  padding: 10px 16px;
+  background: var(--surface);
+}
+.lot-heading input:not([type="checkbox"]) {
+  font-weight: 600;
+}
+.lot-heading > span {
+  font-weight: 600;
+}
+.lot-summary > strong {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.lot-summary a {
+  border-radius: 8px;
+  box-shadow: var(--shadow-control);
+  font-weight: 600;
+}
+.lot-summary a small,
+.lot-summary a span {
+  font-weight: 400;
+}
+.share-panel {
+  border-radius: 8px;
+  box-shadow: var(--shadow-control);
+}
+.total-bar {
+  border-color: var(--line);
+  border-radius: 10px;
+  font-size: 13px;
+}
+.total-bar strong {
+  font-weight: 700;
+}
+.catalogue-pane h2 {
+  font-weight: 600;
+}
+.quote-header .header-actions {
+  padding-top: 0;
+}
+@media (min-width: 1181px) {
+  .pro-app:has(.quote-workspace) .pro-price-toggle .price-switch button {
+    min-width: 0;
+    width: 30px;
+    letter-spacing: -0.02em;
+  }
+}
+s-section details > summary {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+button.add-action {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+button:has(> .mood-long) {
+  gap: 4px;
+}
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--ink);
+}
+
+/* ------------------------------------------------------------------ */
+/* Page client de la proposition                                       */
+/* ------------------------------------------------------------------ */
+.cp a.cp-to-accept {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  margin-top: 16px;
+  padding: 0 16px;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+.cp a.cp-to-accept:hover {
+  background: var(--ink-hover);
+}
+.list-card:has(> table) table th:first-child,
+.list-card:has(> table) table td:first-child {
+  padding-left: 0;
+}
+.list-card:has(> table) table th:last-child,
+.list-card:has(> table) table td:last-child {
+  padding-right: 0;
+}
+/* Chiffres de l'accueil : des filets entre les cases, quel que soit le
+ * nombre de colonnes. */
+.dash-stats {
+  gap: 1px;
+  background: var(--line);
+}
+.dash-stat,
+.dash-stat + .dash-stat {
+  border: 0;
+  background: var(--surface);
+}
+.dash-stat:hover {
+  background: var(--ground);
+}
