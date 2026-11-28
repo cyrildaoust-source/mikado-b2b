@@ -81,6 +81,14 @@ export function ownerScope(c: Context): number | null {
   return c.user && c.user.role !== "admin" ? c.user.id : null;
 }
 
+/**
+ * Compte hors Mikado Deco (architecte externe). Tout rôle autre que « admin »
+ * compte comme externe : refus par défaut des données de la boutique.
+ */
+export function isExternal(c: Context) {
+  return Boolean(c.user && c.user.role !== "admin");
+}
+
 export function requireAdmin(c: Context) {
   if (c.user && c.user.role !== "admin")
     throw new Response("Réservé à Mikado Deco", { status: 403 });

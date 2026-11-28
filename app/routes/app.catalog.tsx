@@ -1,5 +1,5 @@
 import type { LoaderFunctionArgs } from "react-router";
-import { context } from "../services/context.server";
+import { context, isExternal } from "../services/context.server";
 import {
   products,
   customers,
@@ -17,7 +17,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     u = new URL(request.url),
     q = (u.searchParams.get("q") || "").slice(0, 150),
     after = u.searchParams.get("after") || undefined;
-  if (u.searchParams.get("kind") === "customers" && c.user?.role === "architect")
+  if (u.searchParams.get("kind") === "customers" && isExternal(c))
     // Les clients de la boutique restent privés : l'architecte saisit les siens.
     return Response.json(
       { items: [], next: null, error: "Saisissez les coordonnées de votre client dans le devis." },

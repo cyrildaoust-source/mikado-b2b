@@ -8,7 +8,7 @@ import {
   type LoaderFunctionArgs,
   type ActionFunctionArgs,
 } from "react-router";
-import { context, ownerScope, requireAdmin } from "../services/context.server";
+import { context, isExternal, ownerScope, requireAdmin } from "../services/context.server";
 import {
   getQuote,
   assertQuoteAccess,
@@ -113,6 +113,16 @@ async function canSignQuote(
   return !c.user || c.user.role === "admin";
 }
 
+/**
+ * Devis d'un compte externe : prix catalogue verrouillés, et jamais de lien
+ * vers une fiche client Shopify (l'architecte saisit les coordonnées lui-même).
+ */
+function externalState<S extends Parameters<typeof lockPrices>[0] & { customerId: string | null }>(
+  s: S,
+): S {
+  return { ...lockPrices(s), customerId: null };
+}
+
 export async function action({ request, params }: ActionFunctionArgs) {
   const c = await context(request),
     id = Number(params.id);
@@ -185,7 +195,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         ...quoteSchema.parse(JSON.parse(raw)),
         hideDiscounts: false,
       };
-      const state = c.user?.role === "architect" ? lockPrices(parsed) : parsed;
+      const state = isExternal(c) ? externalState(parsed) : parsed;
       if (!state.client.trim())
         throw Error("Choisissez un client avant de préparer le PDF.");
       const v = await saveQuote(c.shop, id, version, state, intent === "refresh-pdf");
@@ -225,7 +235,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         c.shop,
         id,
         version,
-        c.user?.role === "architect" ? lockPrices(parsed) : parsed,
+        isExternal(c) ? externalState(parsed) : parsed,
       );
       return { ok: "Devis enregistré." };
     }
